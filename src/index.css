@@ -42,7 +42,7 @@
     background-color: #ffffff !important;
     color: #000000 !important;
   }
-  header, aside, nav, .print\\:hidden {
+  header, aside, nav, .no-print, [class*="print:hidden"] {
     display: none !important;
   }
   .print-area {
