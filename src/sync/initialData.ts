@@ -1,0 +1,465 @@
+import { ConcreteOrder, DispatchTrip, FleetTruck, BatchingPlant, CustomerDebt, LabTestSample, FuelLog } from '../types';
+
+export const INITIAL_ORDERS: ConcreteOrder[] = [
+  {
+    id: 'ord-001',
+    code: 'DH-260930-001',
+    customerName: 'CÔNG TY TNHH XÂY DỰNG TÂN NHẬT NGUYỆT',
+    plantLocation: 'Tây Ninh',
+    projectTitle: 'NHÀ XƯỞNG SỐ 2 NHÀ MÁY DỆT TÂY NINH',
+    categoryItem: 'Sàn',
+    totalVolume: 800,
+    deliveredVolume: 560,
+    deliveryTime: '18:00',
+    deliveryDate: '2026-09-30',
+    status: 'DA_DUYET',
+    grade: 'M300',
+    slump: '14±2',
+    additive: 'R7',
+    pumpType: 'Bơm cần 43m',
+    contactPerson: 'Anh Tuấn',
+    contactPhone: '0908 123 456',
+    notes: 'Đổ ban đêm, chuẩn bị 2 máy bơm dự phòng, kiểm tra độ sụt kỹ.',
+    assignedTrucksCount: 8,
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: 'ord-002',
+    code: 'DH-260930-002',
+    customerName: 'CÔNG TY TNHH XÂY DỰNG KIM NGUYÊN LONG',
+    plantLocation: 'Tây Ninh',
+    projectTitle: 'NHÀ MÁY GDI TEXTILE',
+    categoryItem: 'Cột tầng 3,4 zone 2',
+    totalVolume: 41,
+    deliveredVolume: 32,
+    deliveryTime: '09:00',
+    deliveryDate: '2026-09-30',
+    status: 'DA_DUYET',
+    grade: 'M350',
+    slump: '12±2',
+    additive: 'R14',
+    pumpType: 'Bơm tĩnh',
+    contactPerson: 'Anh Thành',
+    contactPhone: '0912 345 678',
+    notes: 'Đổ cột mác cao, yêu cầu lấy mẫu 3 tổ R7 và R28.',
+    assignedTrucksCount: 4,
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: 'ord-003',
+    code: 'DH-260930-003',
+    customerName: 'CÔNG TY CỔ PHẦN XÂY DỰNG ĐẠI TÍN',
+    plantLocation: 'Tây Ninh',
+    projectTitle: 'NHÀ Ở XÃ HỘI – KDC THÀNH THÀNH CÔNG',
+    categoryItem: 'Lồng cọc block B1',
+    totalVolume: 24,
+    deliveredVolume: 16,
+    deliveryTime: '14:00',
+    deliveryDate: '2026-09-30',
+    status: 'DANG_CHAY',
+    grade: 'M250',
+    slump: '16±2',
+    additive: 'Không',
+    pumpType: 'Xả máng trực tiếp',
+    contactPerson: 'Chị Hạnh',
+    contactPhone: '0934 567 890',
+    notes: 'Đường hẹp vào công trình, chỉ điều xe bồn nhỏ 8-10m3.',
+    assignedTrucksCount: 2,
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: 'ord-004',
+    code: 'DH-260930-004',
+    customerName: 'TẬP ĐOÀN ĐẦU TƯ ĐỊA ỐC NOVA TÂY NINH',
+    plantLocation: 'Tây Ninh',
+    projectTitle: 'KHU PHỨC HỢP THƯƠNG MẠI TRẢNG BÀNG',
+    categoryItem: 'Đài móng M1-M6',
+    totalVolume: 120,
+    deliveredVolume: 0,
+    deliveryTime: '21:30',
+    deliveryDate: '2026-09-30',
+    status: 'CHO_DUYET',
+    grade: 'M350',
+    slump: '14±2',
+    additive: 'Chống thấm B8',
+    pumpType: 'Bơm cần 52m',
+    contactPerson: 'Kỹ sư Hoàng',
+    contactPhone: '0945 678 910',
+    notes: 'Bê tông khối lớn, yêu cầu kiểm soát nhiệt độ dưới 32°C.',
+    assignedTrucksCount: 0,
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: 'ord-005',
+    code: 'DH-260930-005',
+    customerName: 'CÔNG TY TNHH HẠ TẦNG KHU CÔNG NGHIỆP PHƯỚC ĐÔNG',
+    plantLocation: 'Tây Ninh',
+    projectTitle: 'ĐƯỜNG NỘI BỘ TRỤC CHÍNH D4',
+    categoryItem: 'Mặt đường bê tông cốt thép',
+    totalVolume: 65,
+    deliveredVolume: 65,
+    deliveryTime: '07:30',
+    deliveryDate: '2026-09-30',
+    status: 'HOAN_THANH',
+    grade: 'M250',
+    slump: '10±2',
+    additive: 'R3',
+    pumpType: 'Xả máng trực tiếp',
+    contactPerson: 'Anh Bình',
+    contactPhone: '0978 999 111',
+    notes: 'Đã hoàn tất nghiệm thu và ký phiếu điện tử.',
+    assignedTrucksCount: 3,
+    updatedAt: new Date().toISOString()
+  }
+];
+
+export const INITIAL_TRIPS: DispatchTrip[] = [
+  {
+    id: 'trip-001',
+    orderId: 'ord-001',
+    orderCode: 'DH-260930-001',
+    ticketNumber: 'PKX-260930-081',
+    truckPlate: '70C-128.45',
+    driverName: 'Nguyễn Văn Hùng',
+    driverPhone: '0903 888 221',
+    volume: 10,
+    departureTime: '18:10',
+    arrivalEstimate: '18:40',
+    status: 'DANG_XA',
+    slumpTested: '14.5 cm',
+    grade: 'M300'
+  },
+  {
+    id: 'trip-002',
+    orderId: 'ord-001',
+    orderCode: 'DH-260930-001',
+    ticketNumber: 'PKX-260930-082',
+    truckPlate: '70C-145.22',
+    driverName: 'Trần Minh Tâm',
+    driverPhone: '0918 333 444',
+    volume: 10,
+    departureTime: '18:25',
+    arrivalEstimate: '18:55',
+    status: 'DANG_CHAY',
+    slumpTested: '14.0 cm',
+    grade: 'M300'
+  },
+  {
+    id: 'trip-003',
+    orderId: 'ord-001',
+    orderCode: 'DH-260930-001',
+    ticketNumber: 'PKX-260930-083',
+    truckPlate: '70C-109.88',
+    driverName: 'Lê Hoàng Long',
+    driverPhone: '0922 444 555',
+    volume: 10,
+    departureTime: '18:40',
+    arrivalEstimate: '19:10',
+    status: 'DANG_NAP',
+    slumpTested: '14.2 cm',
+    grade: 'M300'
+  },
+  {
+    id: 'trip-004',
+    orderId: 'ord-003',
+    orderCode: 'DH-260930-003',
+    ticketNumber: 'PKX-260930-084',
+    truckPlate: '70C-156.78',
+    driverName: 'Võ Trọng Trí',
+    driverPhone: '0933 555 666',
+    volume: 8,
+    departureTime: '14:15',
+    arrivalEstimate: '14:45',
+    status: 'DEN_CONG_TRUONG',
+    slumpTested: '16.0 cm',
+    grade: 'M250'
+  }
+];
+
+export const INITIAL_TRUCKS: FleetTruck[] = [
+  {
+    id: 'trk-01',
+    plateNumber: '70C-128.45',
+    truckType: 'Xe bồn 10m³',
+    driverName: 'Nguyễn Văn Hùng',
+    driverPhone: '0903 888 221',
+    status: 'DANG_XA',
+    currentOrderCode: 'DH-260930-001',
+    plantLocation: 'Tây Ninh',
+    fuelLevel: 82,
+    kmToday: 114,
+    tripsToday: 4
+  },
+  {
+    id: 'trk-02',
+    plateNumber: '70C-145.22',
+    truckType: 'Xe bồn 10m³',
+    driverName: 'Trần Minh Tâm',
+    driverPhone: '0918 333 444',
+    status: 'DANG_CHAY',
+    currentOrderCode: 'DH-260930-001',
+    plantLocation: 'Tây Ninh',
+    fuelLevel: 68,
+    kmToday: 95,
+    tripsToday: 3
+  },
+  {
+    id: 'trk-03',
+    plateNumber: '70C-109.88',
+    truckType: 'Xe bồn 12m³',
+    driverName: 'Lê Hoàng Long',
+    driverPhone: '0922 444 555',
+    status: 'DANG_NAP',
+    currentOrderCode: 'DH-260930-001',
+    plantLocation: 'Tây Ninh',
+    fuelLevel: 90,
+    kmToday: 60,
+    tripsToday: 2
+  },
+  {
+    id: 'trk-04',
+    plateNumber: '70C-156.78',
+    truckType: 'Xe bồn 10m³',
+    driverName: 'Võ Trọng Trí',
+    driverPhone: '0933 555 666',
+    status: 'DANG_CHAY',
+    currentOrderCode: 'DH-260930-003',
+    plantLocation: 'Tây Ninh',
+    fuelLevel: 75,
+    kmToday: 80,
+    tripsToday: 3
+  },
+  {
+    id: 'trk-05',
+    plateNumber: '70C-188.99',
+    truckType: 'Xe bơm cần 43m',
+    driverName: 'Phạm Quốc Bảo',
+    driverPhone: '0944 666 777',
+    status: 'DANG_XA',
+    currentOrderCode: 'DH-260930-001',
+    plantLocation: 'Tây Ninh',
+    fuelLevel: 65,
+    kmToday: 42,
+    tripsToday: 2
+  },
+  {
+    id: 'trk-06',
+    plateNumber: '70C-202.11',
+    truckType: 'Xe bồn 10m³',
+    driverName: 'Đỗ Văn Cường',
+    driverPhone: '0955 777 888',
+    status: 'SAN_SANG',
+    plantLocation: 'Tây Ninh',
+    fuelLevel: 95,
+    kmToday: 30,
+    tripsToday: 1
+  },
+  {
+    id: 'trk-07',
+    plateNumber: '70C-167.33',
+    truckType: 'Xe bơm tĩnh',
+    driverName: 'Huỳnh Bá Thông',
+    driverPhone: '0966 888 999',
+    status: 'SAN_SANG',
+    plantLocation: 'Tây Ninh',
+    fuelLevel: 88,
+    kmToday: 15,
+    tripsToday: 1
+  },
+  {
+    id: 'trk-08',
+    plateNumber: '70C-133.55',
+    truckType: 'Xe bồn 12m³',
+    driverName: 'Dương Hữu Tài',
+    driverPhone: '0977 111 222',
+    status: 'BAO_DUONG',
+    plantLocation: 'Tây Ninh',
+    fuelLevel: 40,
+    kmToday: 0,
+    tripsToday: 0
+  }
+];
+
+export const INITIAL_PLANTS: BatchingPlant[] = [
+  {
+    id: 'plt-tn-01',
+    name: 'Trạm Tây Ninh 1 (Trảng Bàng)',
+    capacityM3PerHour: 120,
+    status: 'DANG_TRON',
+    currentOrderCode: 'DH-260930-001',
+    currentRecipe: 'Bê tông M300 R7 Độ sụt 14±2',
+    batchProgress: 72,
+    todayOutputM3: 420,
+    silos: [
+      { name: 'Silo 1', material: 'Xi măng Nghi Sơn PCB40', currentTons: 118, capacityTons: 150, unit: 'Tấn' },
+      { name: 'Silo 2', material: 'Tro bay Phả Lại (Flyash)', currentTons: 64, capacityTons: 100, unit: 'Tấn' },
+      { name: 'Kho bãi A', material: 'Cát vàng Đồng Nai Module > 2.5', currentTons: 380, capacityTons: 500, unit: 'Tấn' },
+      { name: 'Kho bãi B', material: 'Đá 1x2 Thạnh Phú Dmax 20', currentTons: 520, capacityTons: 700, unit: 'Tấn' },
+      { name: 'Bồn PG1', material: 'Phụ gia Sika ViscoCrete', currentTons: 16.5, capacityTons: 20, unit: 'Tấn' }
+    ]
+  },
+  {
+    id: 'plt-tn-02',
+    name: 'Trạm Tây Ninh 2 (Gò Dầu)',
+    capacityM3PerHour: 90,
+    status: 'SAN_SANG',
+    currentOrderCode: 'DH-260930-003',
+    currentRecipe: 'Bê tông M250 Thường Độ sụt 16±2',
+    batchProgress: 25,
+    todayOutputM3: 192,
+    silos: [
+      { name: 'Silo 1', material: 'Xi măng Holcim Extra', currentTons: 92, capacityTons: 120, unit: 'Tấn' },
+      { name: 'Silo 2', material: 'Tro bay Tân Triều', currentTons: 45, capacityTons: 80, unit: 'Tấn' },
+      { name: 'Kho bãi A', material: 'Cát hạt trung', currentTons: 290, capacityTons: 450, unit: 'Tấn' },
+      { name: 'Kho bãi B', material: 'Đá 1x2 Hoá An', currentTons: 410, capacityTons: 600, unit: 'Tấn' },
+      { name: 'Bồn PG1', material: 'Phụ gia Silk R7', currentTons: 12.8, capacityTons: 15, unit: 'Tấn' }
+    ]
+  }
+];
+
+export const INITIAL_DEBTS: CustomerDebt[] = [
+  {
+    id: 'debt-01',
+    customerName: 'CÔNG TY TNHH XÂY DỰNG TÂN NHẬT NGUYỆT',
+    phone: '0908 123 456',
+    totalOrders: 28,
+    deliveredVolumeTotal: 3450,
+    creditLimit: 5000000000,
+    currentDebt: 2180000000,
+    overdueDebt: 0,
+    paymentStatus: 'TOT',
+    lastPaymentDate: '2026-09-25'
+  },
+  {
+    id: 'debt-02',
+    customerName: 'CÔNG TY TNHH XÂY DỰNG KIM NGUYÊN LONG',
+    phone: '0912 345 678',
+    totalOrders: 14,
+    deliveredVolumeTotal: 1280,
+    creditLimit: 2000000000,
+    currentDebt: 1850000000,
+    overdueDebt: 320000000,
+    paymentStatus: 'CANH_BAO',
+    lastPaymentDate: '2026-09-10'
+  },
+  {
+    id: 'debt-03',
+    customerName: 'CÔNG TY CỔ PHẦN XÂY DỰNG ĐẠI TÍN',
+    phone: '0934 567 890',
+    totalOrders: 9,
+    deliveredVolumeTotal: 620,
+    creditLimit: 1000000000,
+    currentDebt: 450000000,
+    overdueDebt: 0,
+    paymentStatus: 'TOT',
+    lastPaymentDate: '2026-09-28'
+  },
+  {
+    id: 'debt-04',
+    customerName: 'TẬP ĐOÀN ĐẦU TƯ ĐỊA ỐC NOVA TÂY NINH',
+    phone: '0945 678 910',
+    totalOrders: 42,
+    deliveredVolumeTotal: 5800,
+    creditLimit: 8000000000,
+    currentDebt: 3200000000,
+    overdueDebt: 0,
+    paymentStatus: 'TOT',
+    lastPaymentDate: '2026-09-29'
+  },
+  {
+    id: 'debt-05',
+    customerName: 'CÔNG TY TNHH PHÁT TRIỂN HẠ TẦNG VIỆT THÀNH',
+    phone: '0901 888 777',
+    totalOrders: 6,
+    deliveredVolumeTotal: 410,
+    creditLimit: 800000000,
+    currentDebt: 820000000,
+    overdueDebt: 580000000,
+    paymentStatus: 'KHOA_DON',
+    lastPaymentDate: '2026-08-15'
+  }
+];
+
+export const INITIAL_LAB_TESTS: LabTestSample[] = [
+  {
+    id: 'lab-01',
+    sampleCode: 'TN-260930-M300-01',
+    orderCode: 'DH-260930-001',
+    customerName: 'CÔNG TY TNHH XÂY DỰNG TÂN NHẬT NGUYỆT',
+    projectTitle: 'NHÀ XƯỞNG SỐ 2 NHÀ MÁY DỆT TÂY NINH',
+    testDate: '2026-09-30',
+    specGrade: 'M300',
+    slumpResult: '14.5 cm',
+    strengthR7: 26.8,
+    strengthR28: 34.5,
+    requiredStrength: 30.0,
+    status: 'DAT',
+    testerName: 'Lê Hoàng Anh (QC Lab)'
+  },
+  {
+    id: 'lab-02',
+    sampleCode: 'TN-260930-M350-02',
+    orderCode: 'DH-260930-002',
+    customerName: 'CÔNG TY TNHH XÂY DỰNG KIM NGUYÊN LONG',
+    projectTitle: 'NHÀ MÁY GDI TEXTILE',
+    testDate: '2026-09-30',
+    specGrade: 'M350',
+    slumpResult: '12.0 cm',
+    strengthR7: 31.2,
+    strengthR28: 0,
+    requiredStrength: 35.0,
+    status: 'CHO_KET_QUA',
+    testerName: 'Nguyễn Thị Thuý (QC Lab)'
+  },
+  {
+    id: 'lab-03',
+    sampleCode: 'TN-260930-M250-03',
+    orderCode: 'DH-260930-003',
+    customerName: 'CÔNG TY CỔ PHẦN XÂY DỰNG ĐẠI TÍN',
+    projectTitle: 'NHÀ Ở XÃ HỘI – KDC THÀNH THÀNH CÔNG',
+    testDate: '2026-09-30',
+    specGrade: 'M250',
+    slumpResult: '16.0 cm',
+    strengthR7: 22.4,
+    strengthR28: 28.6,
+    requiredStrength: 25.0,
+    status: 'DAT',
+    testerName: 'Lê Hoàng Anh (QC Lab)'
+  }
+];
+
+export const INITIAL_FUEL_LOGS: FuelLog[] = [
+  {
+    id: 'fuel-01',
+    date: '2026-09-30 06:15',
+    truckPlate: '70C-128.45',
+    driverName: 'Nguyễn Văn Hùng',
+    liters: 120,
+    cost: 2640000,
+    odometer: 148520,
+    stationName: 'Cây xăng nội bộ Trạm Tây Ninh 1',
+    approvedBy: 'Trần Văn Quản'
+  },
+  {
+    id: 'fuel-02',
+    date: '2026-09-30 06:40',
+    truckPlate: '70C-145.22',
+    driverName: 'Trần Minh Tâm',
+    liters: 110,
+    cost: 2420000,
+    odometer: 162340,
+    stationName: 'Cây xăng nội bộ Trạm Tây Ninh 1',
+    approvedBy: 'Trần Văn Quản'
+  },
+  {
+    id: 'fuel-03',
+    date: '2026-09-30 07:10',
+    truckPlate: '70C-188.99',
+    driverName: 'Phạm Quốc Bảo',
+    liters: 180,
+    cost: 3960000,
+    odometer: 98400,
+    stationName: 'Cây xăng nội bộ Trạm Tây Ninh 1',
+    approvedBy: 'Trần Văn Quản'
+  }
+];
