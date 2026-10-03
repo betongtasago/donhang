@@ -42,10 +42,11 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="flex items-center gap-3">
         <button
           onClick={onToggleSidebar}
-          className="p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 lg:hidden transition"
+          className="p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition cursor-pointer"
+          title="Mở thanh menu điều hướng"
           aria-label="Toggle navigation"
         >
-          <Menu className="w-5 h-5" />
+          <Menu className="w-5 h-5 text-orange-600" />
         </button>
 
         <div className="flex items-center gap-2 text-xs sm:text-sm text-slate-500">
