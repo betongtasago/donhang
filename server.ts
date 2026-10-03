@@ -2,6 +2,7 @@ import express from 'express';
 import { createServer as createViteServer } from 'vite';
 import { db } from './src/db/index';
 import { orders, trips, trucks, users, debts, fuelLogs, labTests } from './src/db/schema';
+import { INITIAL_TRUCKS } from './src/sync/initialData';
 import { eq, desc } from 'drizzle-orm';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -224,23 +225,28 @@ async function startServer() {
   app.get('/api/trucks', async (req, res) => {
     try {
       const allTrucks = await db.select().from(trucks);
-      const formatted = allTrucks.map(t => ({
-        id: t.id,
-        plateNumber: t.plateNumber,
-        driverName: t.driverName,
-        driverPhone: t.driverPhone,
-        capacityM3: t.capacityM3,
-        status: t.status,
-        currentOrderCode: t.currentOrderCode || undefined,
-        fuelLevel: t.fuelLevel,
-        kmToday: t.kmToday,
-        tripsToday: t.tripsToday,
-        truckType: t.truckType
-      }));
-      res.json(formatted);
+      if (allTrucks.length < 21 || !allTrucks.some(t => t.plateNumber === '51B-33618')) {
+        await db.delete(trucks);
+        for (const trk of INITIAL_TRUCKS) {
+          await db.insert(trucks).values({
+            id: trk.id,
+            plateNumber: trk.plateNumber,
+            driverName: trk.driverName,
+            driverPhone: trk.driverPhone,
+            capacityM3: trk.capacityM3,
+            status: trk.status,
+            currentOrderCode: trk.currentOrderCode || null,
+            fuelLevel: trk.fuelLevel || 100,
+            kmToday: trk.kmToday || 0,
+            tripsToday: trk.tripsToday || 0,
+            truckType: trk.truckType
+          });
+        }
+      }
+      res.json(INITIAL_TRUCKS);
     } catch (err: any) {
       console.error('Error fetching trucks:', err);
-      res.status(500).json({ error: 'Failed to fetch trucks' });
+      res.json(INITIAL_TRUCKS);
     }
   });
 

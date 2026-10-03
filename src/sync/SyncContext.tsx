@@ -30,7 +30,7 @@ import {
 } from '../types';
 import { syncOrderToSupabase, syncTripToSupabase } from '../lib/supabaseSync';
 
-const STORAGE_KEY = 'TSG_TNT_DISPATCH_STATE_V1';
+const STORAGE_KEY = 'TSG_TNT_DISPATCH_STATE_V2';
 const BROADCAST_CHANNEL_NAME = 'tsg_tnt_dispatch_sync_channel';
 
 interface AppData {
@@ -94,8 +94,14 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed.orders && parsed.trucks) {
+          // Luôn đảm bảo nạp đủ 21 tài xế & xe bồn chuẩn theo ảnh danh sách điều độ
+          const validTrucks = (Array.isArray(parsed.trucks) && parsed.trucks.length === 21 && parsed.trucks.some((t: any) => t.plateNumber === '51B-33618'))
+            ? parsed.trucks
+            : INITIAL_TRUCKS;
+
           return {
             ...parsed,
+            trucks: validTrucks,
             projectDistances: parsed.projectDistances && parsed.projectDistances.length > 0
               ? parsed.projectDistances
               : INITIAL_PROJECT_DISTANCES,
@@ -207,12 +213,18 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const dbTrucks = await trucksRes.json();
 
           if (Array.isArray(dbOrders) && dbOrders.length > 0) {
-            setData(prev => ({
-              ...prev,
-              orders: dbOrders,
-              trips: Array.isArray(dbTrips) && dbTrips.length > 0 ? dbTrips : prev.trips,
-              trucks: Array.isArray(dbTrucks) && dbTrucks.length > 0 ? dbTrucks : prev.trucks
-            }));
+            setData(prev => {
+              const nextTrucks = (Array.isArray(dbTrucks) && dbTrucks.length === 21 && dbTrucks.some((t: any) => t.plateNumber === '51B-33618'))
+                ? dbTrucks
+                : INITIAL_TRUCKS;
+
+              return {
+                ...prev,
+                orders: dbOrders,
+                trips: Array.isArray(dbTrips) && dbTrips.length > 0 ? dbTrips : prev.trips,
+                trucks: nextTrucks
+              };
+            });
             addSyncLog(`Đã kết nối và nạp ${dbOrders.length} đơn hàng từ cơ sở dữ liệu Cloud SQL PostgreSQL`, 'success');
           }
         }

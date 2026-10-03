@@ -14,9 +14,9 @@ export const DispatchAssignModal: React.FC<DispatchAssignModalProps> = ({ order,
 
   const availableTrucks = trucks.filter(t => t.status === 'SAN_SANG' || t.status === 'DANG_CHAY');
   const [selectedTruckId, setSelectedTruckId] = useState<string>(availableTrucks[0]?.id || trucks[0]?.id || '');
-  const [truckPlate, setTruckPlate] = useState<string>(availableTrucks[0]?.plateNumber || '70C-128.45');
-  const [driverName, setDriverName] = useState<string>(availableTrucks[0]?.driverName || 'Nguyễn Văn Hùng');
-  const [driverPhone, setDriverPhone] = useState<string>(availableTrucks[0]?.driverPhone || '0903 888 221');
+  const [truckPlate, setTruckPlate] = useState<string>(availableTrucks[0]?.plateNumber || '51B-33618');
+  const [driverName, setDriverName] = useState<string>(availableTrucks[0]?.driverName || 'Nguyễn Văn Thọ');
+  const [driverPhone, setDriverPhone] = useState<string>(availableTrucks[0]?.driverPhone || '0903 112 018');
   const [volume, setVolume] = useState<number>(10);
   const [slumpTested, setSlumpTested] = useState('14.0 cm');
 
@@ -177,7 +177,7 @@ export const DispatchAssignModal: React.FC<DispatchAssignModalProps> = ({ order,
                   required
                   value={truckPlate}
                   onChange={(e) => handleTruckPlateChange(e.target.value)}
-                  placeholder="70C-128.45"
+                  placeholder="51B-33618"
                   className="w-full px-3 py-1.5 bg-white border border-amber-300 focus:border-orange-500 rounded-lg font-mono font-bold text-xs uppercase"
                 />
               </div>

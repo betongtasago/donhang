@@ -527,7 +527,7 @@ export const DanhSachTaiXePage: React.FC = () => {
                     required
                     value={formPlate}
                     onChange={(e) => setFormPlate(e.target.value)}
-                    placeholder="Ví dụ: 51B-33618 hoặc 70C-109.88"
+                    placeholder="Ví dụ: 51B-33618 hoặc 51N-04419"
                     className="w-full px-3 py-2 border border-slate-300 rounded-xl font-mono font-bold focus:ring-2 focus:ring-orange-500 uppercase"
                   />
                 </div>

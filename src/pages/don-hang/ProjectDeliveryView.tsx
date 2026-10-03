@@ -47,7 +47,7 @@ export const ProjectDeliveryView: React.FC<ProjectDeliveryViewProps> = ({
 
   // Quick dispatch state inside the view
   const availableTrucks = trucks.filter(t => t.status === 'SAN_SANG' || t.status === 'DANG_CHAY');
-  const [selectedTruckPlate, setSelectedTruckPlate] = useState(availableTrucks[0]?.plateNumber || '51M 97571');
+  const [selectedTruckPlate, setSelectedTruckPlate] = useState(availableTrucks[0]?.plateNumber || '51M-97571');
   const [quickVolume, setQuickVolume] = useState<number>(5);
   const [quickSlump, setQuickSlump] = useState<string>(order.slump || '10+-2');
   const [quickNotes, setQuickNotes] = useState('');

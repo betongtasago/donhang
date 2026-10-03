@@ -58,20 +58,8 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      {/* Right: Print Button, Sync Indicator, Notifications, and User Pill */}
+      {/* Right: Sync Indicator, Notifications, and User Pill */}
       <div className="flex items-center gap-2 sm:gap-3">
-        {/* Quick Print Button */}
-        {onOpenPrintModal && (
-          <button
-            onClick={onOpenPrintModal}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-50 hover:bg-orange-100 border border-orange-200 text-xs font-bold text-orange-700 transition"
-            title="In phiếu giao nhận bê tông"
-          >
-            <Printer className="w-3.5 h-3.5 text-orange-600" />
-            <span className="hidden sm:inline">In phiếu</span>
-          </button>
-        )}
-
         {/* Quick Sync trigger */}
         <button
           onClick={onOpenSyncModal}
@@ -114,7 +102,7 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
               <div className="py-2 space-y-2 text-xs text-slate-600 max-h-60 overflow-y-auto">
                 <div className="p-2 rounded-lg bg-orange-50/60 border border-orange-100">
-                  <div className="font-semibold text-orange-950">Xe 51M 97571 đã hoàn thành</div>
+                  <div className="font-semibold text-orange-950">Xe 51M-97571 đã hoàn thành</div>
                   <div className="text-[10px] text-slate-500 mt-0.5">Tài xế Bùi Thái Sơn - Phiếu 0160190</div>
                 </div>
                 <div className="p-2 rounded-lg bg-slate-50 border border-slate-100">

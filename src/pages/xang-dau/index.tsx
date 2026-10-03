@@ -8,7 +8,7 @@ export const XangDauPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
 
   // Form
-  const [truckPlate, setTruckPlate] = useState(trucks[0]?.plateNumber || '70C-128.45');
+  const [truckPlate, setTruckPlate] = useState(trucks[0]?.plateNumber || '51B-33618');
   const [liters, setLiters] = useState<number>(100);
   const [odometer, setOdometer] = useState<number>(150000);
   const fuelPricePerLiter = 22000;

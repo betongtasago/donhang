@@ -229,7 +229,7 @@ export const EditTripModal: React.FC<EditTripModalProps> = ({
                   type="text"
                   value={truckPlate}
                   onChange={(e) => handleTruckChange(e.target.value)}
-                  placeholder="Ví dụ: 70C-109.88"
+                  placeholder="Ví dụ: 51B-33618"
                   className="w-full px-3 py-2 border border-orange-300 rounded-xl font-mono font-black text-orange-700 bg-orange-50/30 focus:outline-none focus:ring-2 focus:ring-orange-500 text-xs"
                 />
               </div>
