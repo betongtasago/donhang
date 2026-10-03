@@ -17,6 +17,11 @@ interface ConcreteDeliveryReceiptProps {
   ticketSerial?: string;
   sealNumber?: string;
   sampleCode?: string;
+  departureTime?: string;
+  arrivalTime?: string;
+  pourStartTime?: string;
+  pourEndTime?: string;
+  operatorSignature?: string | null; // DataURL hoặc đường dẫn ảnh chữ ký của Người điều hành
   paperSize?: PaperSizeType;
 }
 
@@ -28,310 +33,262 @@ export const ConcreteDeliveryReceipt: React.FC<ConcreteDeliveryReceiptProps> = (
   accumulatedVolume,
   previousVolume = 0,
   currentVolume,
-  remainingVolume,
-  tripIndex = 1,
-  totalTripsCount = 1,
-  ticketSerial = '0160190',
-  sealNumber = '0160190',
-  sampleCode = 'M15S1028',
+  ticketSerial = '0160131',
+  sealNumber = '0160131',
+  sampleCode = 'M35S107',
+  departureTime: customDepartureTime,
+  arrivalTime = '',
+  pourStartTime = '',
+  pourEndTime = '',
+  operatorSignature = null,
   paperSize = 'CONTINUOUS_210_279'
 }) => {
-  // Volume computations: Lũy kế trên phiếu in cộng dồn thiệt
-  const actualCurrentVol = currentVolume !== undefined ? currentVolume : (trip ? trip.volume : order.totalVolume);
+  // Số liệu: Lượng xuất chuyến này và Cộng dồn
+  const actualCurrentVol = currentVolume !== undefined ? currentVolume : (trip ? trip.volume : 10);
   const actualAccumulatedVol = accumulatedVolume !== undefined ? accumulatedVolume : (previousVolume + actualCurrentVol);
-  const actualRemainingVol = remainingVolume !== undefined ? remainingVolume : Math.max(0, order.totalVolume - actualAccumulatedVol);
 
-  const displayDriverName = customDriverName || trip?.driverName || 'Bùi Thái Sơn';
-  const displayTruckPlate = customTruckPlate || trip?.truckPlate || '51M 97571';
-  const departureTime = trip?.departureTime || '13:25';
-  const slump = trip?.slumpTested || order.slump || '10±2';
-  const grade = trip?.grade || order.grade || 'M150R28';
+  const displayDriverName = customDriverName || trip?.driverName || 'Lê Hiền';
+  const displayTruckPlate = customTruckPlate || trip?.truckPlate || '51M 23071';
+  const displayDepartureTime = customDepartureTime || trip?.departureTime || '15:20';
+  const slump = trip?.slumpTested || order.slump || '10+-2';
+  const grade = trip?.grade || order.grade || 'M350R7';
 
-  // Format date to DD/MM/YYYY
+  // Format date DD/MM/YYYY
   const formattedDate = order.deliveryDate
     ? order.deliveryDate.split('-').reverse().join('/')
     : '03/10/2026';
 
   // Address
-  const address = order.notes?.includes('Đường')
-    ? order.notes
-    : 'Đường N8, KCN Phước Đông, Phường Gia Lộc, Thị xã Trảng Bàng, Tỉnh Tây Ninh';
-
-  // Paper styling
-  const isContinuous = paperSize === 'CONTINUOUS_210_279';
-  const isA5 = paperSize === 'A5';
+  const address = order.notes && order.notes.length > 5 && !order.notes.startsWith('Đơn phát sinh')
+    ? order.notes.toUpperCase()
+    : 'LÔ 16.3, ĐƯỜNG 16, KCN THÀNH THÀNH CÔNG, TRẢNG BÀNG, TÂY NINH';
 
   return (
     <div
-      className={`bg-white text-black font-sans leading-snug w-full mx-auto border border-black shadow-sm print:shadow-none print:border-none print:p-0 print:m-0 print:max-w-none ${
-        isContinuous
-          ? 'max-w-[800px] p-4 text-[12px] [max-height:279mm]'
-          : isA5
-          ? 'max-w-[700px] p-3 text-[11px]'
-          : 'max-w-[850px] p-6 text-[12px]'
-      }`}
+      style={{ fontFamily: '"Times New Roman", Times, serif' }}
+      className="bg-white text-black leading-snug w-full mx-auto max-w-[850px] p-6 text-[13px] print:p-0 print:m-0 print:max-w-none print:w-full print:text-[13px]"
     >
-      {/* Visual Badge for Continuous Paper (Hidden on real print) */}
-      {isContinuous && (
-        <div className="mb-2 px-3 py-1 bg-amber-50 border border-amber-300 rounded text-[11px] flex items-center justify-between text-amber-900 font-mono print:hidden">
-          <span>📄 Chế độ in: <strong>Giấy in liên tục 210 x 279 mm (Khổ A4 đục lỗ viền)</strong></span>
-          <span className="text-slate-500">Chuẩn máy in kim Epson LQ-310 / Máy in laser A4 liên tục</span>
-        </div>
-      )}
+      {/* 1. Header Box: 3 Columns matching 100% of image */}
+      <table className="w-full border-collapse border border-black mb-3 text-black">
+        <tbody>
+          <tr>
+            {/* Col 1: TSG-TNT logo */}
+            <td className="w-[24%] border border-black p-2 text-center align-middle">
+              <div className="flex flex-col items-center justify-center">
+                <div className="w-16 h-10 flex items-center justify-center mb-0.5">
+                  <svg viewBox="0 0 100 75" className="w-14 h-9">
+                    {/* Blue dynamic swooshes */}
+                    <path
+                      d="M 12 38 C 15 18, 48 10, 75 18 C 88 22, 92 34, 82 45 C 72 55, 42 60, 22 52"
+                      fill="none"
+                      stroke="#0284c7"
+                      strokeWidth="6"
+                      strokeLinecap="round"
+                    />
+                    <path
+                      d="M 22 42 C 30 26, 60 20, 78 28 C 88 34, 82 48, 68 52 C 48 56, 30 48, 25 42"
+                      fill="none"
+                      stroke="#38bdf8"
+                      strokeWidth="3.5"
+                      strokeLinecap="round"
+                    />
+                    {/* Red flame/crescent dynamic wing */}
+                    <path
+                      d="M 32 46 C 45 32, 70 28, 86 36 C 94 40, 88 52, 74 55 C 56 60, 38 52, 32 46"
+                      fill="none"
+                      stroke="#dc2626"
+                      strokeWidth="4"
+                      strokeLinecap="round"
+                    />
+                    {/* Rocket/plane icon center */}
+                    <circle cx="50" cy="38" r="9" fill="#0284c7" />
+                    <path d="M 44 38 L 56 38 M 50 32 L 50 44" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" />
+                  </svg>
+                </div>
+                <div className="text-red-600 font-extrabold text-[15px] tracking-wider leading-none">
+                  TSG-TNT
+                </div>
+                <div className="text-[10px] text-red-500 italic mt-0.5 tracking-tight">
+                  Cất cánh vươn cao
+                </div>
+              </div>
+            </td>
 
-      {/* 1. Header Box matching Image 2 */}
-      <div className="border-2 border-black grid grid-cols-12 divide-x-2 divide-black">
-        {/* Left: TSG-TNT logo */}
-        <div className="col-span-3 p-2 flex flex-col items-center justify-center text-center">
-          <div className="w-14 h-10 flex items-center justify-center mb-0.5">
-            <svg viewBox="0 0 100 80" className="w-14 h-10">
-              <path
-                d="M15,40 C15,20 40,10 65,15 C85,20 90,35 80,50 C70,65 40,70 20,60"
-                fill="none"
-                stroke="#0284c7"
-                strokeWidth="7"
-                strokeLinecap="round"
-              />
-              <path
-                d="M25,45 C35,28 65,22 82,32 C95,40 88,58 72,62 C50,68 30,55 25,45"
-                fill="none"
-                stroke="#dc2626"
-                strokeWidth="5"
-                strokeLinecap="round"
-              />
-              <circle cx="50" cy="40" r="12" fill="#0284c7" />
-              <path d="M42,40 L58,40 M50,32 L50,48" stroke="#ffffff" strokeWidth="3" />
-            </svg>
-          </div>
-          <div className="text-red-600 font-extrabold text-sm tracking-wider leading-none">
-            TSG-TNT
-          </div>
-          <div className="text-[9px] text-red-500 italic mt-0.5 tracking-tight font-serif">
-            Cất cánh vươn cao
-          </div>
+            {/* Col 2: Company Name & Title */}
+            <td className="w-[52%] border border-black p-0 text-center align-middle">
+              <div className="py-2.5 px-2 border-b border-black font-bold text-[15px] uppercase tracking-normal">
+                CÔNG TY CỔ PHẦN ĐẦU TƯ TSGTNT
+              </div>
+              <div className="py-2.5 px-2 font-bold text-[19px] uppercase tracking-wide">
+                PHIẾU GIAO NHẬN BÊ TÔNG
+              </div>
+            </td>
+
+            {/* Col 3: Right meta (Ký Hiệu, Ngày, Trang, Số) */}
+            <td className="w-[24%] border border-black p-2 text-[12px] align-middle">
+              <div className="space-y-1">
+                <div className="flex">
+                  <span className="w-16">Ký Hiệu:</span>
+                  <span>TSG/26-TN</span>
+                </div>
+                <div className="flex">
+                  <span className="w-16">Ngày:</span>
+                  <span>{formattedDate}</span>
+                </div>
+                <div className="flex">
+                  <span className="w-16">Trang:</span>
+                  <span>1/1</span>
+                </div>
+                <div className="flex">
+                  <span className="w-16">Số:</span>
+                  <span className="font-semibold">{trip?.ticketNumber || ticketSerial}</span>
+                </div>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      {/* 2. Customer & Site Info: Exactly 5 lines matching image 100% */}
+      <div className="mb-3 space-y-1 text-[13px] leading-relaxed">
+        <div className="flex items-baseline">
+          <span className="font-bold w-40 shrink-0">Khách Hàng</span>
+          <span className="mr-2">:</span>
+          <span className="uppercase">{order.customerName}</span>
         </div>
 
-        {/* Center: Company Name & Title */}
-        <div className="col-span-6 flex flex-col justify-between text-center divide-y-2 divide-black">
-          <div className="py-1 px-2 font-black text-xs sm:text-sm uppercase tracking-tight flex items-center justify-center leading-snug">
-            CÔNG TY CỔ PHẦN SX KD DV BÊ TÔNG TSG TNT
-          </div>
-          <div className="py-2 px-2 font-black text-base sm:text-lg uppercase tracking-wider text-slate-950">
-            PHIẾU GIAO NHẬN BÊ TÔNG
-          </div>
+        <div className="flex items-baseline">
+          <span className="font-bold w-40 shrink-0">Công Trình</span>
+          <span className="mr-2">:</span>
+          <span className="uppercase">{order.projectTitle}</span>
         </div>
 
-        {/* Right: Serial, Date, Page, No. */}
-        <div className="col-span-3 p-2 text-[11px] space-y-0.5 flex flex-col justify-center">
-          <div className="flex">
-            <span className="font-bold w-16">Ký Hiệu:</span>
-            <span>TSG/26-TN</span>
-          </div>
-          <div className="flex">
-            <span className="font-bold w-16">Ngày:</span>
-            <span>{formattedDate}</span>
-          </div>
-          <div className="flex">
-            <span className="font-bold w-16">Trang:</span>
-            <span>1/1</span>
-          </div>
-          <div className="flex">
-            <span className="font-bold w-16">Số phiếu:</span>
-            <span className="font-mono font-black text-red-600">{trip?.ticketNumber || ticketSerial}</span>
-          </div>
+        <div className="flex items-baseline">
+          <span className="font-bold w-40 shrink-0">Địa Điểm</span>
+          <span className="mr-2">:</span>
+          <span className="uppercase">{address}</span>
+        </div>
+
+        <div className="flex items-baseline">
+          <span className="font-bold w-40 shrink-0">Hạng Mục</span>
+          <span className="mr-2">:</span>
+          <span className="uppercase">{order.categoryItem || 'SÀN TẦNG 4'}</span>
+        </div>
+
+        <div className="flex items-baseline">
+          <span className="font-bold w-40 shrink-0">Ngày Giao Bê Tông</span>
+          <span className="mr-2">:</span>
+          <span>{formattedDate}</span>
         </div>
       </div>
 
-      {/* 2. Customer & Site Info Block */}
-      <div className="my-2 space-y-1 font-sans text-xs">
-        <div className="flex items-baseline">
-          <span className="font-bold w-36 uppercase shrink-0">Khách Hàng</span>
-          <span className="mr-2 font-bold">:</span>
-          <span className="font-bold uppercase text-[13px]">{order.customerName}</span>
-          {order.customerCode && <span className="ml-2 text-slate-500 font-mono text-[11px]">({order.customerCode})</span>}
-        </div>
+      {/* 3. Concrete Specifications Table: Exactly 7 columns matching image 100% */}
+      <table className="w-full border-collapse border border-black text-center text-[13px] mb-4">
+        <thead>
+          <tr className="font-bold">
+            <th className="border border-black py-1.5 px-2 w-[14%]">Mã Mác</th>
+            <th className="border border-black py-1.5 px-2 w-[18%]">Mác Bê Tông</th>
+            <th className="border border-black py-1.5 px-2 w-[10%]">Đơn Vị</th>
+            <th className="border border-black py-1.5 px-2 w-[12%]">Độ Sụt</th>
+            <th className="border border-black py-1.5 px-2 w-[15%]">Lượng Xuất</th>
+            <th className="border border-black py-1.5 px-2 w-[15%]">Cộng Dồn</th>
+            <th className="border border-black py-1.5 px-2 w-[16%]">G.Chú</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td className="border border-black py-1 px-2">{sampleCode}</td>
+            <td className="border border-black py-1 px-2">{grade}</td>
+            <td className="border border-black py-1 px-2">m3</td>
+            <td className="border border-black py-1 px-2">{slump}</td>
+            <td className="border border-black py-1 px-2">{actualCurrentVol}</td>
+            <td className="border border-black py-1 px-2">{actualAccumulatedVol}</td>
+            <td className="border border-black py-1 px-2">
+              {order.additive && order.additive !== 'Không' && order.additive !== 'R7' ? order.additive : ''}
+            </td>
+          </tr>
 
-        <div className="flex items-baseline">
-          <span className="font-bold w-36 uppercase shrink-0">Công Trình</span>
-          <span className="mr-2 font-bold">:</span>
-          <span className="font-bold text-[12px]">{order.projectTitle}</span>
-          <span className="ml-2 px-1.5 py-0.2 rounded text-[10px] font-bold border border-slate-400">
-            {order.projectType === 'DD' ? 'Dân dụng (DD)' : 'Dự án (DA)'}
-          </span>
-          {order.orderType === 'PHAT_SINH' && (
-            <span className="ml-2 px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-100 border border-amber-400 text-amber-900">
-              ĐƠN PHÁT SINH {order.parentOrderCode ? `(Gốc: ${order.parentOrderCode})` : ''}
-            </span>
-          )}
-        </div>
+          {/* Row TỔNG CỘNG */}
+          <tr className="font-bold">
+            <td colSpan={4} className="border border-black py-1.5 px-2 text-center uppercase">
+              TỔNG CỘNG
+            </td>
+            <td className="border border-black py-1.5 px-2">{actualCurrentVol}</td>
+            <td className="border border-black py-1.5 px-2">{actualAccumulatedVol}</td>
+            <td className="border border-black py-1.5 px-2"></td>
+          </tr>
+        </tbody>
+      </table>
 
-        <div className="flex items-baseline">
-          <span className="font-bold w-36 uppercase shrink-0">Địa Điểm</span>
-          <span className="mr-2 font-bold">:</span>
-          <span>{address}</span>
-        </div>
+      {/* 4. Vehicle & Dispatch Info: Exactly 3 rows x 3 columns matching image 100% */}
+      <table className="w-full border-collapse border border-black text-[13px] mb-8">
+        <tbody>
+          <tr>
+            <td className="border border-black py-1.5 px-2 w-1/3">
+              Tên Tài Xế: {displayDriverName}
+            </td>
+            <td className="border border-black py-1.5 px-2 w-1/3">
+              Số Xe: {displayTruckPlate}
+            </td>
+            <td className="border border-black py-1.5 px-2 w-1/3">
+              Niêm Chì: {sealNumber}
+            </td>
+          </tr>
+          <tr>
+            <td className="border border-black py-1.5 px-2">
+              Giờ Khởi Hành: {displayDepartureTime}
+            </td>
+            <td className="border border-black py-1.5 px-2">
+              Giờ Đến: {arrivalTime}
+            </td>
+            <td className="border border-black py-1.5 px-2"></td>
+          </tr>
+          <tr>
+            <td className="border border-black py-1.5 px-2">
+              Thời Điểm Xả Bơm: {pourStartTime}
+            </td>
+            <td className="border border-black py-1.5 px-2">
+              Thời Điểm Chấm Dứt: {pourEndTime}
+            </td>
+            <td className="border border-black py-1.5 px-2"></td>
+          </tr>
+        </tbody>
+      </table>
 
-        <div className="flex items-baseline">
-          <span className="font-bold w-36 uppercase shrink-0">Hạng Mục</span>
-          <span className="mr-2 font-bold">:</span>
-          <span className="font-bold uppercase">{order.categoryItem || 'LÓT'}</span>
-          <span className="ml-6 font-bold w-24 uppercase shrink-0">Loại Bơm:</span>
-          <span>{order.pumpType || 'Bơm cần'}</span>
-        </div>
-
-        <div className="flex items-baseline">
-          <span className="font-bold w-36 uppercase shrink-0">Ngày Giao Bê Tông</span>
-          <span className="mr-2 font-bold">:</span>
-          <span className="font-semibold">{formattedDate}</span>
-          <span className="ml-6 font-bold w-24 uppercase shrink-0">Giờ Giao:</span>
-          <span className="font-mono font-semibold">{order.deliveryTime}</span>
-        </div>
-      </div>
-
-      {/* 3. Concrete Specifications Table With REAL Cumulative Volume */}
-      <div className="my-2 overflow-hidden">
-        <table className="w-full border-collapse border-2 border-black text-center font-sans text-xs">
-          <thead>
-            <tr className="border-b-2 border-black divide-x-2 divide-black bg-slate-100/80 print:bg-transparent font-bold">
-              <th className="py-1 px-2 w-[14%]">Mã Mác</th>
-              <th className="py-1 px-2 w-[18%]">Mác Bê Tông</th>
-              <th className="py-1 px-2 w-[10%]">Đơn Vị</th>
-              <th className="py-1 px-2 w-[14%]">Độ Sụt</th>
-              <th className="py-1 px-2 w-[14%] bg-amber-50/60 print:bg-transparent">Lượng Xuất</th>
-              <th className="py-1 px-2 w-[14%] bg-red-50/60 print:bg-transparent text-red-700">Cộng Dồn (Thiệt)</th>
-              <th className="py-1 px-2 w-[16%]">G.Chú</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y-2 divide-black">
-            <tr className="divide-x-2 divide-black h-7">
-              <td className="py-1 px-2 font-mono font-medium">{sampleCode}</td>
-              <td className="py-1 px-2 font-bold">{grade}</td>
-              <td className="py-1 px-2">m³</td>
-              <td className="py-1 px-2">{slump}</td>
-              <td className="py-1 px-2 font-bold text-sm bg-amber-50/30 print:bg-transparent">
-                {actualCurrentVol.toFixed(1)}
-              </td>
-              <td className="py-1 px-2 font-black text-sm text-red-700 bg-red-50/30 print:bg-transparent">
-                {actualAccumulatedVol.toFixed(1)}
-              </td>
-              <td className="py-1 px-2 text-[11px]">
-                {order.additive && order.additive !== 'Không' ? order.additive : ''}
-              </td>
-            </tr>
-
-            {/* Total Row */}
-            <tr className="divide-x-2 divide-black border-t-2 border-black font-bold h-7 bg-slate-50/50 print:bg-transparent">
-              <td colSpan={4} className="py-1 px-3 text-center uppercase tracking-wider">
-                TỔNG CỘNG LƯỢNG XUẤT & LŨY KẾ
-              </td>
-              <td className="py-1 px-2 text-sm font-black">{actualCurrentVol.toFixed(1)}</td>
-              <td className="py-1 px-2 text-sm font-black text-red-700">{actualAccumulatedVol.toFixed(1)}</td>
-              <td className="py-1 px-2 text-[10px] text-slate-600">
-                {actualRemainingVol === 0 ? 'Hết đơn' : `Còn: ${actualRemainingVol.toFixed(1)} m³`}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-
-        {/* Real cumulative summary strip */}
-        <div className="mt-1 px-2 py-0.5 bg-slate-50 border border-slate-400 text-[11px] flex flex-wrap items-center justify-between font-mono">
-          <div>
-            <span>KL Hợp đồng (Đặt): </span>
-            <strong className="font-bold">{order.totalVolume} m³</strong>
-            <span className="mx-2">|</span>
-            <span>Chuyến: </span>
-            <strong className="font-bold text-blue-700">{String(tripIndex).padStart(2, '0')} / {String(totalTripsCount).padStart(2, '0')} chuyến</strong>
-          </div>
-          <div>
-            <span>Trước: <strong>{previousVolume.toFixed(1)} m³</strong></span>
-            <span className="mx-1">+</span>
-            <span>Chuyến này: <strong>{actualCurrentVol.toFixed(1)} m³</strong></span>
-            <span className="mx-1">=</span>
-            <span className="text-red-700 font-bold">LŨY KẾ: <strong>{actualAccumulatedVol.toFixed(1)} m³</strong></span>
-            <span className="mx-2">|</span>
-            <span>Còn: <strong className="text-amber-800">{actualRemainingVol.toFixed(1)} m³</strong></span>
-          </div>
-        </div>
-      </div>
-
-      {/* 4. Vehicle & Trip Details Block (With Edited Driver & Truck Plate) */}
-      <div className="my-2 border-2 border-black font-sans text-xs divide-y-2 divide-black">
-        {/* Row 1 */}
-        <div className="grid grid-cols-12 divide-x-2 divide-black py-1">
-          <div className="col-span-4 px-2">
-            <span>Tên Tài Xế: </span>
-            <strong className="font-bold text-[13px] uppercase">{displayDriverName}</strong>
-          </div>
-          <div className="col-span-4 px-2">
-            <span>Số Xe: </span>
-            <strong className="font-bold font-mono text-[13px]">{displayTruckPlate}</strong>
-          </div>
-          <div className="col-span-4 px-2">
-            <span>Niêm Chì: </span>
-            <strong className="font-bold font-mono">{sealNumber}</strong>
-          </div>
-        </div>
-
-        {/* Row 2 */}
-        <div className="grid grid-cols-12 divide-x-2 divide-black py-1">
-          <div className="col-span-4 px-2">
-            <span>Giờ Khởi Hành: </span>
-            <strong className="font-bold font-mono">{departureTime}</strong>
-          </div>
-          <div className="col-span-4 px-2">
-            <span>Giờ Đến Dự Kiến: </span>
-            <span className="font-mono">{trip?.arrivalEstimate || '14:00'}</span>
-          </div>
-          <div className="col-span-4 px-2">
-            <span>Cự ly công trình: </span>
-            <strong className="font-mono">{order.distanceKm || 15} km</strong>
-          </div>
-        </div>
-
-        {/* Row 3 */}
-        <div className="grid grid-cols-12 divide-x-2 divide-black py-1">
-          <div className="col-span-4 px-2">
-            <span>Thời Điểm Xả Bơm: </span>
-            <span className="font-mono">..... : .....</span>
-          </div>
-          <div className="col-span-4 px-2">
-            <span>Thời Điểm Kết Thúc: </span>
-            <span className="font-mono">..... : .....</span>
-          </div>
-          <div className="col-span-4 px-2">
-            <span>Kỹ thuật giao nhận: </span>
-            <strong>{order.technicianName || 'Nguyễn Văn Nam'}</strong>
-          </div>
-        </div>
-      </div>
-
-      {/* 5. Signatures (3 columns) */}
-      <div className="mt-4 mb-6 grid grid-cols-3 text-center font-sans text-xs">
-        <div>
+      {/* 5. Signatures: Exactly 3 columns with Operator Signature feature */}
+      <div className="grid grid-cols-3 text-center text-[13px]">
+        {/* Col 1: NGƯỜI ĐIỀU HÀNH with inserted signature */}
+        <div className="flex flex-col items-center">
           <div className="font-bold uppercase tracking-tight">NGƯỜI ĐIỀU HÀNH</div>
-          <div className="text-[10px] italic text-slate-600 mt-0.5">(Ký, ghi rõ họ tên)</div>
-          <div className="h-12"></div>
-          <div className="font-bold text-slate-900 uppercase">ĐIỀU ĐỘ TÂY NINH</div>
+          <div className="italic text-[12px] mt-0.5">(Ký, ghi rõ họ tên)</div>
+          
+          {/* Vùng chèn chữ ký của Người điều hành */}
+          <div className="h-24 w-full flex items-center justify-center relative">
+            {operatorSignature ? (
+              <img
+                src={operatorSignature}
+                alt="Chữ ký Người điều hành"
+                className="max-h-20 max-w-[170px] object-contain"
+              />
+            ) : (
+              <div className="h-20"></div>
+            )}
+          </div>
         </div>
 
-        <div>
-          <div className="font-bold uppercase tracking-tight">ĐẠI DIỆN BÊN GIAO (LÁI XE)</div>
-          <div className="text-[10px] italic text-slate-600 mt-0.5">(Ký, ghi rõ họ tên)</div>
-          <div className="h-12"></div>
-          <div className="font-bold text-slate-900 uppercase">{displayDriverName}</div>
+        {/* Col 2: ĐẠI DIỆN BÊN GIAO */}
+        <div className="flex flex-col items-center">
+          <div className="font-bold uppercase tracking-tight">ĐẠI DIỆN BÊN GIAO</div>
+          <div className="italic text-[12px] mt-0.5">(Ký, ghi rõ họ tên)</div>
+          <div className="h-24"></div>
         </div>
 
-        <div>
-          <div className="font-bold uppercase tracking-tight">ĐẠI DIỆN BÊN NHẬN (CÔNG TRÌNH)</div>
-          <div className="text-[10px] italic text-slate-600 mt-0.5">(Ký, ghi rõ họ tên)</div>
-          <div className="h-12"></div>
-          <div className="font-bold text-slate-900">............................................</div>
+        {/* Col 3: ĐẠI DIỆN BÊN NHẬN */}
+        <div className="flex flex-col items-center">
+          <div className="font-bold uppercase tracking-tight">ĐẠI DIỆN BÊN NHẬN</div>
+          <div className="italic text-[12px] mt-0.5">(Ký, ghi rõ họ tên)</div>
+          <div className="h-24"></div>
         </div>
-      </div>
-
-      {/* Footer copyright */}
-      <div className="text-right text-[10px] text-slate-500 font-sans print:hidden">
-        Hệ thống điều độ bê tông TSG TNT • Mã tra cứu số: {trip?.ticketNumber || ticketSerial} • Khổ giấy: {paperSize === 'CONTINUOUS_210_279' ? 'Giấy liên tục 210x279 mm' : paperSize}
       </div>
     </div>
   );
