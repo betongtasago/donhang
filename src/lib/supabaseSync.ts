@@ -1,5 +1,5 @@
 import { getSupabaseClient } from './supabase';
-import { ConcreteOrder, DispatchTrip, ConcreteMixerTruck } from '../types';
+import { ConcreteOrder, DispatchTrip, FleetTruck } from '../types';
 
 export const syncOrderToSupabase = async (order: ConcreteOrder): Promise<boolean> => {
   const client = getSupabaseClient();
@@ -9,6 +9,11 @@ export const syncOrderToSupabase = async (order: ConcreteOrder): Promise<boolean
     const { error } = await client.from('orders').upsert({
       id: order.id,
       code: order.code,
+      order_type: order.orderType || 'CHINH',
+      parent_order_id: order.parentOrderId || null,
+      parent_order_code: order.parentOrderCode || null,
+      project_type: order.projectType || 'DA',
+      customer_code: order.customerCode || null,
       customer_name: order.customerName,
       plant_location: order.plantLocation,
       project_title: order.projectTitle,
@@ -24,6 +29,8 @@ export const syncOrderToSupabase = async (order: ConcreteOrder): Promise<boolean
       pump_type: order.pumpType,
       contact_person: order.contactPerson,
       contact_phone: order.contactPhone,
+      technician_name: order.technicianName || null,
+      distance_km: order.distanceKm || 15,
       notes: order.notes,
       assigned_trucks_count: order.assignedTrucksCount,
       updated_at: new Date().toISOString()
@@ -59,7 +66,9 @@ export const syncTripToSupabase = async (trip: DispatchTrip): Promise<boolean> =
       arrival_estimate: trip.arrivalEstimate,
       status: trip.status,
       slump_tested: trip.slumpTested,
-      grade: trip.grade
+      grade: trip.grade,
+      distance_km: trip.distanceKm || 15,
+      is_large_trip: trip.isLargeTrip !== undefined ? trip.isLargeTrip : true
     });
 
     if (error) {
@@ -76,7 +85,7 @@ export const syncTripToSupabase = async (trip: DispatchTrip): Promise<boolean> =
 export const syncAllToSupabase = async (
   orders: ConcreteOrder[],
   trips: DispatchTrip[],
-  trucks: ConcreteMixerTruck[]
+  trucks: FleetTruck[]
 ): Promise<{ success: boolean; count: number; error?: string }> => {
   const client = getSupabaseClient();
   if (!client) {
@@ -86,10 +95,14 @@ export const syncAllToSupabase = async (
   try {
     let syncedCount = 0;
 
-    // 1. Sync orders
     const mappedOrders = orders.map(o => ({
       id: o.id,
       code: o.code,
+      order_type: o.orderType || 'CHINH',
+      parent_order_id: o.parentOrderId || null,
+      parent_order_code: o.parentOrderCode || null,
+      project_type: o.projectType || 'DA',
+      customer_code: o.customerCode || null,
       customer_name: o.customerName,
       plant_location: o.plantLocation,
       project_title: o.projectTitle,
@@ -105,6 +118,8 @@ export const syncAllToSupabase = async (
       pump_type: o.pumpType,
       contact_person: o.contactPerson,
       contact_phone: o.contactPhone,
+      technician_name: o.technicianName || null,
+      distance_km: o.distanceKm || 15,
       notes: o.notes,
       assigned_trucks_count: o.assignedTrucksCount
     }));
@@ -113,7 +128,6 @@ export const syncAllToSupabase = async (
     if (ordErr) throw ordErr;
     syncedCount += mappedOrders.length;
 
-    // 2. Sync trips
     if (trips.length > 0) {
       const mappedTrips = trips.map(t => ({
         id: t.id,
@@ -129,7 +143,9 @@ export const syncAllToSupabase = async (
         arrival_estimate: t.arrivalEstimate,
         status: t.status,
         slump_tested: t.slumpTested,
-        grade: t.grade
+        grade: t.grade,
+        distance_km: t.distanceKm || 15,
+        is_large_trip: t.isLargeTrip !== undefined ? t.isLargeTrip : true
       }));
 
       const { error: tripErr } = await client.from('trips').upsert(mappedTrips);

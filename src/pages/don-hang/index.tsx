@@ -18,13 +18,22 @@ import {
   Printer,
   ArrowRight,
   ChevronRight,
-  ExternalLink
+  ExternalLink,
+  Copy,
+  Edit2,
+  Building,
+  Navigation,
+  Shield,
+  Layers,
+  Sparkles
 } from 'lucide-react';
 import { useSync } from '../../sync/SyncContext';
-import { ConcreteOrder, OrderStatus, DispatchTrip } from '../../types';
+import { useAuth } from '../../auth/AuthContext';
+import { ConcreteOrder, OrderStatus, OrderType, ProjectType } from '../../types';
 import { OrderDetailPanel } from './OrderDetailPanel';
 import { DispatchPanel } from './DispatchPanel';
 import { CreateOrderModal } from './CreateOrderModal';
+import { EditOrderModal } from './EditOrderModal';
 import { DispatchAssignModal } from './DispatchAssignModal';
 import { ReportExportModal } from './ReportExportModal';
 import { ProjectDeliveryView } from './ProjectDeliveryView';
@@ -35,20 +44,31 @@ interface DonHangPageProps {
 
 export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) => {
   const { orders, trips, trucks, syncNow, syncState } = useSync();
+  const { currentUser, isAdmin } = useAuth();
+
+  const isAccountant = currentUser?.role === 'ACCOUNTANT' || isAdmin;
 
   // View mode: 'table' or 'project_delivery'
   const [viewMode, setViewMode] = useState<'table' | 'project_delivery'>('table');
 
-  // Search & filter state
+  // Search & filter states
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDate, setSelectedDate] = useState('2026-10-03');
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [orderTypeFilter, setOrderTypeFilter] = useState<'ALL' | 'CHINH' | 'PHAT_SINH'>('ALL');
+  const [projectTypeFilter, setProjectTypeFilter] = useState<'ALL' | 'DA' | 'DD'>('ALL');
 
   // Selected order for detailed view
   const [selectedOrderId, setSelectedOrderId] = useState<string>(orders[0]?.id || '');
 
-  // Modals
+  // Modals state
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [createOrderType, setCreateOrderType] = useState<OrderType>('CHINH');
+  const [copyFromOrder, setCopyFromOrder] = useState<ConcreteOrder | null>(null);
+
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [orderToEdit, setOrderToEdit] = useState<ConcreteOrder | null>(null);
+
   const [isAssignOpen, setIsAssignOpen] = useState(false);
   const [isReportOpen, setIsReportOpen] = useState(false);
 
@@ -63,14 +83,18 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) =>
         !searchTerm.trim() ||
         order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         order.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.projectTitle.toLowerCase().includes(searchTerm.toLowerCase());
+        order.projectTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (order.customerCode && order.customerCode.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (order.technicianName && order.technicianName.toLowerCase().includes(searchTerm.toLowerCase()));
 
       const matchDate = !selectedDate || order.deliveryDate === selectedDate;
       const matchStatus = statusFilter === 'ALL' || order.status === statusFilter;
+      const matchOrderType = orderTypeFilter === 'ALL' || (order.orderType || 'CHINH') === orderTypeFilter;
+      const matchProjectType = projectTypeFilter === 'ALL' || (order.projectType || 'DA') === projectTypeFilter;
 
-      return matchSearch && matchDate && matchStatus;
+      return matchSearch && matchDate && matchStatus && matchOrderType && matchProjectType;
     });
-  }, [orders, searchTerm, selectedDate, statusFilter]);
+  }, [orders, searchTerm, selectedDate, statusFilter, orderTypeFilter, projectTypeFilter]);
 
   const selectedOrder = orders.find(o => o.id === selectedOrderId) || filteredOrders[0] || orders[0] || null;
 
@@ -78,6 +102,28 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) =>
     setSearchTerm('');
     setSelectedDate('');
     setStatusFilter('ALL');
+    setOrderTypeFilter('ALL');
+    setProjectTypeFilter('ALL');
+  };
+
+  // Open Create Modal for Primary Order
+  const handleOpenCreatePrimary = () => {
+    setCreateOrderType('CHINH');
+    setCopyFromOrder(null);
+    setIsCreateOpen(true);
+  };
+
+  // Open Create Modal for Incurred Order (optionally with copy parent)
+  const handleOpenCreateIncurred = (parentOrder?: ConcreteOrder) => {
+    setCreateOrderType('PHAT_SINH');
+    setCopyFromOrder(parentOrder || null);
+    setIsCreateOpen(true);
+  };
+
+  // Open Edit Order Modal
+  const handleOpenEditOrder = (order: ConcreteOrder) => {
+    setOrderToEdit(order);
+    setIsEditOpen(true);
   };
 
   // Click on date or project title jumps to project delivery view
@@ -139,7 +185,7 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) =>
         />
       ) : (
         <>
-          {/* Top Banner matching screenshot */}
+          {/* Top Banner */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-1.5 text-xs font-bold text-orange-600 tracking-wider uppercase mb-1">
@@ -150,43 +196,55 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) =>
                 Đơn hàng <span className="text-slate-300 font-light">/</span> Điều phối
               </h1>
               <p className="text-xs sm:text-sm text-slate-500 mt-1">
-                Theo dõi đơn bê tông, lịch giao và năng lực đội xe trên một màn hình điều hành.
+                Phân loại đơn chính (Kế toán/Admin) & đơn phát sinh (sao chép nhanh), quản lý cự ly km và điều phối.
               </p>
             </div>
 
-            <div className="flex items-center gap-3 shrink-0">
+            <div className="flex flex-wrap items-center gap-2.5 shrink-0">
               {selectedOrder && onOpenPrintModal && (
                 <button
                   onClick={() => onOpenPrintModal(selectedOrder)}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-orange-50 hover:bg-orange-100 border border-orange-200 text-xs font-bold text-orange-700 shadow-xs transition cursor-pointer"
+                  className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-orange-50 hover:bg-orange-100 border border-orange-200 text-xs font-bold text-orange-700 shadow-xs transition cursor-pointer"
                   title="In phiếu giao nhận bê tông giống Hình 2"
                 >
                   <Printer className="w-4 h-4 text-orange-600" />
-                  In phiếu (Hình 2)
+                  <span>In phiếu (Hình 2)</span>
                 </button>
               )}
 
+              {/* Button: + Tạo đơn phát sinh (Tài khoản người dùng tạo & copy từ đơn chính) */}
               <button
-                onClick={() => setIsReportOpen(true)}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-300 text-xs font-bold text-slate-700 shadow-xs transition cursor-pointer"
+                onClick={() => handleOpenCreateIncurred()}
+                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold shadow-xs transition cursor-pointer"
+                title="Tạo đơn hàng phát sinh (Người dùng có thể sao chép nhanh từ đơn chính)"
               >
-                <Download className="w-4 h-4 text-slate-500" />
-                Báo cáo
+                <Copy className="w-4 h-4" />
+                <span>+ Đơn phát sinh</span>
               </button>
 
-              <button
-                onClick={() => setIsCreateOpen(true)}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#e25822] hover:bg-[#d04d1c] text-white text-xs font-bold shadow-md shadow-orange-900/20 transition cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                + Tạo đơn hàng
-              </button>
+              {/* Button: + Tạo đơn hàng chính (Chỉ Kế toán hoặc Admin tạo) */}
+              {isAccountant ? (
+                <button
+                  onClick={handleOpenCreatePrimary}
+                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md shadow-blue-900/20 transition cursor-pointer"
+                  title="Tạo đơn hàng chính (Quyền Kế toán / Admin)"
+                >
+                  <Shield className="w-4 h-4" />
+                  <span>+ Tạo đơn chính</span>
+                </button>
+              ) : (
+                <div
+                  className="px-3 py-2 bg-slate-100 border border-slate-300 rounded-xl text-[11px] text-slate-500 font-semibold"
+                  title="Đơn hàng chính do tài khoản Kế toán hoặc Admin tạo"
+                >
+                  Đơn chính: <em>Kế toán tạo</em>
+                </div>
+              )}
             </div>
           </div>
 
           {/* 4 KPI Stat Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Card 1: ĐƠN HÀNG HÔM NAY */}
             <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col justify-between">
               <div className="flex items-center justify-between">
                 <div className="w-10 h-10 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center text-orange-600">
@@ -200,13 +258,12 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) =>
                 <div className="flex items-baseline justify-between mt-1">
                   <span className="text-2xl font-black text-slate-900">{orders.length}</span>
                   <span className="text-[11px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
-                    +3 so với hôm qua
+                    {orders.filter(o => o.orderType === 'CHINH').length} chính • {orders.filter(o => o.orderType === 'PHAT_SINH').length} phát sinh
                   </span>
                 </div>
               </div>
             </div>
 
-            {/* Card 2: ĐANG ĐIỀU PHỐI */}
             <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col justify-between">
               <div className="flex items-center justify-between">
                 <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600">
@@ -226,7 +283,6 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) =>
               </div>
             </div>
 
-            {/* Card 3: LƯỢNG XUẤT */}
             <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col justify-between">
               <div className="flex items-center justify-between">
                 <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600">
@@ -248,21 +304,22 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) =>
               </div>
             </div>
 
-            {/* Card 4: TỶ LỆ ĐÚNG GIỜ */}
             <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col justify-between">
               <div className="flex items-center justify-between">
                 <div className="w-10 h-10 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center text-purple-600">
-                  <Zap className="w-5 h-5" />
+                  <Building className="w-5 h-5" />
                 </div>
               </div>
               <div className="mt-4">
                 <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                  TỶ LỆ ĐÚNG GIỜ
+                  CƠ CẤU CÔNG TRÌNH
                 </div>
                 <div className="flex items-baseline justify-between mt-1">
-                  <span className="text-2xl font-black text-slate-900">96.4%</span>
+                  <span className="text-base font-black text-slate-900">
+                    {orders.filter(o => (o.projectType || 'DA') === 'DA').length} DA <span className="text-xs font-normal text-slate-400">/</span> {orders.filter(o => o.projectType === 'DD').length} DD
+                  </span>
                   <span className="text-[11px] font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-md">
-                    +2.1% tuần này
+                    Dự án / Dân dụng
                   </span>
                 </div>
               </div>
@@ -271,13 +328,13 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) =>
 
           {/* Filter and Search Section */}
           <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
                 <div className="text-[11px] font-bold text-orange-600 uppercase tracking-wider">
                   DANH SÁCH ĐƠN HÀNG
                 </div>
                 <h2 className="text-base font-bold text-slate-900 mt-0.5">
-                  Tra cứu và chọn đơn hàng (Bấm vào Ngày hoặc Tên công trình để vào mục cấp hàng)
+                  Tra cứu và lọc đơn hàng chính / phát sinh / dự án / dân dụng
                 </h2>
               </div>
 
@@ -288,18 +345,82 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) =>
                 <button
                   onClick={() => syncNow()}
                   title="Đồng bộ & Làm mới"
-                  className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-600 transition"
+                  className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-600 transition cursor-pointer"
                 >
                   <RefreshCw className={`w-4 h-4 ${syncState.status === 'syncing' ? 'animate-spin text-orange-600' : ''}`} />
                 </button>
               </div>
             </div>
 
+            {/* Quick Segment Filter Pills */}
+            <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 pb-3">
+              <span className="text-xs font-semibold text-slate-500 mr-1">Bộ lọc nhanh:</span>
+
+              <button
+                onClick={() => setOrderTypeFilter('ALL')}
+                className={`px-3 py-1 rounded-xl text-xs font-bold transition cursor-pointer ${
+                  orderTypeFilter === 'ALL'
+                    ? 'bg-slate-900 text-white shadow-xs'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                Tất cả đơn ({orders.length})
+              </button>
+
+              <button
+                onClick={() => setOrderTypeFilter('CHINH')}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold transition cursor-pointer ${
+                  orderTypeFilter === 'CHINH'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200'
+                }`}
+              >
+                <Shield className="w-3.5 h-3.5" />
+                <span>Đơn chính ({orders.filter(o => o.orderType === 'CHINH').length})</span>
+              </button>
+
+              <button
+                onClick={() => setOrderTypeFilter('PHAT_SINH')}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold transition cursor-pointer ${
+                  orderTypeFilter === 'PHAT_SINH'
+                    ? 'bg-orange-600 text-white shadow-xs'
+                    : 'bg-orange-50 text-orange-700 hover:bg-orange-100 border border-orange-200'
+                }`}
+              >
+                <Copy className="w-3.5 h-3.5" />
+                <span>Đơn phát sinh ({orders.filter(o => o.orderType === 'PHAT_SINH').length})</span>
+              </button>
+
+              <div className="h-4 w-[1px] bg-slate-200 mx-1 hidden sm:block"></div>
+
+              <button
+                onClick={() => setProjectTypeFilter(projectTypeFilter === 'DA' ? 'ALL' : 'DA')}
+                className={`px-3 py-1 rounded-xl text-xs font-bold transition cursor-pointer ${
+                  projectTypeFilter === 'DA'
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200'
+                }`}
+              >
+                Dự án (DA)
+              </button>
+
+              <button
+                onClick={() => setProjectTypeFilter(projectTypeFilter === 'DD' ? 'ALL' : 'DD')}
+                className={`px-3 py-1 rounded-xl text-xs font-bold transition cursor-pointer ${
+                  projectTypeFilter === 'DD'
+                    ? 'bg-purple-600 text-white shadow-xs'
+                    : 'bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200'
+                }`}
+              >
+                Dân dụng (DD)
+              </button>
+            </div>
+
             {/* Inputs */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
-              <div className="space-y-1.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
+              <div className="space-y-1.5 lg:col-span-2">
                 <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                  TÊN KHÁCH HÀNG / CÔNG TRÌNH
+                  TÊN KHÁCH HÀNG / CÔNG TRÌNH / KỸ THUẬT
                 </label>
                 <div className="relative">
                   <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -307,7 +428,7 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) =>
                     type="text"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Tìm theo tên công ty, công trình..."
+                    placeholder="Tìm theo tên công ty, công trình, mã..."
                     className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent placeholder:text-slate-400"
                   />
                 </div>
@@ -349,22 +470,15 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) =>
 
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => {}}
-                  className="flex-1 flex items-center justify-center gap-2 py-2 px-4 bg-[#1e40af] hover:bg-[#1d3999] text-white text-xs font-bold rounded-xl shadow-xs transition"
-                >
-                  <Filter className="w-3.5 h-3.5" />
-                  Lọc
-                </button>
-                <button
                   onClick={handleClearFilter}
-                  className="py-2 px-3 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition"
+                  className="w-full py-2 px-3 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-300 rounded-xl transition"
                 >
                   Xóa lọc
                 </button>
               </div>
             </div>
 
-            {/* Table of Orders: First column from left is NGÀY GIAO as requested */}
+            {/* Table of Orders: First column is NGÀY GIAO */}
             <div className="overflow-x-auto rounded-xl border border-slate-200 mt-4">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
@@ -373,9 +487,9 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) =>
                     <th className="py-3 px-4 bg-orange-50/60 text-orange-950 border-r border-orange-100">
                       NGÀY GIAO
                     </th>
-                    <th className="py-3 px-4">MÃ ĐƠN</th>
+                    <th className="py-3 px-4">MÃ ĐƠN & PHÂN LOẠI</th>
                     <th className="py-3 px-4">TÊN KHÁCH HÀNG</th>
-                    <th className="py-3 px-4">CÔNG TRÌNH</th>
+                    <th className="py-3 px-4">CÔNG TRÌNH & CỰ LY</th>
                     <th className="py-3 px-4">HẠNG MỤC</th>
                     <th className="py-3 px-4">KLĐH (m³)</th>
                     <th className="py-3 px-4 text-orange-600">ĐÃ CẤP (CỘNG DỒN)</th>
@@ -393,6 +507,7 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) =>
                   ) : (
                     filteredOrders.map((order) => {
                       const isSelected = order.id === selectedOrderId;
+                      const isPhatSinh = order.orderType === 'PHAT_SINH';
                       const percent = order.totalVolume > 0
                         ? Math.min(100, Math.round((order.deliveredVolume / order.totalVolume) * 100))
                         : 0;
@@ -406,7 +521,7 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) =>
                               : 'hover:bg-slate-50/80 border-l-4 border-l-transparent'
                           }`}
                         >
-                          {/* 1. First column: NGÀY GIAO (Clickable to enter Project Delivery View) */}
+                          {/* 1. First column: NGÀY GIAO */}
                           <td
                             onClick={() => handleOpenProjectDelivery(order)}
                             className="py-3 px-4 whitespace-nowrap bg-orange-50/30 border-r border-orange-100/70 cursor-pointer group"
@@ -422,12 +537,33 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) =>
                             </div>
                           </td>
 
-                          {/* 2. Mã đơn */}
+                          {/* 2. Mã đơn & Phân loại (Chính vs Phát sinh) */}
                           <td
                             onClick={() => setSelectedOrderId(order.id)}
-                            className="py-3 px-4 font-mono font-bold text-slate-800 whitespace-nowrap cursor-pointer"
+                            className="py-3 px-4 whitespace-nowrap cursor-pointer"
                           >
-                            {order.code}
+                            <div className="font-mono font-bold text-slate-900 text-xs">
+                              {order.code}
+                            </div>
+                            <div className="mt-1 flex items-center gap-1">
+                              {isPhatSinh ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                                  <Copy className="w-2.5 h-2.5" />
+                                  Phát sinh
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-900 border border-blue-300">
+                                  <Shield className="w-2.5 h-2.5" />
+                                  Đơn chính
+                                </span>
+                              )}
+
+                              {order.parentOrderCode && (
+                                <span className="text-[10px] font-mono text-slate-400" title={`Copy từ đơn chính ${order.parentOrderCode}`}>
+                                  ({order.parentOrderCode})
+                                </span>
+                              )}
+                            </div>
                           </td>
 
                           {/* 3. Tên khách hàng */}
@@ -444,13 +580,13 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) =>
                                   {order.customerName}
                                 </div>
                                 <div className="text-[11px] text-slate-400">
-                                  Nhà máy: {order.plantLocation}
+                                  Mã: {order.customerCode || '---'} • Kỹ thuật: <strong>{order.technicianName || 'Nguyễn Văn Nam'}</strong>
                                 </div>
                               </div>
                             </div>
                           </td>
 
-                          {/* 4. Công trình (Clickable to enter Project Delivery View) */}
+                          {/* 4. Công trình & Cự ly */}
                           <td
                             onClick={() => handleOpenProjectDelivery(order)}
                             className="py-3 px-4 cursor-pointer max-w-[220px] group"
@@ -460,8 +596,21 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) =>
                               <span className="truncate">{order.projectTitle}</span>
                               <ExternalLink className="w-3 h-3 text-orange-500 shrink-0 opacity-0 group-hover:opacity-100 transition" />
                             </div>
-                            <div className="text-[10px] text-slate-400 truncate">
-                              Mác: <strong>{order.grade}</strong> • Sụt: {order.slump}
+                            <div className="text-[10px] text-slate-500 flex items-center gap-1.5 mt-0.5">
+                              {order.projectType === 'DD' ? (
+                                <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-purple-100 text-purple-800">
+                                  DD
+                                </span>
+                              ) : (
+                                <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-blue-100 text-blue-800">
+                                  DA
+                                </span>
+                              )}
+                              <span className="flex items-center gap-0.5 text-slate-600 font-semibold">
+                                <Navigation className="w-2.5 h-2.5 text-orange-600" />
+                                {order.distanceKm || 15} km
+                              </span>
+                              <span>• Mác: <strong>{order.grade}</strong></span>
                             </div>
                           </td>
 
@@ -498,7 +647,7 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) =>
                           {/* 9. Thao tác */}
                           <td className="py-3 px-4 text-center whitespace-nowrap">
                             <div className="flex items-center justify-center gap-1.5">
-                              {/* Open Project Delivery View button */}
+                              {/* Cấp hàng */}
                               <button
                                 onClick={() => handleOpenProjectDelivery(order)}
                                 className="px-2.5 py-1 rounded-lg bg-orange-500 hover:bg-orange-600 text-white font-bold text-[11px] transition cursor-pointer flex items-center gap-1 shadow-xs"
@@ -508,6 +657,33 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) =>
                                 <ChevronRight className="w-3.5 h-3.5" />
                               </button>
 
+                              {/* Copy bản sao từ đơn chính (để tạo đơn phát sinh) */}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenCreateIncurred(order);
+                                }}
+                                className="p-1 rounded-lg hover:bg-amber-100 text-amber-700 transition"
+                                title="Sao chép từ đơn này để tạo Đơn hàng phát sinh"
+                              >
+                                <Copy className="w-4 h-4" />
+                              </button>
+
+                              {/* Sửa đơn hàng (Admin hoặc Kế toán) */}
+                              {isAccountant && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenEditOrder(order);
+                                  }}
+                                  className="p-1 rounded-lg hover:bg-blue-100 text-blue-700 transition"
+                                  title="Chỉnh sửa đơn hàng (Quyền Admin / Kế toán)"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+
+                              {/* In phiếu */}
                               {onOpenPrintModal && (
                                 <button
                                   onClick={(e) => {
@@ -521,6 +697,8 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) =>
                                   <Printer className="w-4 h-4" />
                                 </button>
                               )}
+
+                              {/* Cấp xe */}
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -543,7 +721,7 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) =>
             </div>
           </div>
 
-          {/* Bottom Split View (matching the bottom sections in screenshot) */}
+          {/* Bottom Split View */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <OrderDetailPanel
               order={selectedOrder}
@@ -561,7 +739,19 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) =>
       )}
 
       {/* Modals */}
-      <CreateOrderModal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} />
+      <CreateOrderModal
+        isOpen={isCreateOpen}
+        onClose={() => setIsCreateOpen(false)}
+        defaultOrderType={createOrderType}
+        defaultCopyFromOrder={copyFromOrder}
+      />
+
+      <EditOrderModal
+        isOpen={isEditOpen}
+        order={orderToEdit}
+        onClose={() => setIsEditOpen(false)}
+      />
+
       {selectedOrder && (
         <DispatchAssignModal
           order={selectedOrder}

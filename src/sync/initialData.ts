@@ -1,9 +1,12 @@
-import { ConcreteOrder, DispatchTrip, FleetTruck, BatchingPlant, CustomerDebt, LabTestSample, FuelLog } from '../types';
+import { ConcreteOrder, DispatchTrip, FleetTruck, BatchingPlant, CustomerDebt, LabTestSample, FuelLog, ProjectDistance, DriverTripRuleConfig } from '../types';
 
 export const INITIAL_ORDERS: ConcreteOrder[] = [
   {
     id: 'ord-dev-001',
     code: 'DH-261003-001',
+    orderType: 'CHINH',
+    projectType: 'DA',
+    customerCode: 'CT-PD01',
     customerName: 'CÔNG TY CỔ PHẦN DEVELOPMENT',
     plantLocation: 'Tây Ninh',
     projectTitle: 'DỰ ÁN KCN PHƯỚC ĐÔNG',
@@ -19,13 +22,51 @@ export const INITIAL_ORDERS: ConcreteOrder[] = [
     pumpType: 'Xả máng trực tiếp',
     contactPerson: 'Người giao nhận',
     contactPhone: '0908 777 666',
+    technicianName: 'Nguyễn Văn Nam',
+    distanceKm: 18,
     notes: 'Đường N8, KCN Phước Đông, Phường Gia Lộc, Tỉnh Tây Ninh',
     assignedTrucksCount: 1,
+    createdByRole: 'ACCOUNTANT',
+    createdByName: 'Kế toán công nợ',
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: 'ord-dev-001-ps1',
+    code: 'DH-261003-001-PS1',
+    orderType: 'PHAT_SINH',
+    parentOrderId: 'ord-dev-001',
+    parentOrderCode: 'DH-261003-001',
+    projectType: 'DA',
+    customerCode: 'CT-PD01',
+    customerName: 'CÔNG TY CỔ PHẦN DEVELOPMENT',
+    plantLocation: 'Tây Ninh',
+    projectTitle: 'DỰ ÁN KCN PHƯỚC ĐÔNG',
+    categoryItem: 'LÓT (Đổ bù mép hố ga)',
+    totalVolume: 3,
+    deliveredVolume: 3,
+    deliveryTime: '14:40',
+    deliveryDate: '2026-10-03',
+    status: 'HOAN_THANH',
+    grade: 'M150R28',
+    slump: '10+-2',
+    additive: 'R28',
+    pumpType: 'Xả máng trực tiếp',
+    contactPerson: 'Người giao nhận',
+    contactPhone: '0908 777 666',
+    technicianName: 'Nguyễn Văn Nam',
+    distanceKm: 18,
+    notes: 'Phát sinh thêm do mở rộng cốt móng, copy từ đơn chính DH-261003-001',
+    assignedTrucksCount: 1,
+    createdByRole: 'DISPATCHER',
+    createdByName: 'Mai Thị Kim Oanh (Điều phối)',
     updatedAt: new Date().toISOString()
   },
   {
     id: 'ord-001',
     code: 'DH-260930-001',
+    orderType: 'CHINH',
+    projectType: 'DA',
+    customerCode: 'CT-TNN01',
     customerName: 'CÔNG TY TNHH XÂY DỰNG TÂN NHẬT NGUYỆT',
     plantLocation: 'Tây Ninh',
     projectTitle: 'NHÀ XƯỞNG SỐ 2 NHÀ MÁY DỆT TÂY NINH',
@@ -41,13 +82,20 @@ export const INITIAL_ORDERS: ConcreteOrder[] = [
     pumpType: 'Bơm cần 43m',
     contactPerson: 'Anh Tuấn',
     contactPhone: '0908 123 456',
+    technicianName: 'Trần Đình Trọng',
+    distanceKm: 14,
     notes: 'Đổ ban đêm, chuẩn bị 2 máy bơm dự phòng, kiểm tra độ sụt kỹ.',
     assignedTrucksCount: 8,
+    createdByRole: 'ACCOUNTANT',
+    createdByName: 'Kế toán trưởng',
     updatedAt: new Date().toISOString()
   },
   {
     id: 'ord-002',
     code: 'DH-260930-002',
+    orderType: 'CHINH',
+    projectType: 'DA',
+    customerCode: 'CT-KNL02',
     customerName: 'CÔNG TY TNHH XÂY DỰNG KIM NGUYÊN LONG',
     plantLocation: 'Tây Ninh',
     projectTitle: 'NHÀ MÁY GDI TEXTILE',
@@ -63,13 +111,20 @@ export const INITIAL_ORDERS: ConcreteOrder[] = [
     pumpType: 'Bơm tĩnh',
     contactPerson: 'Anh Thành',
     contactPhone: '0912 345 678',
+    technicianName: 'Lê Hữu Phước',
+    distanceKm: 12,
     notes: 'Đổ cột mác cao, yêu cầu lấy mẫu 3 tổ R7 và R28.',
     assignedTrucksCount: 4,
+    createdByRole: 'ACCOUNTANT',
+    createdByName: 'Kế toán trưởng',
     updatedAt: new Date().toISOString()
   },
   {
     id: 'ord-003',
     code: 'DH-260930-003',
+    orderType: 'CHINH',
+    projectType: 'DA',
+    customerCode: 'CT-DT03',
     customerName: 'CÔNG TY CỔ PHẦN XÂY DỰNG ĐẠI TÍN',
     plantLocation: 'Tây Ninh',
     projectTitle: 'NHÀ Ở XÃ HỘI – KDC THÀNH THÀNH CÔNG',
@@ -85,13 +140,20 @@ export const INITIAL_ORDERS: ConcreteOrder[] = [
     pumpType: 'Xả máng trực tiếp',
     contactPerson: 'Chị Hạnh',
     contactPhone: '0934 567 890',
+    technicianName: 'Hoàng Văn Đức',
+    distanceKm: 22,
     notes: 'Đường hẹp vào công trình, chỉ điều xe bồn nhỏ 8-10m3.',
     assignedTrucksCount: 2,
+    createdByRole: 'ACCOUNTANT',
+    createdByName: 'Kế toán hợp đồng',
     updatedAt: new Date().toISOString()
   },
   {
     id: 'ord-004',
     code: 'DH-260930-004',
+    orderType: 'CHINH',
+    projectType: 'DD',
+    customerCode: 'CT-DD04',
     customerName: 'TẬP ĐOÀN ĐẦU TƯ ĐỊA ỐC NOVA TÂY NINH',
     plantLocation: 'Tây Ninh',
     projectTitle: 'KHU PHỨC HỢP THƯƠNG MẠI TRẢNG BÀNG',
@@ -107,13 +169,20 @@ export const INITIAL_ORDERS: ConcreteOrder[] = [
     pumpType: 'Bơm cần 52m',
     contactPerson: 'Kỹ sư Hoàng',
     contactPhone: '0945 678 910',
+    technicianName: 'Bùi Thái Sơn',
+    distanceKm: 8,
     notes: 'Bê tông khối lớn, yêu cầu kiểm soát nhiệt độ dưới 32°C.',
     assignedTrucksCount: 0,
+    createdByRole: 'ACCOUNTANT',
+    createdByName: 'Kế toán trưởng',
     updatedAt: new Date().toISOString()
   },
   {
     id: 'ord-005',
     code: 'DH-260930-005',
+    orderType: 'CHINH',
+    projectType: 'DA',
+    customerCode: 'CT-PD05',
     customerName: 'CÔNG TY TNHH HẠ TẦNG KHU CÔNG NGHIỆP PHƯỚC ĐÔNG',
     plantLocation: 'Tây Ninh',
     projectTitle: 'ĐƯỜNG NỘI BỘ TRỤC CHÍNH D4',
@@ -128,9 +197,13 @@ export const INITIAL_ORDERS: ConcreteOrder[] = [
     additive: 'R3',
     pumpType: 'Xả máng trực tiếp',
     contactPerson: 'Anh Bình',
-    contactPhone: '0978 999 111',
-    notes: 'Đã hoàn tất nghiệm thu và ký phiếu điện tử.',
-    assignedTrucksCount: 3,
+    contactPhone: '0967 890 123',
+    technicianName: 'Nguyễn Hoàng',
+    distanceKm: 18,
+    notes: 'Rải đường trục chính, xe quay đầu liên tục.',
+    assignedTrucksCount: 5,
+    createdByRole: 'ACCOUNTANT',
+    createdByName: 'Kế toán hợp đồng',
     updatedAt: new Date().toISOString()
   }
 ];
@@ -500,3 +573,80 @@ export const INITIAL_FUEL_LOGS: FuelLog[] = [
     approvedBy: 'Trần Văn Quản'
   }
 ];
+
+export const INITIAL_PROJECT_DISTANCES: ProjectDistance[] = [
+  {
+    id: 'prj-01',
+    customerCode: 'CT-PD01',
+    customerName: 'CÔNG TY CỔ PHẦN DEVELOPMENT',
+    projectTitle: 'DỰ ÁN KCN PHƯỚC ĐÔNG',
+    projectType: 'DA',
+    address: 'Đường N8, KCN Phước Đông, Gò Dầu, Tây Ninh',
+    distanceKm: 18,
+    roundTripKm: 36,
+    technicianDefault: 'Nguyễn Văn Nam'
+  },
+  {
+    id: 'prj-02',
+    customerCode: 'CT-TNN01',
+    customerName: 'CÔNG TY TNHH XÂY DỰNG TÂN NHẬT NGUYỆT',
+    projectTitle: 'NHÀ XƯỞNG SỐ 2 NHÀ MÁY DỆT TÂY NINH',
+    projectType: 'DA',
+    address: 'Lô B2, KCN Trảng Bàng, Tây Ninh',
+    distanceKm: 14,
+    roundTripKm: 28,
+    technicianDefault: 'Trần Đình Trọng'
+  },
+  {
+    id: 'prj-03',
+    customerCode: 'CT-KNL02',
+    customerName: 'CÔNG TY TNHH XÂY DỰNG KIM NGUYÊN LONG',
+    projectTitle: 'NHÀ MÁY GDI TEXTILE',
+    projectType: 'DA',
+    address: 'Đường D3, KCN Chà Là, Dương Minh Châu, Tây Ninh',
+    distanceKm: 12,
+    roundTripKm: 24,
+    technicianDefault: 'Lê Hữu Phước'
+  },
+  {
+    id: 'prj-04',
+    customerCode: 'CT-DT03',
+    customerName: 'CÔNG TY CỔ PHẦN XÂY DỰNG ĐẠI TÍN',
+    projectTitle: 'NHÀ Ở XÃ HỘI – KDC THÀNH THÀNH CÔNG',
+    projectType: 'DA',
+    address: 'Phường An Hòa, Thị xã Trảng Bàng, Tây Ninh',
+    distanceKm: 22,
+    roundTripKm: 44,
+    technicianDefault: 'Hoàng Văn Đức'
+  },
+  {
+    id: 'prj-05',
+    customerCode: 'CT-DD04',
+    customerName: 'TẬP ĐOÀN ĐẦU TƯ ĐỊA ỐC NOVA TÂY NINH',
+    projectTitle: 'KHU PHỨC HỢP THƯƠNG MẠI TRẢNG BÀNG',
+    projectType: 'DD',
+    address: 'Quốc Lộ 22, Thị xã Trảng Bàng, Tây Ninh',
+    distanceKm: 8,
+    roundTripKm: 16,
+    technicianDefault: 'Bùi Thái Sơn'
+  },
+  {
+    id: 'prj-06',
+    customerCode: 'CT-PD05',
+    customerName: 'CÔNG TY TNHH HẠ TẦNG KHU CÔNG NGHIỆP PHƯỚC ĐÔNG',
+    projectTitle: 'ĐƯỜNG NỘI BỘ TRỤC CHÍNH D4',
+    projectType: 'DA',
+    address: 'Trục D4, KCN Phước Đông, Tây Ninh',
+    distanceKm: 18,
+    roundTripKm: 36,
+    technicianDefault: 'Nguyễn Hoàng'
+  }
+];
+
+export const DEFAULT_DRIVER_TRIP_CONFIG: DriverTripRuleConfig = {
+  largeTripThresholdM3: 6, // Chuyến lớn >= 6 m3, chuyến nhỏ < 6 m3
+  capacity8m3ThresholdM3: 5.5,
+  capacity10m3ThresholdM3: 6,
+  capacity12m3ThresholdM3: 7
+};
+

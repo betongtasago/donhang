@@ -58,7 +58,6 @@ export const testSupabaseConnection = async (url: string, anonKey: string): Prom
 
   try {
     const testClient = createClient(url, anonKey);
-    // Ping with a lightweight select on orders or auth
     const { error } = await testClient.from('orders').select('id').limit(1);
     if (error && error.code !== 'PGRST116' && !error.message.includes('relation "orders" does not exist')) {
       return { success: false, message: `Lỗi kết nối Supabase: ${error.message}` };
@@ -73,11 +72,15 @@ export const testSupabaseConnection = async (url: string, anonKey: string): Prom
   }
 };
 
-// SQL Schema script for Supabase SQL Editor
 export const SUPABASE_SCHEMA_SQL = `-- Chạy đoạn mã này trong mục SQL Editor trên Dashboard Supabase của bạn:
 CREATE TABLE IF NOT EXISTS orders (
   id TEXT PRIMARY KEY,
   code TEXT UNIQUE NOT NULL,
+  order_type TEXT DEFAULT 'CHINH',
+  parent_order_id TEXT,
+  parent_order_code TEXT,
+  project_type TEXT DEFAULT 'DA',
+  customer_code TEXT,
   customer_name TEXT NOT NULL,
   plant_location TEXT NOT NULL,
   project_title TEXT NOT NULL,
@@ -93,6 +96,8 @@ CREATE TABLE IF NOT EXISTS orders (
   pump_type TEXT,
   contact_person TEXT,
   contact_phone TEXT,
+  technician_name TEXT,
+  distance_km NUMERIC DEFAULT 15,
   notes TEXT,
   assigned_trucks_count INTEGER DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -114,6 +119,8 @@ CREATE TABLE IF NOT EXISTS trips (
   status TEXT NOT NULL,
   slump_tested TEXT,
   grade TEXT,
+  distance_km NUMERIC,
+  is_large_trip BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -131,12 +138,25 @@ CREATE TABLE IF NOT EXISTS trucks (
   truck_type TEXT
 );
 
--- Kích hoạt Row Level Security (RLS) cho phép đọc và ghi:
+CREATE TABLE IF NOT EXISTS project_distances (
+  id TEXT PRIMARY KEY,
+  customer_code TEXT,
+  customer_name TEXT NOT NULL,
+  project_title TEXT NOT NULL,
+  project_type TEXT DEFAULT 'DA',
+  address TEXT,
+  distance_km NUMERIC NOT NULL,
+  round_trip_km NUMERIC NOT NULL,
+  technician_default TEXT
+);
+
 ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE trips ENABLE ROW LEVEL SECURITY;
 ALTER TABLE trucks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE project_distances ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Allow public read-write for orders" ON orders FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow public read-write for trips" ON trips FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow public read-write for trucks" ON trucks FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public read-write for project_distances" ON project_distances FOR ALL USING (true) WITH CHECK (true);
 `;

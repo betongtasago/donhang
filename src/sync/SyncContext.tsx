@@ -20,8 +20,15 @@ import {
   INITIAL_PLANTS,
   INITIAL_DEBTS,
   INITIAL_LAB_TESTS,
-  INITIAL_FUEL_LOGS
+  INITIAL_FUEL_LOGS,
+  INITIAL_PROJECT_DISTANCES,
+  DEFAULT_DRIVER_TRIP_CONFIG
 } from './initialData';
+import {
+  ProjectDistance,
+  DriverTripRuleConfig
+} from '../types';
+import { syncOrderToSupabase, syncTripToSupabase } from '../lib/supabaseSync';
 
 const STORAGE_KEY = 'TSG_TNT_DISPATCH_STATE_V1';
 const BROADCAST_CHANNEL_NAME = 'tsg_tnt_dispatch_sync_channel';
@@ -34,6 +41,8 @@ interface AppData {
   debts: CustomerDebt[];
   labTests: LabTestSample[];
   fuelLogs: FuelLog[];
+  projectDistances: ProjectDistance[];
+  driverTripConfig: DriverTripRuleConfig;
   selectedPlant: string;
 }
 
@@ -48,6 +57,12 @@ interface SyncContextType extends AppData {
   // Dispatch trip actions
   createTrip: (trip: Omit<DispatchTrip, 'id' | 'ticketNumber'>) => DispatchTrip;
   updateTripStatus: (tripId: string, status: TripStatus) => void;
+  // Project Distances
+  addProjectDistance: (dist: Omit<ProjectDistance, 'id' | 'roundTripKm'>) => ProjectDistance;
+  updateProjectDistance: (id: string, updates: Partial<ProjectDistance>) => void;
+  deleteProjectDistance: (id: string) => void;
+  // Driver Trip Rules
+  updateDriverTripConfig: (cfg: Partial<DriverTripRuleConfig>) => void;
   // Truck actions
   updateTruckStatus: (truckId: string, status: TruckStatus, orderCode?: string) => void;
   // QC & Tests
@@ -75,7 +90,13 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed.orders && parsed.trucks) {
-          return parsed;
+          return {
+            ...parsed,
+            projectDistances: parsed.projectDistances && parsed.projectDistances.length > 0
+              ? parsed.projectDistances
+              : INITIAL_PROJECT_DISTANCES,
+            driverTripConfig: parsed.driverTripConfig || DEFAULT_DRIVER_TRIP_CONFIG
+          };
         }
       }
     } catch (e) {
@@ -89,6 +110,8 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
       debts: INITIAL_DEBTS,
       labTests: INITIAL_LAB_TESTS,
       fuelLogs: INITIAL_FUEL_LOGS,
+      projectDistances: INITIAL_PROJECT_DISTANCES,
+      driverTripConfig: DEFAULT_DRIVER_TRIP_CONFIG,
       selectedPlant: 'Tây Ninh'
     };
   });
@@ -391,11 +414,34 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const prevDelivered = targetOrder ? targetOrder.deliveredVolume : 0;
     const newAccumulated = prevDelivered + tripInput.volume;
 
+    // Lookup distance from project list or order
+    const projectDist = data.projectDistances?.find(p =>
+      p.projectTitle.toLowerCase() === targetOrder?.projectTitle.toLowerCase() ||
+      (targetOrder?.customerCode && p.customerCode === targetOrder.customerCode)
+    );
+    const tripKm = tripInput.distanceKm || targetOrder?.distanceKm || projectDist?.distanceKm || 15;
+
+    // Determine large/small trip rule based on volume and truck capacity threshold
+    const targetTruck = data.trucks.find(t => t.plateNumber === tripInput.truckPlate);
+    const truckCap = targetTruck ? 10 : 10;
+    let threshold = data.driverTripConfig?.largeTripThresholdM3 || 6;
+    if (truckCap <= 8 && data.driverTripConfig?.capacity8m3ThresholdM3) {
+      threshold = data.driverTripConfig.capacity8m3ThresholdM3;
+    } else if (truckCap === 10 && data.driverTripConfig?.capacity10m3ThresholdM3) {
+      threshold = data.driverTripConfig.capacity10m3ThresholdM3;
+    } else if (truckCap >= 12 && data.driverTripConfig?.capacity12m3ThresholdM3) {
+      threshold = data.driverTripConfig.capacity12m3ThresholdM3;
+    }
+
+    const isLargeTrip = tripInput.volume >= threshold;
+
     const newTrip: DispatchTrip = {
       ...tripInput,
       id: `trip-${Date.now()}`,
       ticketNumber: newTicket,
-      accumulatedVolume: newAccumulated
+      accumulatedVolume: newAccumulated,
+      distanceKm: tripKm,
+      isLargeTrip
     };
 
     // Update order delivered volume (lũy kế tăng cộng dồn vào đơn hàng)
@@ -540,6 +586,60 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
     addSyncLog(`Thanh toán ${amount.toLocaleString('vi-VN')} đ cho khách hàng ID ${customerId}`, 'success');
   };
 
+  const addProjectDistance = (distInput: Omit<ProjectDistance, 'id' | 'roundTripKm'>): ProjectDistance => {
+    const newPrj: ProjectDistance = {
+      ...distInput,
+      id: `prj-${Date.now()}`,
+      roundTripKm: distInput.distanceKm * 2
+    };
+    const nextData = {
+      ...data,
+      projectDistances: [newPrj, ...(data.projectDistances || [])]
+    };
+    setData(nextData);
+    broadcastChange('STATE_UPDATE', nextData);
+    addSyncLog(`Thêm công trình ${distInput.projectTitle} (Cự ly: ${distInput.distanceKm} km)`, 'success');
+    return newPrj;
+  };
+
+  const updateProjectDistance = (id: string, updates: Partial<ProjectDistance>) => {
+    const nextList = (data.projectDistances || []).map(p => {
+      if (p.id === id) {
+        const nextDist = updates.distanceKm !== undefined ? updates.distanceKm : p.distanceKm;
+        return {
+          ...p,
+          ...updates,
+          distanceKm: nextDist,
+          roundTripKm: nextDist * 2
+        };
+      }
+      return p;
+    });
+    const nextData = { ...data, projectDistances: nextList };
+    setData(nextData);
+    broadcastChange('STATE_UPDATE', nextData);
+    addSyncLog(`Cập nhật cự ly km công trình ID ${id}`, 'info');
+  };
+
+  const deleteProjectDistance = (id: string) => {
+    const nextList = (data.projectDistances || []).filter(p => p.id !== id);
+    const nextData = { ...data, projectDistances: nextList };
+    setData(nextData);
+    broadcastChange('STATE_UPDATE', nextData);
+    addSyncLog(`Xóa công trình khỏi danh sách cự ly km`, 'warning');
+  };
+
+  const updateDriverTripConfig = (cfg: Partial<DriverTripRuleConfig>) => {
+    const nextConfig = {
+      ...(data.driverTripConfig || DEFAULT_DRIVER_TRIP_CONFIG),
+      ...cfg
+    };
+    const nextData = { ...data, driverTripConfig: nextConfig };
+    setData(nextData);
+    broadcastChange('STATE_UPDATE', nextData);
+    addSyncLog(`Cập nhật quy tắc phân loại chuyến lớn/nhỏ (Ngưỡng: ${nextConfig.largeTripThresholdM3} m³)`, 'info');
+  };
+
   const syncNow = async () => {
     setSyncState(prev => ({ ...prev, status: 'syncing' }));
     addSyncLog('Bắt đầu đồng bộ thủ công tới máy chủ điều phối trung tâm...', 'network');
@@ -582,6 +682,8 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
       debts: INITIAL_DEBTS,
       labTests: INITIAL_LAB_TESTS,
       fuelLogs: INITIAL_FUEL_LOGS,
+      projectDistances: INITIAL_PROJECT_DISTANCES,
+      driverTripConfig: DEFAULT_DRIVER_TRIP_CONFIG,
       selectedPlant: 'Tây Ninh'
     };
     setData(initialDataState);
@@ -626,6 +728,10 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
         addLabTest,
         addFuelLog,
         recordDebtPayment,
+        addProjectDistance,
+        updateProjectDistance,
+        deleteProjectDistance,
+        updateDriverTripConfig,
         syncNow,
         toggleAutoSync,
         clearSyncLogs,

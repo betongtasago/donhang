@@ -1,8 +1,15 @@
 export type OrderStatus = 'CHO_DUYET' | 'DA_DUYET' | 'DANG_CHAY' | 'HOAN_THANH' | 'TAM_HOAN';
+export type OrderType = 'CHINH' | 'PHAT_SINH';
+export type ProjectType = 'DA' | 'DD'; // DA = Dự án, DD = Dân dụng
 
 export interface ConcreteOrder {
   id: string;
   code: string; // e.g. DH-260930-001
+  orderType: OrderType; // CHINH = Đơn hàng chính (Kế toán/Admin), PHAT_SINH = Đơn phát sinh (User/Điều phối)
+  parentOrderId?: string; // ID đơn hàng chính nếu là đơn phát sinh
+  parentOrderCode?: string; // Mã đơn chính cha
+  projectType: ProjectType; // DA = Dự án, DD = Dân dụng
+  customerCode?: string; // Mã công trình / Mã khách hàng (e.g. CT-PD, CT-GDI)
   customerName: string; // e.g. CÔNG TY TNHH XÂY DỰNG TÂN NHẬT NGUYỆT
   plantLocation: string; // Tây Ninh, Bình Dương, Long An, TP.HCM
   projectTitle: string; // NHÀ XƯỞNG SỐ 2 NHÀ MÁY DỆT TÂY NINH
@@ -18,8 +25,12 @@ export interface ConcreteOrder {
   pumpType: string; // Bơm cần 37m, Bơm cần 43m, Bơm tĩnh, Xả máng trực tiếp
   contactPerson: string;
   contactPhone: string;
+  technicianName?: string; // Giao nhận (Kỹ thuật phụ trách)
+  distanceKm?: number; // Cự ly km từ trạm trộn đến công trường
   notes?: string;
   assignedTrucksCount: number;
+  createdByRole?: string; // 'ACCOUNTANT' | 'ADMIN' | 'DISPATCHER' | etc.
+  createdByName?: string;
   updatedAt: string;
 }
 
@@ -40,6 +51,27 @@ export interface DispatchTrip {
   status: TripStatus;
   slumpTested: string; // e.g. 14.5 cm
   grade: string;
+  distanceKm?: number; // Km 1 chiều của chuyến
+  isLargeTrip?: boolean; // >= 6m3 hoặc theo ngưỡng xe
+}
+
+export interface ProjectDistance {
+  id: string;
+  customerCode: string;
+  customerName: string;
+  projectTitle: string;
+  projectType: ProjectType; // 'DA' | 'DD'
+  address: string;
+  distanceKm: number; // Km 1 chiều
+  roundTripKm: number; // Km khứ hồi (distanceKm * 2)
+  technicianDefault: string; // Kỹ thuật phụ trách mặc định
+}
+
+export interface DriverTripRuleConfig {
+  largeTripThresholdM3: number; // Mặc định 6 m3
+  capacity8m3ThresholdM3: number; // Ngưỡng cho xe 8m3 (ví dụ: 5 hay 6 m3)
+  capacity10m3ThresholdM3: number; // Ngưỡng cho xe 10m3 (ví dụ: 6 m3)
+  capacity12m3ThresholdM3: number; // Ngưỡng cho xe 12m3 (ví dụ: 7 m3)
 }
 
 export type TruckStatus = 'SAN_SANG' | 'DANG_NAP' | 'DANG_CHAY' | 'DANG_XA' | 'BAO_DUONG';
