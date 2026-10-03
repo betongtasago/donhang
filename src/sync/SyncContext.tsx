@@ -57,6 +57,7 @@ interface SyncContextType extends AppData {
   // Dispatch trip actions
   createTrip: (trip: Omit<DispatchTrip, 'id' | 'ticketNumber'>) => DispatchTrip;
   updateTripStatus: (tripId: string, status: TripStatus) => void;
+  updateTripDetails: (tripId: string, updates: Partial<DispatchTrip>) => void;
   // Project Distances
   addProjectDistance: (dist: Omit<ProjectDistance, 'id' | 'roundTripKm'>) => ProjectDistance;
   updateProjectDistance: (id: string, updates: Partial<ProjectDistance>) => void;
@@ -526,6 +527,21 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }).catch(err => console.warn('Could not persist trip status to backend:', err));
   };
 
+  const updateTripDetails = (tripId: string, updates: Partial<DispatchTrip>) => {
+    const nextTrips = data.trips.map(t => (t.id === tripId ? { ...t, ...updates } : t));
+    const nextData = { ...data, trips: nextTrips };
+    setData(nextData);
+    broadcastChange('STATE_UPDATE', nextData);
+    setSecondsSinceSync(0);
+    addSyncLog(`Đã cập nhật chuyến xe ${tripId}: ${updates.driverName || ''} - ${updates.truckPlate || ''}`, 'info');
+
+    fetch(`/api/trips/${tripId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates)
+    }).catch(err => console.warn('Could not persist trip details to backend:', err));
+  };
+
   const updateTruckStatus = (truckId: string, status: TruckStatus, orderCode?: string) => {
     const nextTrucks = data.trucks.map(trk => {
       if (trk.id === truckId) {
@@ -724,6 +740,7 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
         deleteOrder,
         createTrip,
         updateTripStatus,
+        updateTripDetails,
         updateTruckStatus,
         addLabTest,
         addFuelLog,

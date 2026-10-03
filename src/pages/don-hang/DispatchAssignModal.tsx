@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, Truck, Check, AlertCircle, FileText } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Truck, Check, AlertCircle, FileText, UserCheck, Edit3 } from 'lucide-react';
 import { useSync } from '../../sync/SyncContext';
 import { ConcreteOrder } from '../../types';
 
@@ -13,18 +13,30 @@ export const DispatchAssignModal: React.FC<DispatchAssignModalProps> = ({ order,
   const { trucks, createTrip } = useSync();
 
   const availableTrucks = trucks.filter(t => t.status === 'SAN_SANG' || t.status === 'DANG_CHAY');
-  const [selectedTruckPlate, setSelectedTruckPlate] = useState(availableTrucks[0]?.plateNumber || '70C-128.45');
+  const [selectedTruckId, setSelectedTruckId] = useState<string>(availableTrucks[0]?.id || trucks[0]?.id || '');
+  const [truckPlate, setTruckPlate] = useState<string>(availableTrucks[0]?.plateNumber || '70C-128.45');
+  const [driverName, setDriverName] = useState<string>(availableTrucks[0]?.driverName || 'Nguyễn Văn Hùng');
+  const [driverPhone, setDriverPhone] = useState<string>(availableTrucks[0]?.driverPhone || '0903 888 221');
   const [volume, setVolume] = useState<number>(10);
   const [slumpTested, setSlumpTested] = useState('14.0 cm');
 
+  useEffect(() => {
+    const selected = trucks.find(t => t.id === selectedTruckId);
+    if (selected) {
+      setTruckPlate(selected.plateNumber);
+      setDriverName(selected.driverName);
+      setDriverPhone(selected.driverPhone);
+    }
+  }, [selectedTruckId, trucks]);
+
   if (!isOpen) return null;
 
-  const currentTruck = trucks.find(t => t.plateNumber === selectedTruckPlate) || availableTrucks[0];
+  const currentTruck = trucks.find(t => t.id === selectedTruckId) || availableTrucks[0];
 
   const handleDispatch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentTruck) {
-      alert('Không tìm thấy xe được chọn');
+    if (!truckPlate.trim()) {
+      alert('Vui lòng nhập biển số xe điều phối');
       return;
     }
 
@@ -35,9 +47,9 @@ export const DispatchAssignModal: React.FC<DispatchAssignModalProps> = ({ order,
     createTrip({
       orderId: order.id,
       orderCode: order.code,
-      truckPlate: currentTruck.plateNumber,
-      driverName: currentTruck.driverName,
-      driverPhone: currentTruck.driverPhone,
+      truckPlate: truckPlate.trim(),
+      driverName: driverName.trim() || 'Tài xế giao nhận',
+      driverPhone: driverPhone.trim() || '0903 555 777',
       volume,
       departureTime,
       arrivalEstimate: arrivalTime,
@@ -55,7 +67,7 @@ export const DispatchAssignModal: React.FC<DispatchAssignModalProps> = ({ order,
         {/* Header */}
         <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-lg bg-orange-600">
+            <div className="p-2 rounded-xl bg-orange-600">
               <Truck className="w-5 h-5 text-white" />
             </div>
             <div>
@@ -81,19 +93,54 @@ export const DispatchAssignModal: React.FC<DispatchAssignModalProps> = ({ order,
             </div>
           </div>
 
+          {/* Quick select fleet truck */}
           <div className="space-y-1">
-            <label className="font-semibold text-slate-700">Chọn xe bồn bê tông điều động *</label>
+            <label className="font-semibold text-slate-700">Chọn nhanh từ danh sách xe bồn trạm trộn:</label>
             <select
-              value={selectedTruckPlate}
-              onChange={(e) => setSelectedTruckPlate(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-semibold focus:ring-2 focus:ring-orange-500 focus:outline-none"
+              value={selectedTruckId}
+              onChange={(e) => setSelectedTruckId(e.target.value)}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-semibold focus:ring-2 focus:ring-orange-500 focus:outline-none cursor-pointer"
             >
               {trucks.map(trk => (
-                <option key={trk.id} value={trk.plateNumber}>
+                <option key={trk.id} value={trk.id}>
                   {trk.plateNumber} ({trk.truckType}) - TX: {trk.driverName} - [{trk.status === 'SAN_SANG' ? 'Sẵn sàng' : 'Đang hoạt động'}]
                 </option>
               ))}
             </select>
+          </div>
+
+          {/* EDITABLE DRIVER NAME AND TRUCK PLATE */}
+          <div className="p-3 bg-amber-50/70 rounded-xl border border-amber-200 space-y-2.5">
+            <div className="flex items-center gap-1.5 text-amber-900 font-bold text-xs">
+              <Edit3 className="w-3.5 h-3.5 text-orange-600" />
+              <span>Chỉnh sửa thông tin xe và tài xế chuyến này:</span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-[11px] font-semibold text-slate-700">Biển số xe bồn *</label>
+                <input
+                  type="text"
+                  required
+                  value={truckPlate}
+                  onChange={(e) => setTruckPlate(e.target.value)}
+                  placeholder="70C-128.45"
+                  className="w-full px-3 py-1.5 bg-white border border-amber-300 focus:border-orange-500 rounded-lg font-mono font-bold text-xs uppercase"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[11px] font-semibold text-slate-700">Tên tài xế phụ trách *</label>
+                <input
+                  type="text"
+                  required
+                  value={driverName}
+                  onChange={(e) => setDriverName(e.target.value)}
+                  placeholder="Nguyễn Văn Hùng"
+                  className="w-full px-3 py-1.5 bg-white border border-amber-300 focus:border-orange-500 rounded-lg font-bold text-xs"
+                />
+              </div>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -101,8 +148,8 @@ export const DispatchAssignModal: React.FC<DispatchAssignModalProps> = ({ order,
               <label className="font-semibold text-slate-700">Khối lượng chuyến (m³) *</label>
               <input
                 type="number"
-                min="1"
-                max="14"
+                min="0.5"
+                max="16"
                 step="0.5"
                 required
                 value={volume}
@@ -123,25 +170,17 @@ export const DispatchAssignModal: React.FC<DispatchAssignModalProps> = ({ order,
             </div>
           </div>
 
-          {currentTruck && (
-            <div className="p-3 bg-amber-50/60 rounded-xl border border-amber-200/80 text-amber-900 space-y-1 text-[11px]">
-              <div><strong>Tài xế phụ trách:</strong> {currentTruck.driverName} ({currentTruck.driverPhone})</div>
-              <div><strong>Nhiên liệu còn:</strong> {currentTruck.fuelLevel}% | Số chuyến hôm nay: {currentTruck.tripsToday} chuyến</div>
-              <div><strong>Trạm trộn:</strong> Trạm Tây Ninh 1 (Cân nạp tự động Silo)</div>
-            </div>
-          )}
-
           <div className="pt-3 border-t border-slate-200 flex items-center justify-end gap-2">
             <button
               type="button"
               onClick={onClose}
-              className="px-3 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium"
+              className="px-3 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium cursor-pointer"
             >
               Huỷ
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-[#e25822] hover:bg-[#d04d1c] text-white font-bold rounded-lg shadow-sm flex items-center gap-1.5"
+              className="px-4 py-2 bg-[#e25822] hover:bg-[#d04d1c] text-white font-bold rounded-lg shadow-sm flex items-center gap-1.5 cursor-pointer"
             >
               <FileText className="w-4 h-4" />
               Xuất phiếu & Điều xe
