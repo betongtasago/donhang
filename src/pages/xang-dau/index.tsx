@@ -163,15 +163,18 @@ export const XangDauPage: React.FC = () => {
             <h3 className="font-bold text-sm text-slate-900">Lập Phiếu Cấp Dầu Xe Bồn Bê Tông</h3>
             <form onSubmit={handleSubmit} className="space-y-3 text-xs">
               <div className="space-y-1">
-                <label className="font-semibold text-slate-700">Chọn xe bồn / xe bơm</label>
+                <label className="font-semibold text-slate-700 flex items-center justify-between">
+                  <span>Chọn tài xế (Biển số xe đi theo)</span>
+                  <span className="text-[10px] text-orange-600 font-bold">* Tự động đồng bộ</span>
+                </label>
                 <select
                   value={truckPlate}
                   onChange={(e) => setTruckPlate(e.target.value)}
-                  className="w-full p-2 border border-slate-300 rounded-lg font-bold"
+                  className="w-full p-2 border border-orange-300 rounded-lg font-bold text-slate-900 bg-orange-50/30 cursor-pointer"
                 >
                   {trucks.map(t => (
                     <option key={t.id} value={t.plateNumber}>
-                      {t.plateNumber} ({t.truckType}) - TX: {t.driverName}
+                      TX: {t.driverName} ➔ Xe: {t.plateNumber} ({t.truckType})
                     </option>
                   ))}
                 </select>

@@ -294,15 +294,18 @@ export const ProjectDeliveryView: React.FC<ProjectDeliveryViewProps> = ({
 
         <form onSubmit={handleQuickAddTruck} className="grid grid-cols-1 sm:grid-cols-5 gap-3 items-end text-xs">
           <div className="space-y-1 sm:col-span-2">
-            <label className="font-semibold text-slate-700">Chọn xe bồn điều động *</label>
+            <label className="font-semibold text-slate-700 flex items-center justify-between">
+              <span>Chọn Tài Xế (Biển số xe đi theo) *</span>
+              <span className="text-[10px] text-orange-600 font-bold">* Tự động đồng bộ</span>
+            </label>
             <select
               value={selectedTruckPlate}
               onChange={(e) => setSelectedTruckPlate(e.target.value)}
-              className="w-full p-2 border border-slate-300 rounded-xl bg-slate-50 font-bold focus:outline-none focus:ring-2 focus:ring-orange-500"
+              className="w-full p-2 border border-orange-300 rounded-xl bg-orange-50/40 font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500 cursor-pointer text-xs shadow-xs"
             >
               {trucks.map(trk => (
                 <option key={trk.id} value={trk.plateNumber}>
-                  {trk.plateNumber} ({trk.truckType}) - TX: {trk.driverName}
+                  TX: {trk.driverName} ➔ Xe: {trk.plateNumber} ({trk.truckType})
                 </option>
               ))}
             </select>

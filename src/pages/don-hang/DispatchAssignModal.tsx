@@ -29,6 +29,26 @@ export const DispatchAssignModal: React.FC<DispatchAssignModalProps> = ({ order,
     }
   }, [selectedTruckId, trucks]);
 
+  const handleDriverChange = (name: string) => {
+    setDriverName(name);
+    const matched = trucks.find(t => t.driverName.toLowerCase().trim() === name.toLowerCase().trim());
+    if (matched) {
+      setSelectedTruckId(matched.id);
+      setTruckPlate(matched.plateNumber);
+      setDriverPhone(matched.driverPhone);
+    }
+  };
+
+  const handleTruckPlateChange = (plate: string) => {
+    setTruckPlate(plate);
+    const matched = trucks.find(t => t.plateNumber.toLowerCase().trim() === plate.toLowerCase().trim());
+    if (matched) {
+      setSelectedTruckId(matched.id);
+      setDriverName(matched.driverName);
+      setDriverPhone(matched.driverPhone);
+    }
+  };
+
   if (!isOpen) return null;
 
   const currentTruck = trucks.find(t => t.id === selectedTruckId) || availableTrucks[0];
@@ -93,20 +113,41 @@ export const DispatchAssignModal: React.FC<DispatchAssignModalProps> = ({ order,
             </div>
           </div>
 
-          {/* Quick select fleet truck */}
-          <div className="space-y-1">
-            <label className="font-semibold text-slate-700">Chọn nhanh từ danh sách xe bồn trạm trộn:</label>
-            <select
-              value={selectedTruckId}
-              onChange={(e) => setSelectedTruckId(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-semibold focus:ring-2 focus:ring-orange-500 focus:outline-none cursor-pointer"
-            >
-              {trucks.map(trk => (
-                <option key={trk.id} value={trk.id}>
-                  {trk.plateNumber} ({trk.truckType}) - TX: {trk.driverName} - [{trk.status === 'SAN_SANG' ? 'Sẵn sàng' : 'Đang hoạt động'}]
-                </option>
-              ))}
-            </select>
+          {/* Quick select fleet truck or driver */}
+          <div className="space-y-2">
+            <div className="space-y-1">
+              <label className="font-semibold text-slate-700 flex items-center justify-between">
+                <span>Chọn theo tên tài xế (Biển số xe tự động đi theo):</span>
+                <span className="text-[10px] text-orange-600 font-bold">* Tự động đồng bộ</span>
+              </label>
+              <select
+                value={trucks.some(t => t.driverName.toLowerCase() === driverName.toLowerCase()) ? driverName : ''}
+                onChange={(e) => handleDriverChange(e.target.value)}
+                className="w-full px-3 py-2 bg-orange-50/50 border border-orange-300 rounded-lg text-xs font-bold text-slate-900 focus:ring-2 focus:ring-orange-500 focus:outline-none cursor-pointer"
+              >
+                <option value="">-- Chọn tên tài xế --</option>
+                {trucks.map(trk => (
+                  <option key={trk.id} value={trk.driverName}>
+                    {trk.driverName} ➔ Xe: {trk.plateNumber} ({trk.truckType})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <label className="font-semibold text-slate-700">Hoặc chọn theo biển số xe bồn:</label>
+              <select
+                value={selectedTruckId}
+                onChange={(e) => setSelectedTruckId(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-semibold focus:ring-2 focus:ring-orange-500 focus:outline-none cursor-pointer"
+              >
+                {trucks.map(trk => (
+                  <option key={trk.id} value={trk.id}>
+                    {trk.plateNumber} ({trk.truckType}) - TX: {trk.driverName} - [{trk.status === 'SAN_SANG' ? 'Sẵn sàng' : 'Đang hoạt động'}]
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {/* EDITABLE DRIVER NAME AND TRUCK PLATE */}
@@ -118,26 +159,26 @@ export const DispatchAssignModal: React.FC<DispatchAssignModalProps> = ({ order,
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="text-[11px] font-semibold text-slate-700">Biển số xe bồn *</label>
-                <input
-                  type="text"
-                  required
-                  value={truckPlate}
-                  onChange={(e) => setTruckPlate(e.target.value)}
-                  placeholder="70C-128.45"
-                  className="w-full px-3 py-1.5 bg-white border border-amber-300 focus:border-orange-500 rounded-lg font-mono font-bold text-xs uppercase"
-                />
-              </div>
-
-              <div className="space-y-1">
                 <label className="text-[11px] font-semibold text-slate-700">Tên tài xế phụ trách *</label>
                 <input
                   type="text"
                   required
                   value={driverName}
-                  onChange={(e) => setDriverName(e.target.value)}
+                  onChange={(e) => handleDriverChange(e.target.value)}
                   placeholder="Nguyễn Văn Hùng"
                   className="w-full px-3 py-1.5 bg-white border border-amber-300 focus:border-orange-500 rounded-lg font-bold text-xs"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[11px] font-semibold text-slate-700">Biển số xe bồn *</label>
+                <input
+                  type="text"
+                  required
+                  value={truckPlate}
+                  onChange={(e) => handleTruckPlateChange(e.target.value)}
+                  placeholder="70C-128.45"
+                  className="w-full px-3 py-1.5 bg-white border border-amber-300 focus:border-orange-500 rounded-lg font-mono font-bold text-xs uppercase"
                 />
               </div>
             </div>

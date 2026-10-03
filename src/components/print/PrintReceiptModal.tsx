@@ -110,6 +110,27 @@ export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({
     }
   }, [trip, autoPreviousVolume]);
 
+  // Tự động đồng bộ biển số xe khi chọn hoặc sửa tên tài xế theo danh sách mặc định
+  const handleDriverChange = (name: string) => {
+    setDriverName(name);
+    const matched = trucks.find(
+      t => t.driverName.toLowerCase().trim() === name.toLowerCase().trim()
+    );
+    if (matched) {
+      setTruckPlate(matched.plateNumber);
+    }
+  };
+
+  const handleTruckPlateChange = (plate: string) => {
+    setTruckPlate(plate);
+    const matched = trucks.find(
+      t => t.plateNumber.toLowerCase().trim() === plate.toLowerCase().trim()
+    );
+    if (matched) {
+      setDriverName(matched.driverName);
+    }
+  };
+
   // Save changes to trip in database/SyncContext
   const handleSaveTripDetails = () => {
     if (trip && updateTripDetails) {
@@ -433,27 +454,41 @@ export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({
           {/* Row 2: Chỉnh sửa Tài xế, Biển số xe, Lượng xuất, Cộng dồn */}
           <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
             <div className="flex flex-wrap items-center gap-3">
-              {/* Biển số xe */}
+              {/* Tên tài xế (Chọn tài xế thì biển số xe tự động đi theo) */}
+              <div className="flex items-center gap-1">
+                <UserCheck className="w-3.5 h-3.5 text-blue-600" />
+                <span className="font-semibold text-slate-700">Tài Xế:</span>
+                <select
+                  value={trucks.some(t => t.driverName.toLowerCase() === driverName.toLowerCase()) ? driverName : ''}
+                  onChange={(e) => handleDriverChange(e.target.value)}
+                  className="px-1.5 py-0.5 bg-white border border-blue-300 rounded font-bold text-xs cursor-pointer max-w-[130px]"
+                  title="Chọn tài xế (Biển số xe tự động đi theo danh sách mặc định)"
+                >
+                  <option value="">-- Chọn TX --</option>
+                  {trucks.map(t => (
+                    <option key={t.id} value={t.driverName}>
+                      {t.driverName}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="text"
+                  value={driverName}
+                  onChange={(e) => handleDriverChange(e.target.value)}
+                  className="w-24 px-1.5 py-0.5 bg-white border border-slate-300 rounded font-bold text-xs"
+                />
+              </div>
+
+              {/* Biển số xe (Tự động cập nhật theo tài xế) */}
               <div className="flex items-center gap-1">
                 <Truck className="w-3.5 h-3.5 text-orange-600" />
                 <span className="font-semibold text-slate-700">Số Xe:</span>
                 <input
                   type="text"
                   value={truckPlate}
-                  onChange={(e) => setTruckPlate(e.target.value)}
-                  className="w-24 px-1.5 py-0.5 bg-white border border-slate-300 rounded font-mono font-bold text-xs"
-                />
-              </div>
-
-              {/* Tên tài xế */}
-              <div className="flex items-center gap-1">
-                <UserCheck className="w-3.5 h-3.5 text-blue-600" />
-                <span className="font-semibold text-slate-700">Tài Xế:</span>
-                <input
-                  type="text"
-                  value={driverName}
-                  onChange={(e) => setDriverName(e.target.value)}
-                  className="w-28 px-1.5 py-0.5 bg-white border border-slate-300 rounded font-bold text-xs"
+                  onChange={(e) => handleTruckPlateChange(e.target.value)}
+                  className="w-24 px-1.5 py-0.5 bg-white border border-orange-300 rounded font-mono font-bold text-orange-700 text-xs"
+                  title="Biển số xe tự động đi theo tài xế mặc định"
                 />
               </div>
 
