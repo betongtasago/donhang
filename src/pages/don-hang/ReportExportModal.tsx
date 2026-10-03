@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, FileSpreadsheet, Download, Check, Printer } from 'lucide-react';
 import { useSync } from '../../sync/SyncContext';
+import * as XLSX from 'xlsx';
 
 interface ReportExportModalProps {
   isOpen: boolean;
@@ -17,20 +18,68 @@ export const ReportExportModal: React.FC<ReportExportModalProps> = ({ isOpen, on
   const totalDelivered = orders.reduce((sum, o) => sum + o.deliveredVolume, 0);
   const totalOrdered = orders.reduce((sum, o) => sum + o.totalVolume, 0);
 
-  const handleDownloadCSV = () => {
-    let csvContent = 'Mã Đơn,Khách Hàng,Công Trình,Hạng Mục,Mác Bê Tông,Tổng KL (m3),Đã Cấp (m3),Trạng Thái\n';
-    orders.forEach(o => {
-      csvContent += `"${o.code}","${o.customerName}","${o.projectTitle}","${o.categoryItem}","${o.grade}",${o.totalVolume},${o.deliveredVolume},"${o.status}"\n`;
-    });
+  const handleDownloadXLSX = () => {
+    let sheetData: any[] = [];
+    let reportName = 'Bao_Cao_San_Luong';
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `Bao_cao_don_hang_be_tong_${selectedPlant}_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    if (reportType === 'daily_dispatch') {
+      reportName = 'Bao_Cao_Dieu_Do_Ngay';
+      sheetData = [
+        ['STT', 'Mã Đơn', 'Loại Đơn', 'Khách Hàng', 'Công Trình', 'Hạng Mục', 'Mác Bê Tông', 'Độ Sụt', 'Tổng Đặt (m3)', 'Đã Cấp (m3)', 'Còn Lại (m3)', 'Kỹ Thuật', 'Trạng Thái'],
+        ...orders.map((o, idx) => [
+          idx + 1,
+          o.code,
+          o.orderType === 'PHAT_SINH' ? 'Phát sinh' : 'Đơn chính',
+          o.customerName,
+          o.projectTitle,
+          o.categoryItem,
+          o.grade,
+          o.slump,
+          o.totalVolume,
+          o.deliveredVolume,
+          Math.max(0, o.totalVolume - o.deliveredVolume),
+          o.technicianName || 'Nguyễn Văn Nam',
+          o.status
+        ])
+      ];
+    } else {
+      reportName = 'Tong_Hop_Khach_Hang';
+      sheetData = [
+        ['STT', 'Mã Đơn', 'Khách Hàng', 'Mã KH', 'Công Trình', 'Cự Ly (km)', 'Mác', 'Tổng KL (m3)', 'Đã Giao (m3)', 'Trạng Thái'],
+        ...orders.map((o, idx) => [
+          idx + 1,
+          o.code,
+          o.customerName,
+          o.customerCode || '',
+          o.projectTitle,
+          o.distanceKm || 15,
+          o.grade,
+          o.totalVolume,
+          o.deliveredVolume,
+          o.status
+        ])
+      ];
+    }
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(sheetData);
+    ws['!cols'] = [
+      { wch: 6 },
+      { wch: 16 },
+      { wch: 14 },
+      { wch: 38 },
+      { wch: 42 },
+      { wch: 20 },
+      { wch: 14 },
+      { wch: 10 },
+      { wch: 14 },
+      { wch: 14 },
+      { wch: 14 },
+      { wch: 20 },
+      { wch: 14 }
+    ];
+    XLSX.utils.book_append_sheet(wb, ws, 'BaoCao');
+    XLSX.writeFile(wb, `TSG_${reportName}_${selectedPlant}_${new Date().toISOString().slice(0, 10)}.xlsx`);
     onClose();
   };
 
@@ -106,11 +155,11 @@ export const ReportExportModal: React.FC<ReportExportModalProps> = ({ isOpen, on
               In phiếu
             </button>
             <button
-              onClick={handleDownloadCSV}
-              className="px-4 py-2 bg-[#e25822] hover:bg-[#d04d1c] text-white font-bold rounded-lg shadow-sm flex items-center gap-1.5"
+              onClick={handleDownloadXLSX}
+              className="px-4 py-2 bg-[#e25822] hover:bg-[#d04d1c] text-white font-bold rounded-lg shadow-sm flex items-center gap-1.5 transition cursor-pointer"
             >
               <Download className="w-4 h-4" />
-              Tải tệp Excel / CSV
+              Tải file Excel (.xlsx)
             </button>
           </div>
         </div>

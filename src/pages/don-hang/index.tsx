@@ -44,6 +44,7 @@ import { EditOrderModal } from './EditOrderModal';
 import { DispatchAssignModal } from './DispatchAssignModal';
 import { ReportExportModal } from './ReportExportModal';
 import { ProjectDeliveryView } from './ProjectDeliveryView';
+import * as XLSX from 'xlsx';
 
 interface DonHangPageProps {
   onOpenPrintModal?: (order: ConcreteOrder, trip?: any) => void;
@@ -255,7 +256,7 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) =>
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Export Sheet to Excel (.csv with UTF-8 BOM)
+  // Export to Excel (.xlsx format chuẩn)
   const handleExportCurrentSheet = () => {
     const sheetName =
       activeSheet === 'SHEET_CHINH'
@@ -264,63 +265,85 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) =>
         ? 'Don_Hang_Phat_Sinh'
         : 'Tat_Ca_Don_Hang';
 
-    const header = [
-      'STT',
-      'Loại đơn',
-      'Mã đơn hàng',
-      'Đơn chính gốc',
-      'Ngày giao',
-      'Giờ giao',
-      'Mã khách hàng',
-      'Tên khách hàng',
-      'Tên công trình',
-      'Loại C.Trình (DA/DD)',
-      'Cự ly (km)',
-      'Hạng mục',
-      'Mã mác bê tông',
-      'Độ sụt',
-      'Phụ gia',
-      'Loại bơm',
-      'KL Đặt (m3)',
-      'Đã cấp (m3)',
-      'Kỹ thuật giao nhận',
-      'Trạng thái',
-      'Ghi chú'
+    const sheetData = [
+      [
+        'STT',
+        'Loại đơn',
+        'Mã đơn hàng',
+        'Đơn chính gốc',
+        'Ngày giao',
+        'Giờ giao',
+        'Mã khách hàng',
+        'Tên khách hàng',
+        'Tên công trình',
+        'Loại C.Trình (DA/DD)',
+        'Cự ly (km)',
+        'Hạng mục',
+        'Mã mác bê tông',
+        'Độ sụt',
+        'Phụ gia',
+        'Loại bơm',
+        'KL Đặt (m3)',
+        'Đã cấp (m3)',
+        'Kỹ thuật giao nhận',
+        'Trạng thái',
+        'Ghi chú'
+      ],
+      ...filteredOrders.map((o, idx) => [
+        idx + 1,
+        o.orderType === 'PHAT_SINH' ? 'PHÁT SINH' : 'ĐƠN CHÍNH',
+        o.code,
+        o.parentOrderCode || '',
+        o.deliveryDate,
+        o.deliveryTime,
+        o.customerCode || '',
+        o.customerName,
+        o.projectTitle,
+        o.projectType || 'DA',
+        o.distanceKm || 15,
+        o.categoryItem,
+        o.grade,
+        o.slump,
+        o.additive || 'Không',
+        o.pumpType || 'Bơm cần',
+        o.totalVolume,
+        o.deliveredVolume,
+        o.technicianName || 'Nguyễn Văn Nam',
+        o.status,
+        o.notes || ''
+      ])
     ];
 
-    const rows = filteredOrders.map((o, idx) => [
-      idx + 1,
-      o.orderType === 'PHAT_SINH' ? 'PHÁT SINH' : 'ĐƠN CHÍNH',
-      `"${o.code}"`,
-      `"${o.parentOrderCode || ''}"`,
-      o.deliveryDate,
-      o.deliveryTime,
-      `"${o.customerCode || ''}"`,
-      `"${o.customerName.replace(/"/g, '""')}"`,
-      `"${o.projectTitle.replace(/"/g, '""')}"`,
-      o.projectType || 'DA',
-      o.distanceKm || 15,
-      `"${o.categoryItem}"`,
-      `"${o.grade}"`,
-      `"${o.slump}"`,
-      `"${o.additive || 'Không'}"`,
-      `"${o.pumpType || 'Bơm cần'}"`,
-      o.totalVolume,
-      o.deliveredVolume,
-      `"${o.technicianName || 'Nguyễn Văn Nam'}"`,
-      o.status,
-      `"${(o.notes || '').replace(/"/g, '""')}"`
-    ]);
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(sheetData);
 
-    const csvContent = '\uFEFF' + [header.join(','), ...rows.map(e => e.join(','))].join('\r\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `TSG_Sheet_${sheetName}_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // Căn độ rộng cột tối ưu
+    ws['!cols'] = [
+      { wch: 6 },
+      { wch: 14 },
+      { wch: 16 },
+      { wch: 16 },
+      { wch: 12 },
+      { wch: 10 },
+      { wch: 14 },
+      { wch: 38 },
+      { wch: 42 },
+      { wch: 10 },
+      { wch: 10 },
+      { wch: 20 },
+      { wch: 14 },
+      { wch: 10 },
+      { wch: 12 },
+      { wch: 14 },
+      { wch: 12 },
+      { wch: 12 },
+      { wch: 20 },
+      { wch: 14 },
+      { wch: 30 }
+    ];
+
+    XLSX.utils.book_append_sheet(wb, ws, 'DonHang');
+    XLSX.writeFile(wb, `TSG_${sheetName}_${new Date().toISOString().slice(0, 10)}.xlsx`);
   };
 
   const getStatusBadge = (status: OrderStatus) => {
@@ -457,7 +480,7 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) =>
           {/* 2. EXCEL-LIKE SEPARATE SHEET TABS: PHÂN SHEET ĐƠN CHÍNH & PHÁT SINH */}
           <div className="bg-slate-200/90 p-1.5 rounded-2xl flex flex-wrap items-center justify-between gap-2 border border-slate-300 shadow-inner">
             <div className="flex items-center gap-1.5">
-              {/* Sheet 1: ĐƠN HÀNG CHÍNH */}
+              {/* ĐƠN HÀNG CHÍNH */}
               <button
                 onClick={() => setActiveSheet('SHEET_CHINH')}
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition cursor-pointer ${
@@ -467,7 +490,7 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) =>
                 }`}
               >
                 <FileSpreadsheet className="w-4 h-4" />
-                <span>SHEET 1: ĐƠN HÀNG CHÍNH (Kế toán)</span>
+                <span>ĐƠN HÀNG CHÍNH (Kế toán)</span>
                 <span className={`text-[10px] px-2 py-0.2 rounded-full font-bold ${
                   activeSheet === 'SHEET_CHINH' ? 'bg-blue-800 text-white' : 'bg-blue-100 text-blue-800'
                 }`}>
@@ -475,7 +498,7 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) =>
                 </span>
               </button>
 
-              {/* Sheet 2: ĐƠN HÀNG PHÁT SINH */}
+              {/* ĐƠN HÀNG PHÁT SINH */}
               <button
                 onClick={() => setActiveSheet('SHEET_PHAT_SINH')}
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition cursor-pointer ${
@@ -485,7 +508,7 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) =>
                 }`}
               >
                 <Sheet className="w-4 h-4" />
-                <span>SHEET 2: ĐƠN HÀNG PHÁT SINH (Điều phối)</span>
+                <span>ĐƠN HÀNG PHÁT SINH (Điều phối)</span>
                 <span className={`text-[10px] px-2 py-0.2 rounded-full font-bold ${
                   activeSheet === 'SHEET_PHAT_SINH' ? 'bg-orange-700 text-white' : 'bg-orange-100 text-orange-800'
                 }`}>
@@ -493,7 +516,7 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) =>
                 </span>
               </button>
 
-              {/* Sheet 3: TỔNG HỢP TOÀN BỘ */}
+              {/* TỔNG HỢP TOÀN BỘ */}
               <button
                 onClick={() => setActiveSheet('SHEET_ALL')}
                 className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
@@ -503,18 +526,18 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) =>
                 }`}
               >
                 <TableProperties className="w-4 h-4" />
-                <span>Sheet 3: Toàn bộ đơn ({countAll})</span>
+                <span>TOÀN BỘ ĐƠN HÀNG ({countAll})</span>
               </button>
             </div>
 
-            {/* Export Current Sheet to Excel */}
+            {/* Export Current Table to Excel (.xlsx) */}
             <button
               onClick={handleExportCurrentSheet}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition cursor-pointer"
-              title="Xuất bảng số liệu sheet hiện tại ra file Excel (.csv)"
+              title="Xuất bảng số liệu ra file Excel (.xlsx) chuẩn"
             >
               <Download className="w-3.5 h-3.5" />
-              <span>Xuất Sheet ra Excel</span>
+              <span>Xuất Excel (.xlsx)</span>
             </button>
           </div>
 
@@ -739,23 +762,23 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) =>
                 {activeSheet === 'SHEET_CHINH' ? (
                   <>
                     <Shield className="w-3.5 h-3.5 text-blue-600" />
-                    <span>SHEET 1: DANH SÁCH ĐƠN HÀNG CHÍNH (Hợp đồng kế toán khởi tạo)</span>
+                    <span>DANH SÁCH ĐƠN HÀNG CHÍNH (Hợp đồng kế toán khởi tạo)</span>
                   </>
                 ) : activeSheet === 'SHEET_PHAT_SINH' ? (
                   <>
                     <Copy className="w-3.5 h-3.5 text-orange-600" />
-                    <span>SHEET 2: DANH SÁCH ĐƠN HÀNG PHÁT SINH (Đơn đổ bù, vét móng sao chép từ đơn chính)</span>
+                    <span>DANH SÁCH ĐƠN HÀNG PHÁT SINH (Đơn đổ bù, vét móng sao chép từ đơn chính)</span>
                   </>
                 ) : (
                   <>
                     <TableProperties className="w-3.5 h-3.5 text-slate-600" />
-                    <span>SHEET 3: BẢNG TỔNG HỢP TOÀN BỘ ĐƠN HÀNG</span>
+                    <span>BẢNG TỔNG HỢP TOÀN BỘ ĐƠN HÀNG</span>
                   </>
                 )}
               </div>
 
               <div className="text-[11px] font-normal">
-                Khối lượng sheet này: <strong className="font-bold">{filteredOrders.reduce((s, o) => s + o.totalVolume, 0)} m³</strong>
+                Khối lượng: <strong className="font-bold">{filteredOrders.reduce((s, o) => s + o.totalVolume, 0)} m³</strong>
                 <span className="mx-2">•</span>
                 Đã cấp: <strong className="text-orange-600 font-bold">{filteredOrders.reduce((s, o) => s + o.deliveredVolume, 0)} m³</strong>
               </div>
@@ -772,7 +795,7 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) =>
                     <th className="py-2 px-3 whitespace-nowrap">
                       {activeSheet === 'SHEET_PHAT_SINH' ? 'MÃ ĐƠN & GỐC' : 'MÃ ĐƠN HÀNG'}
                     </th>
-                    <th className="py-2 px-3">TÊN KHÁCH HÀNG</th>
+                    <th className="py-2 px-3 min-w-[280px] max-w-[420px]">TÊN KHÁCH HÀNG</th>
                     <th className="py-2 px-3">CÔNG TRÌNH & CỰ LY</th>
                     <th className="py-2 px-3">HẠNG MỤC</th>
                     <th className="py-2 px-3">MÁC / SỤT</th>
@@ -852,12 +875,12 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) =>
                             </div>
                           </td>
 
-                          {/* 3. TÊN KHÁCH HÀNG */}
-                          <td className="py-2 px-3 max-w-[200px]">
-                            <div className="font-bold text-slate-900 text-xs truncate" title={order.customerName}>
+                          {/* 3. TÊN KHÁCH HÀNG (Mở rộng diện tích hiển thị đầy đủ tên công ty) */}
+                          <td className="py-2 px-3 min-w-[280px] max-w-[420px]">
+                            <div className="font-bold text-slate-900 text-xs leading-snug break-words uppercase" title={order.customerName}>
                               {order.customerName}
                             </div>
-                            <div className="text-[10px] text-slate-400 font-mono">
+                            <div className="text-[10px] text-slate-400 font-mono mt-0.5">
                               Mã: {order.customerCode || '---'}
                             </div>
                           </td>

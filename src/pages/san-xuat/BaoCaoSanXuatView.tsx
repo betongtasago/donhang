@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useSync } from '../../sync/SyncContext';
 import { ConcreteOrder } from '../../types';
+import * as XLSX from 'xlsx';
 
 export const BaoCaoSanXuatView: React.FC = () => {
   const { orders, trips } = useSync();
@@ -57,8 +58,8 @@ export const BaoCaoSanXuatView: React.FC = () => {
   const totalProjectDA = filteredOrders.filter(o => (o.projectType || 'DA') === 'DA').reduce((sum, o) => sum + o.totalVolume, 0);
   const totalProjectDD = filteredOrders.filter(o => o.projectType === 'DD').reduce((sum, o) => sum + o.totalVolume, 0);
 
-  // Export to Excel CSV (with UTF-8 BOM so Vietnamese opens flawlessly in Excel)
-  const handleExportCSV = () => {
+  // Export to Excel (.xlsx format chuẩn)
+  const handleExportXLSX = () => {
     const headers = [
       'STT',
       'Ngày sản xuất',
@@ -77,48 +78,57 @@ export const BaoCaoSanXuatView: React.FC = () => {
       'Ghi chú trên phiếu'
     ];
 
-    const rows = filteredOrders.map((ord, idx) => {
-      const escape = (str?: string) => `"${(str || '').replace(/"/g, '""')}"`;
-      return [
-        idx + 1,
-        ord.deliveryDate,
-        escape(ord.customerCode || '---'),
-        escape(ord.customerName),
-        escape(ord.projectTitle),
-        escape(ord.categoryItem),
-        escape(ord.grade),
-        ord.totalVolume,
-        ord.deliveredVolume,
-        ord.projectType === 'DD' ? 'Dân dụng (DD)' : 'Dự án (DA)',
-        escape(ord.deliveryTime),
-        escape(ord.technicianName || 'Nguyễn Văn Nam'),
-        ord.orderType === 'PHAT_SINH' ? 'Phát sinh' : 'Đơn chính',
-        escape(ord.parentOrderCode || '---'),
-        escape(ord.notes || '')
-      ].join(',');
-    });
+    const rows = filteredOrders.map((ord, idx) => [
+      idx + 1,
+      ord.deliveryDate,
+      ord.customerCode || '---',
+      ord.customerName,
+      ord.projectTitle,
+      ord.categoryItem,
+      ord.grade,
+      ord.totalVolume,
+      ord.deliveredVolume,
+      ord.projectType === 'DD' ? 'Dân dụng (DD)' : 'Dự án (DA)',
+      ord.deliveryTime,
+      ord.technicianName || 'Nguyễn Văn Nam',
+      ord.orderType === 'PHAT_SINH' ? 'Phát sinh' : 'Đơn chính',
+      ord.parentOrderCode || '---',
+      ord.notes || ''
+    ]);
 
-    const csvContent = '\uFEFF' + [
-      `"BÁO CÁO SẢN XUẤT BÊ TÔNG TSG TNT THEO NGÀY"`,
-      `"Ngày xuất báo cáo: ${new Date().toLocaleDateString('vi-VN')} ${new Date().toLocaleTimeString('vi-VN')}"`,
-      `"Bộ lọc: ${selectedDate ? 'Ngày ' + selectedDate : 'Tất cả các ngày'} | Tổng sản lượng: ${totalVolume} m3"`,
-      '',
-      headers.join(','),
+    const sheetData = [
+      ['BÁO CÁO SẢN XUẤT BÊ TÔNG TSG TNT THEO NGÀY'],
+      [`Ngày xuất báo cáo: ${new Date().toLocaleDateString('vi-VN')} ${new Date().toLocaleTimeString('vi-VN')}`],
+      [`Bộ lọc: ${selectedDate ? 'Ngày ' + selectedDate : 'Tất cả các ngày'} | Tổng sản lượng: ${totalVolume} m3`],
+      [],
+      headers,
       ...rows,
-      '',
-      `"TỔNG CỘNG","","","","","","",${totalVolume},${totalDelivered},"${totalProjectDA} m3 (DA) / ${totalProjectDD} m3 (DD)"`
-    ].join('\r\n');
+      [],
+      ['TỔNG CỘNG', '', '', '', '', '', '', totalVolume, totalDelivered, `${totalProjectDA} m3 (DA) / ${totalProjectDD} m3 (DD)`]
+    ];
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(sheetData);
+    ws['!cols'] = [
+      { wch: 6 },
+      { wch: 14 },
+      { wch: 14 },
+      { wch: 38 },
+      { wch: 42 },
+      { wch: 20 },
+      { wch: 14 },
+      { wch: 14 },
+      { wch: 14 },
+      { wch: 16 },
+      { wch: 12 },
+      { wch: 22 },
+      { wch: 14 },
+      { wch: 16 },
+      { wch: 30 }
+    ];
+    XLSX.utils.book_append_sheet(wb, ws, 'SanXuat');
     const dateStr = selectedDate ? selectedDate.replace(/-/g, '') : 'all';
-    link.setAttribute('download', `Bao_Cao_San_Xuat_TSG_TNT_${dateStr}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    XLSX.writeFile(wb, `Bao_Cao_San_Xuat_TSG_TNT_${dateStr}.xlsx`);
   };
 
   return (
@@ -145,12 +155,12 @@ export const BaoCaoSanXuatView: React.FC = () => {
 
           <div className="flex items-center gap-2 shrink-0">
             <button
-              onClick={handleExportCSV}
+              onClick={handleExportXLSX}
               className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition cursor-pointer"
-              title="Xuất bảng tính chuẩn Excel (.csv) hỗ trợ tiếng Việt không lỗi font"
+              title="Xuất bảng tính chuẩn Excel (.xlsx) định dạng bảng tính Microsoft Excel"
             >
               <Download className="w-4 h-4" />
-              <span>Xuất ra file Excel (.csv)</span>
+              <span>Xuất ra file Excel (.xlsx)</span>
             </button>
           </div>
         </div>
