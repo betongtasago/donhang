@@ -16,7 +16,9 @@ import {
   ShieldCheck,
   TrendingUp,
   FileText,
-  AlertCircle
+  AlertCircle,
+  Edit3,
+  Copy
 } from 'lucide-react';
 
 interface ProjectDeliveryViewProps {
@@ -24,13 +26,17 @@ interface ProjectDeliveryViewProps {
   onBack: () => void;
   onOpenPrintModal: (order: ConcreteOrder, trip?: DispatchTrip) => void;
   onOpenAssignModal: () => void;
+  onOpenEditOrder?: (order: ConcreteOrder) => void;
+  onOpenCopyOrder?: (order: ConcreteOrder) => void;
 }
 
 export const ProjectDeliveryView: React.FC<ProjectDeliveryViewProps> = ({
   order,
   onBack,
   onOpenPrintModal,
-  onOpenAssignModal
+  onOpenAssignModal,
+  onOpenEditOrder,
+  onOpenCopyOrder
 }) => {
   const { trips, trucks, createTrip, updateTripStatus, updateOrder } = useSync();
 
@@ -135,7 +141,29 @@ export const ProjectDeliveryView: React.FC<ProjectDeliveryViewProps> = ({
         </div>
 
         {/* Buttons */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          {onOpenCopyOrder && (order.orderType || 'CHINH') === 'CHINH' && (
+            <button
+              onClick={() => onOpenCopyOrder(order)}
+              className="flex items-center gap-1.5 px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-xl shadow-xs transition cursor-pointer"
+              title="Tạo Bản sao sang Đơn hàng phát sinh (chỉnh sửa trực tiếp)"
+            >
+              <Copy className="w-3.5 h-3.5" />
+              <span>Bản sao phát sinh</span>
+            </button>
+          )}
+
+          {onOpenEditOrder && (
+            <button
+              onClick={() => onOpenEditOrder(order)}
+              className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-xs transition cursor-pointer"
+              title="Chỉnh sửa thông tin cấp hàng, mác, sụt, ngày giờ..."
+            >
+              <Edit3 className="w-3.5 h-3.5" />
+              <span>Sửa thông tin cấp hàng</span>
+            </button>
+          )}
+
           <button
             onClick={() => onOpenPrintModal(order, orderTrips[0] || undefined)}
             className="flex items-center gap-1.5 px-4 py-2 bg-orange-50 hover:bg-orange-100 border border-orange-200 text-xs font-bold text-orange-700 rounded-xl transition cursor-pointer shadow-xs"

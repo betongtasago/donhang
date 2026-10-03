@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Shield, AlertTriangle } from 'lucide-react';
+import { X, Save, Edit3, AlertCircle, FileText, CheckCircle2, UserCheck, Navigation, Truck } from 'lucide-react';
 import { useSync } from '../../sync/SyncContext';
 import { useAuth } from '../../auth/AuthContext';
 import { ConcreteOrder, OrderStatus, OrderType, ProjectType } from '../../types';
@@ -14,8 +14,6 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, isOpen, o
   const { updateOrder, projectDistances } = useSync();
   const { currentUser, isAdmin } = useAuth();
 
-  const isAccountant = currentUser?.role === 'ACCOUNTANT' || isAdmin;
-
   const [orderType, setOrderType] = useState<OrderType>('CHINH');
   const [projectType, setProjectType] = useState<ProjectType>('DA');
   const [customerCode, setCustomerCode] = useState('');
@@ -23,6 +21,7 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, isOpen, o
   const [projectTitle, setProjectTitle] = useState('');
   const [categoryItem, setCategoryItem] = useState('');
   const [totalVolume, setTotalVolume] = useState<number>(0);
+  const [deliveredVolume, setDeliveredVolume] = useState<number>(0);
   const [deliveryDate, setDeliveryDate] = useState('');
   const [deliveryTime, setDeliveryTime] = useState('');
   const [status, setStatus] = useState<OrderStatus>('DA_DUYET');
@@ -35,6 +34,7 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, isOpen, o
   const [technicianName, setTechnicianName] = useState('');
   const [distanceKm, setDistanceKm] = useState<number>(15);
   const [notes, setNotes] = useState('');
+  const [plantLocation, setPlantLocation] = useState('Tây Ninh');
 
   useEffect(() => {
     if (order) {
@@ -45,6 +45,7 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, isOpen, o
       setProjectTitle(order.projectTitle);
       setCategoryItem(order.categoryItem);
       setTotalVolume(order.totalVolume);
+      setDeliveredVolume(order.deliveredVolume || 0);
       setDeliveryDate(order.deliveryDate);
       setDeliveryTime(order.deliveryTime);
       setStatus(order.status);
@@ -57,6 +58,7 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, isOpen, o
       setTechnicianName(order.technicianName || 'Nguyễn Văn Nam');
       setDistanceKm(order.distanceKm || 15);
       setNotes(order.notes || '');
+      setPlantLocation(order.plantLocation || 'Tây Ninh');
     }
   }, [order]);
 
@@ -72,7 +74,8 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, isOpen, o
       customerName,
       projectTitle,
       categoryItem,
-      totalVolume,
+      totalVolume: Number(totalVolume),
+      deliveredVolume: Number(deliveredVolume),
       deliveryDate,
       deliveryTime,
       status,
@@ -84,6 +87,7 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, isOpen, o
       contactPhone,
       technicianName,
       distanceKm: Number(distanceKm) || 15,
+      plantLocation,
       notes
     });
 
@@ -91,20 +95,22 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, isOpen, o
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full border border-slate-200 overflow-hidden flex flex-col max-h-[92vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-3 sm:p-4 animate-in fade-in duration-150">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full border border-slate-300 overflow-hidden flex flex-col max-h-[94vh]">
         {/* Header */}
-        <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">
+        <div className="bg-slate-900 text-white px-5 py-3.5 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-lg bg-orange-600">
-              <Shield className="w-5 h-5 text-white" />
+            <div className="p-2 rounded-xl bg-orange-600">
+              <Edit3 className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h2 className="text-base font-bold flex items-center gap-2">
-                Chỉnh Sửa Đơn Hàng: <span className="font-mono text-orange-400">{order.code}</span>
+              <h2 className="text-sm sm:text-base font-bold flex items-center gap-2">
+                Chỉnh Sửa Thông Tin Cấp Hàng: <span className="font-mono text-orange-400">{order.code}</span>
               </h2>
-              <p className="text-xs text-slate-400">
-                {isAdmin ? 'Quyền Quản Trị Viên (Admin) - Toàn quyền chỉnh sửa' : 'Quyền Kế Toán - Chỉnh sửa thông tin đơn hàng'}
+              <p className="text-[11px] text-slate-400">
+                {order.orderType === 'PHAT_SINH'
+                  ? `Đơn hàng phát sinh ${order.parentOrderCode ? `(Gốc từ: ${order.parentOrderCode})` : ''}`
+                  : 'Đơn hàng chính (Hợp đồng kế toán)'}
               </p>
             </div>
           </div>
@@ -113,238 +119,247 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, isOpen, o
           </button>
         </div>
 
-        <form onSubmit={handleSave} className="p-6 overflow-y-auto space-y-4 text-xs">
-          {/* Order type and status */}
+        <form onSubmit={handleSave} className="p-5 overflow-y-auto space-y-4 text-xs">
+          {/* Order type & Status Banner */}
           <div className="grid grid-cols-2 gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
             <div className="space-y-1">
               <label className="font-bold text-slate-700">Phân loại đơn hàng</label>
               <select
                 value={orderType}
                 onChange={(e) => setOrderType(e.target.value as OrderType)}
-                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg font-bold"
+                className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg font-bold text-xs bg-white focus:ring-2 focus:ring-orange-500 focus:outline-none"
               >
-                <option value="CHINH">Đơn hàng chính</option>
-                <option value="PHAT_SINH">Đơn hàng phát sinh</option>
+                <option value="CHINH">ĐƠN HÀNG CHÍNH</option>
+                <option value="PHAT_SINH">ĐƠN HÀNG PHÁT SINH</option>
               </select>
             </div>
 
             <div className="space-y-1">
-              <label className="font-bold text-slate-700">Trạng thái đơn hàng</label>
+              <label className="font-bold text-slate-700">Trạng thái cấp hàng</label>
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value as OrderStatus)}
-                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg font-bold"
+                className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg font-bold text-xs bg-white text-orange-600 focus:ring-2 focus:ring-orange-500 focus:outline-none"
               >
                 <option value="CHO_DUYET">Chờ duyệt</option>
-                <option value="DA_DUYET">Đã duyệt</option>
-                <option value="DANG_CHAY">Đang chạy</option>
-                <option value="HOAN_THANH">Hoàn thành</option>
-                <option value="TAM_HOAN">Tạm hoãn</option>
+                <option value="DA_DUYET">Đã duyệt (Sẵn sàng cấp)</option>
+                <option value="DANG_CHAY">Đang chạy cấp hàng</option>
+                <option value="HOAN_THANH">Đã hoàn thành</option>
+                <option value="TAM_HOAN">Tạm hoãn cấp hàng</option>
               </select>
             </div>
           </div>
 
-          {/* Customer & Project info */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="space-y-1 sm:col-span-2">
-              <label className="font-semibold text-slate-700">Tên khách hàng / Nhà thầu</label>
-              <input
-                type="text"
-                required
-                value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg"
-              />
+          {/* Customer & Project */}
+          <div className="space-y-3 p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+            <div className="font-bold text-slate-800 text-xs border-b border-slate-200 pb-1 flex items-center justify-between">
+              <span>Thông tin Khách Hàng & Công Trình</span>
+              <span className="text-[10px] font-normal text-slate-500">Mã KH: {customerCode || '---'}</span>
             </div>
 
-            <div className="space-y-1">
-              <label className="font-semibold text-slate-700">Mã khách hàng</label>
-              <input
-                type="text"
-                value={customerCode}
-                onChange={(e) => setCustomerCode(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg uppercase"
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-[11px] font-semibold text-slate-600">Tên khách hàng *</label>
+                <input
+                  type="text"
+                  required
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg font-bold text-xs focus:ring-2 focus:ring-orange-500 focus:outline-none"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[11px] font-semibold text-slate-600">Tên công trình *</label>
+                <input
+                  type="text"
+                  required
+                  value={projectTitle}
+                  onChange={(e) => setProjectTitle(e.target.value)}
+                  className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg font-bold text-xs focus:ring-2 focus:ring-orange-500 focus:outline-none"
+                />
+              </div>
             </div>
 
-            <div className="space-y-1 sm:col-span-2">
-              <label className="font-semibold text-slate-700">Tên công trình</label>
-              <input
-                type="text"
-                required
-                value={projectTitle}
-                onChange={(e) => setProjectTitle(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg"
-              />
-            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <label className="text-[11px] font-semibold text-slate-600">Loại C.Trình</label>
+                <select
+                  value={projectType}
+                  onChange={(e) => setProjectType(e.target.value as ProjectType)}
+                  className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg font-semibold text-xs"
+                >
+                  <option value="DA">Dự án (DA)</option>
+                  <option value="DD">Dân dụng (DD)</option>
+                </select>
+              </div>
 
-            <div className="space-y-1">
-              <label className="font-semibold text-slate-700">Loại công trình</label>
-              <select
-                value={projectType}
-                onChange={(e) => setProjectType(e.target.value as ProjectType)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg font-bold"
-              >
-                <option value="DA">Dự án (DA)</option>
-                <option value="DD">Dân dụng (DD)</option>
-              </select>
-            </div>
-          </div>
+              <div className="space-y-1">
+                <label className="text-[11px] font-semibold text-slate-600">Hạng mục đổ *</label>
+                <input
+                  type="text"
+                  required
+                  value={categoryItem}
+                  onChange={(e) => setCategoryItem(e.target.value)}
+                  className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg font-bold text-xs text-orange-600"
+                />
+              </div>
 
-          {/* Volume, Component, Km & Technician */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="space-y-1">
-              <label className="font-semibold text-slate-700">KLĐH (m³)</label>
-              <input
-                type="number"
-                min="0.5"
-                step="0.5"
-                required
-                value={totalVolume}
-                onChange={(e) => setTotalVolume(parseFloat(e.target.value) || 0)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg font-bold text-orange-600"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label className="font-semibold text-slate-700">Cự ly (km)</label>
-              <input
-                type="number"
-                min="1"
-                step="0.5"
-                required
-                value={distanceKm}
-                onChange={(e) => setDistanceKm(parseFloat(e.target.value) || 0)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg font-semibold"
-              />
-            </div>
-
-            <div className="space-y-1 col-span-2">
-              <label className="font-semibold text-slate-700">Hạng mục</label>
-              <input
-                type="text"
-                required
-                value={categoryItem}
-                onChange={(e) => setCategoryItem(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg"
-              />
+              <div className="space-y-1">
+                <label className="text-[11px] font-semibold text-slate-600">Cự ly vận chuyển (km)</label>
+                <input
+                  type="number"
+                  step="0.5"
+                  value={distanceKm}
+                  onChange={(e) => setDistanceKm(Number(e.target.value))}
+                  className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg font-mono font-bold text-xs"
+                />
+              </div>
             </div>
           </div>
 
-          {/* Technical Specs */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="space-y-1">
-              <label className="font-semibold text-slate-700">Mã mác bê tông</label>
-              <input
-                type="text"
-                required
-                value={grade}
-                onChange={(e) => setGrade(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg font-semibold"
-              />
+          {/* Technical Specs & Volume */}
+          <div className="space-y-3 p-3.5 bg-amber-50/60 rounded-xl border border-amber-200">
+            <div className="font-bold text-amber-900 text-xs border-b border-amber-200 pb-1">
+              Thông số Bê Tông & Khối Lượng Cấp
             </div>
 
-            <div className="space-y-1">
-              <label className="font-semibold text-slate-700">Độ sụt</label>
-              <input
-                type="text"
-                required
-                value={slump}
-                onChange={(e) => setSlump(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg"
-              />
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="space-y-1">
+                <label className="text-[11px] font-semibold text-slate-700">Mác bê tông *</label>
+                <input
+                  type="text"
+                  required
+                  value={grade}
+                  onChange={(e) => setGrade(e.target.value)}
+                  className="w-full px-2.5 py-1.5 bg-white border border-amber-300 rounded-lg font-mono font-black text-xs text-orange-600"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[11px] font-semibold text-slate-700">Độ sụt *</label>
+                <input
+                  type="text"
+                  required
+                  value={slump}
+                  onChange={(e) => setSlump(e.target.value)}
+                  className="w-full px-2.5 py-1.5 bg-white border border-amber-300 rounded-lg font-bold text-xs"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[11px] font-semibold text-slate-700">Phụ gia</label>
+                <input
+                  type="text"
+                  value={additive}
+                  onChange={(e) => setAdditive(e.target.value)}
+                  className="w-full px-2.5 py-1.5 bg-white border border-amber-300 rounded-lg text-xs"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[11px] font-semibold text-slate-700">Loại bơm</label>
+                <input
+                  type="text"
+                  value={pumpType}
+                  onChange={(e) => setPumpType(e.target.value)}
+                  className="w-full px-2.5 py-1.5 bg-white border border-amber-300 rounded-lg text-xs"
+                />
+              </div>
             </div>
 
-            <div className="space-y-1">
-              <label className="font-semibold text-slate-700">Phụ gia</label>
-              <input
-                type="text"
-                value={additive}
-                onChange={(e) => setAdditive(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg"
-              />
-            </div>
+            <div className="grid grid-cols-2 gap-3 pt-1">
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-slate-800">Tổng khối lượng đặt hàng (m³) *</label>
+                <input
+                  type="number"
+                  step="0.5"
+                  required
+                  min="0.5"
+                  value={totalVolume}
+                  onChange={(e) => setTotalVolume(Number(e.target.value))}
+                  className="w-full px-2.5 py-1.5 bg-white border border-amber-400 rounded-lg font-black text-xs text-orange-600 text-center"
+                />
+              </div>
 
-            <div className="space-y-1">
-              <label className="font-semibold text-slate-700">Bơm</label>
-              <input
-                type="text"
-                value={pumpType}
-                onChange={(e) => setPumpType(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg"
-              />
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-slate-800">Khối lượng đã cấp (m³)</label>
+                <input
+                  type="number"
+                  step="0.5"
+                  min="0"
+                  value={deliveredVolume}
+                  onChange={(e) => setDeliveredVolume(Number(e.target.value))}
+                  className="w-full px-2.5 py-1.5 bg-white border border-amber-400 rounded-lg font-black text-xs text-blue-700 text-center"
+                />
+              </div>
             </div>
           </div>
 
-          {/* Date, Time & Technician */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {/* Delivery Schedule & Personnel */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
             <div className="space-y-1">
-              <label className="font-semibold text-slate-700">Ngày giao</label>
+              <label className="text-[11px] font-semibold text-slate-600">Ngày giao bê tông *</label>
               <input
                 type="date"
                 required
                 value={deliveryDate}
                 onChange={(e) => setDeliveryDate(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg font-mono font-bold text-xs"
               />
             </div>
 
             <div className="space-y-1">
-              <label className="font-semibold text-slate-700">Giờ giao</label>
+              <label className="text-[11px] font-semibold text-slate-600">Giờ giao dự kiến *</label>
               <input
                 type="time"
                 required
                 value={deliveryTime}
                 onChange={(e) => setDeliveryTime(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg font-mono font-bold text-xs"
               />
             </div>
 
             <div className="space-y-1">
-              <label className="font-semibold text-slate-700">Kỹ thuật phụ trách (Giao nhận)</label>
+              <label className="text-[11px] font-semibold text-slate-600">Kỹ thuật giao nhận</label>
               <input
                 type="text"
-                required
                 value={technicianName}
                 onChange={(e) => setTechnicianName(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg font-semibold"
+                placeholder="Nguyễn Văn Nam"
+                className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg font-bold text-xs"
               />
             </div>
           </div>
 
           {/* Notes */}
           <div className="space-y-1">
-            <label className="font-semibold text-slate-700">Ghi chú trên phiếu</label>
+            <label className="text-[11px] font-semibold text-slate-700">Ghi chú điều phối cấp hàng</label>
             <textarea
               rows={2}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+              placeholder="Ghi chú vị trí đổ, đường vào công trình, sụt mác đặc thù..."
+              className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-orange-500 focus:outline-none"
             />
           </div>
 
-          {/* Footer */}
-          <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
-            <span className="text-[11px] text-slate-400">
-              Đã cấp: <strong>{order.deliveredVolume} / {order.totalVolume} m³</strong>
-            </span>
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl"
-              >
-                Hủy
-              </button>
-              <button
-                type="submit"
-                className="flex items-center gap-1.5 px-5 py-2 bg-orange-600 hover:bg-orange-700 text-white font-bold rounded-xl shadow-xs transition"
-              >
-                <Save className="w-3.5 h-3.5" />
-                <span>Lưu thay đổi</span>
-              </button>
-            </div>
+          {/* Action buttons */}
+          <div className="pt-3 border-t border-slate-200 flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl font-bold transition cursor-pointer"
+            >
+              Hủy
+            </button>
+            <button
+              type="submit"
+              className="px-5 py-2 bg-orange-600 hover:bg-orange-700 text-white font-bold rounded-xl shadow-md flex items-center gap-1.5 transition cursor-pointer active:scale-95"
+            >
+              <Save className="w-4 h-4" />
+              <span>Lưu Thông Tin Cấp Hàng</span>
+            </button>
           </div>
         </form>
       </div>

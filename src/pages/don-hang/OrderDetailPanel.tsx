@@ -1,15 +1,23 @@
 import React from 'react';
 import { ConcreteOrder } from '../../types';
-import { FileText, CheckCircle2, Clock, Phone, MapPin, Gauge, Droplets, ShieldCheck, ChevronRight } from 'lucide-react';
+import { FileText, CheckCircle2, Clock, Phone, MapPin, Gauge, Droplets, ShieldCheck, ChevronRight, Edit3, Copy, Printer } from 'lucide-react';
 import { useSync } from '../../sync/SyncContext';
 
 interface OrderDetailPanelProps {
   order: ConcreteOrder | null;
   onOpenDispatchAssign: () => void;
   onPrintOrder?: (order: ConcreteOrder) => void;
+  onOpenEditOrder?: (order: ConcreteOrder) => void;
+  onOpenCopyOrder?: (order: ConcreteOrder) => void;
 }
 
-export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ order, onOpenDispatchAssign, onPrintOrder }) => {
+export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({
+  order,
+  onOpenDispatchAssign,
+  onPrintOrder,
+  onOpenEditOrder,
+  onOpenCopyOrder
+}) => {
   const { updateOrder } = useSync();
 
   if (!order) {
@@ -22,34 +30,66 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ order, onOpe
 
   const percent = Math.min(100, Math.round((order.deliveredVolume / order.totalVolume) * 100));
   const remaining = Math.max(0, order.totalVolume - order.deliveredVolume);
+  const isPrimary = (order.orderType || 'CHINH') === 'CHINH';
 
   return (
     <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs space-y-4">
-      {/* Title */}
-      <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+      {/* Title & Actions */}
+      <div className="flex flex-wrap items-center justify-between border-b border-slate-100 pb-3 gap-2">
         <div className="flex items-center gap-2">
           <FileText className="w-4 h-4 text-orange-600" />
           <span className="text-xs font-bold text-orange-600 uppercase tracking-wider">
             CHI TIẾT ĐƠN HÀNG
           </span>
           <span className="text-xs font-bold text-slate-900 ml-1">[{order.code}]</span>
+          {order.orderType === 'PHAT_SINH' && (
+            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+              Đơn phát sinh {order.parentOrderCode ? `(Gốc: ${order.parentOrderCode})` : ''}
+            </span>
+          )}
         </div>
-        <div className="flex items-center gap-2">
+
+        <div className="flex flex-wrap items-center gap-1.5">
+          {/* NÚT BẢN SAO CHO ĐƠN HÀNG CHÍNH */}
+          {isPrimary && onOpenCopyOrder && (
+            <button
+              onClick={() => onOpenCopyOrder(order)}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs shadow-xs transition cursor-pointer"
+              title="Tạo Bản sao từ đơn chính này sang Đơn hàng phát sinh (có thể chỉnh sửa trực tiếp)"
+            >
+              <Copy className="w-3.5 h-3.5" />
+              <span>Bản sao</span>
+            </button>
+          )}
+
+          {/* NÚT CHỈNH SỬA THÔNG TIN CẤP HÀNG */}
+          {onOpenEditOrder && (
+            <button
+              onClick={() => onOpenEditOrder(order)}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition cursor-pointer"
+              title="Chỉnh sửa thông tin cấp hàng, mác, sụt, ngày giờ, kỹ thuật..."
+            >
+              <Edit3 className="w-3.5 h-3.5" />
+              <span>Sửa thông tin cấp hàng</span>
+            </button>
+          )}
+
+          {/* In phiếu */}
           {onPrintOrder && (
             <button
               onClick={() => onPrintOrder(order)}
-              className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-orange-50 hover:bg-orange-100 text-orange-700 font-bold text-xs border border-orange-200 transition"
-              title="In phiếu giao nhận bê tông giống Hình 2"
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs border border-slate-300 transition cursor-pointer"
+              title="In phiếu giao nhận bê tông"
             >
-              <FileText className="w-3.5 h-3.5" />
-              In phiếu giao nhận
+              <Printer className="w-3.5 h-3.5 text-orange-600" />
+              <span className="hidden sm:inline">In phiếu</span>
             </button>
           )}
 
           <select
             value={order.status}
             onChange={(e) => updateOrder(order.id, { status: e.target.value as any })}
-            className="text-xs font-semibold px-2.5 py-1 rounded-lg border border-slate-300 bg-slate-50 text-slate-700 focus:outline-none focus:ring-1 focus:ring-orange-500 cursor-pointer"
+            className="text-xs font-semibold px-2 py-1 rounded-lg border border-slate-300 bg-slate-50 text-slate-700 focus:outline-none focus:ring-1 focus:ring-orange-500 cursor-pointer"
           >
             <option value="CHO_DUYET">Chờ duyệt</option>
             <option value="DA_DUYET">Đã duyệt</option>

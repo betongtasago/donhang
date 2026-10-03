@@ -9,13 +9,15 @@ interface CreateOrderModalProps {
   onClose: () => void;
   defaultOrderType?: OrderType;
   defaultCopyFromOrder?: ConcreteOrder | null;
+  onCreated?: (newOrder: ConcreteOrder) => void;
 }
 
 export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
   isOpen,
   onClose,
   defaultOrderType = 'CHINH',
-  defaultCopyFromOrder = null
+  defaultCopyFromOrder = null,
+  onCreated
 }) => {
   const { createOrder, orders, selectedPlant, projectDistances } = useSync();
   const { currentUser, isAdmin } = useAuth();
@@ -125,7 +127,7 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
 
     const parentOrder = selectedParentId ? orders.find(o => o.id === selectedParentId) : undefined;
 
-    createOrder({
+    const newOrder = createOrder({
       orderType,
       parentOrderId: orderType === 'PHAT_SINH' ? selectedParentId || undefined : undefined,
       parentOrderCode: orderType === 'PHAT_SINH' ? parentOrder?.code || undefined : undefined,
@@ -151,6 +153,10 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
       createdByRole: currentUser?.role || 'DISPATCHER',
       createdByName: currentUser?.fullName || 'Người dùng hệ thống'
     });
+
+    if (onCreated) {
+      onCreated(newOrder);
+    }
 
     onClose();
   };
@@ -252,6 +258,15 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                   </option>
                 ))}
               </select>
+
+              {selectedParentId && (
+                <div className="p-2.5 bg-amber-100/70 border border-amber-300 rounded-lg text-[11px] text-amber-950 flex items-center gap-2">
+                  <Copy className="w-3.5 h-3.5 text-orange-600 shrink-0" />
+                  <span>
+                    <strong>Bản sao đang liên kết đơn gốc:</strong> Đã sao chép khách hàng, công trình, mác bê tông. <strong>Bạn có thể chỉnh sửa trực tiếp khối lượng, ngày giờ giao và hạng mục phát sinh ở các ô bên dưới.</strong>
+                  </span>
+                </div>
+              )}
             </div>
           )}
 

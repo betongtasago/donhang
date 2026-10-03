@@ -372,6 +372,8 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) =>
           onBack={() => setViewMode('table')}
           onOpenPrintModal={(ord, trp) => onOpenPrintModal && onOpenPrintModal(ord, trp)}
           onOpenAssignModal={() => setIsAssignOpen(true)}
+          onOpenEditOrder={handleOpenEditOrder}
+          onOpenCopyOrder={handleOpenCreateIncurred}
         />
       ) : (
         <>
@@ -933,36 +935,38 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) =>
 
                           {/* 11. THAO TÁC NHANH */}
                           <td className="py-2 px-3 text-center whitespace-nowrap">
-                            <div className="flex items-center justify-center gap-1" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center justify-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                              {/* NÚT BẢN SAO: Copy từ Đơn hàng chính sang Đơn hàng phát sinh */}
+                              {((order.orderType || 'CHINH') === 'CHINH') && (
+                                <button
+                                  onClick={() => handleOpenCreateIncurred(order)}
+                                  className="px-2 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-bold text-[10px] transition cursor-pointer flex items-center gap-1 shadow-xs active:scale-95"
+                                  title="Tạo Bản sao từ đơn chính này sang Đơn hàng phát sinh (chỉnh sửa trực tiếp)"
+                                >
+                                  <Copy className="w-3 h-3" />
+                                  <span>Bản sao</span>
+                                </button>
+                              )}
+
+                              {/* NÚT SỬA THÔNG TIN CẤP HÀNG: Cho phép chỉnh sửa thông tin cấp hàng */}
+                              <button
+                                onClick={() => handleOpenEditOrder(order)}
+                                className="px-2 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-[10px] transition cursor-pointer flex items-center gap-1 shadow-xs active:scale-95"
+                                title="Chỉnh sửa thông tin cấp hàng (Mác, sụt, ngày giờ, KL, kỹ thuật...)"
+                              >
+                                <Edit2 className="w-3 h-3" />
+                                <span>Sửa cấp hàng</span>
+                              </button>
+
                               {/* Cấp hàng */}
                               <button
                                 onClick={() => handleOpenProjectDelivery(order)}
-                                className="px-2 py-0.5 rounded bg-orange-500 hover:bg-orange-600 text-white font-bold text-[10px] transition cursor-pointer flex items-center gap-0.5"
+                                className="px-2 py-1 rounded-lg bg-orange-500 hover:bg-orange-600 text-white font-bold text-[10px] transition cursor-pointer flex items-center gap-0.5 shadow-xs"
                                 title="Chuyển vào trang cấp hàng công trình này"
                               >
                                 <span>Cấp hàng</span>
                                 <ChevronRight className="w-3 h-3" />
                               </button>
-
-                              {/* Copy phát sinh */}
-                              <button
-                                onClick={() => handleOpenCreateIncurred(order)}
-                                className="p-1 rounded hover:bg-amber-100 text-amber-700 transition cursor-pointer"
-                                title="Sao chép từ đơn này để tạo Đơn hàng phát sinh"
-                              >
-                                <Copy className="w-3.5 h-3.5" />
-                              </button>
-
-                              {/* Sửa đơn (Admin/Kế toán) */}
-                              {isAccountant && (
-                                <button
-                                  onClick={() => handleOpenEditOrder(order)}
-                                  className="p-1 rounded hover:bg-blue-100 text-blue-700 transition cursor-pointer"
-                                  title="Chỉnh sửa đơn hàng (Quyền Admin / Kế toán)"
-                                >
-                                  <Edit2 className="w-3.5 h-3.5" />
-                                </button>
-                              )}
 
                               {/* In phiếu (Kết nối máy in thật) */}
                               {onOpenPrintModal && (
@@ -1053,6 +1057,8 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) =>
                       order={selectedOrder}
                       onOpenDispatchAssign={() => setIsAssignOpen(true)}
                       onPrintOrder={(ord) => onOpenPrintModal && onOpenPrintModal(ord)}
+                      onOpenEditOrder={handleOpenEditOrder}
+                      onOpenCopyOrder={handleOpenCreateIncurred}
                     />
 
                     <DispatchPanel
@@ -1074,6 +1080,12 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) =>
         onClose={() => setIsCreateOpen(false)}
         defaultOrderType={createOrderType}
         defaultCopyFromOrder={copyFromOrder}
+        onCreated={(newOrder) => {
+          if (newOrder.orderType === 'PHAT_SINH') {
+            setActiveSheet('SHEET_PHAT_SINH');
+            setSelectedOrderId(newOrder.id);
+          }
+        }}
       />
 
       <EditOrderModal
