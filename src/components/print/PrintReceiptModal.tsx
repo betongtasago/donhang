@@ -9,14 +9,18 @@ import {
   UserCheck,
   Save,
   CheckCircle2,
-  Sliders,
   PenTool,
   Upload,
   Trash2,
   Sparkles,
-  Info
+  Camera,
+  Download,
+  Copy,
+  Loader2,
+  Share2
 } from 'lucide-react';
 import { useSync } from '../../sync/SyncContext';
+import { toPng, toBlob } from 'html-to-image';
 
 interface PrintReceiptModalProps {
   isOpen: boolean;
@@ -49,6 +53,10 @@ export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({
     return localStorage.getItem('tsg_operator_signature') || null;
   });
   const [isDrawSignatureModalOpen, setIsDrawSignatureModalOpen] = useState(false);
+
+  // CHỤP HÌNH PHIẾU NHANH
+  const [isCapturing, setIsCapturing] = useState(false);
+  const [captureNotice, setCaptureNotice] = useState<string>('');
 
   // Canvas ref for drawing
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -131,7 +139,6 @@ export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({
 
   // Set sample signature
   const handleSetSampleSignature = () => {
-    // Generate a beautiful SVG signature data URL
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="220" height="90" viewBox="0 0 220 90">
       <path d="M 20 60 Q 40 20, 60 55 T 90 40 Q 120 15, 140 65 T 180 30 Q 200 45, 170 75" fill="none" stroke="#003366" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
       <path d="M 45 48 C 65 42, 95 44, 150 46" fill="none" stroke="#003366" stroke-width="2.2" stroke-linecap="round"/>
@@ -204,6 +211,62 @@ export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({
     setIsDrawSignatureModalOpen(false);
   };
 
+  // CHỤP HÌNH PHIẾU NHANH (Fast Ticket Screenshot)
+  const handleQuickCapture = async () => {
+    const receiptEl = document.getElementById('print-receipt-container');
+    if (!receiptEl) {
+      alert('Không tìm thấy khung phiếu để chụp');
+      return;
+    }
+
+    setIsCapturing(true);
+    setCaptureNotice('Đang chụp ảnh phiếu giao nhận với độ phân giải cao...');
+
+    try {
+      // 1. Chụp ảnh chất lượng 2x nét căng
+      const dataUrl = await toPng(receiptEl, {
+        quality: 1,
+        pixelRatio: 2.5,
+        backgroundColor: '#ffffff'
+      });
+
+      // 2. Tự động tải file ảnh PNG về máy
+      const fileName = `Phieu-Giao-Nhan-${trip?.ticketNumber || sealNumber || order.code}.png`;
+      const link = document.createElement('a');
+      link.download = fileName;
+      link.href = dataUrl;
+      link.click();
+
+      // 3. Tự động sao chép vào Clipboard (để dán thẳng vào Zalo/Viber bằng Ctrl+V)
+      try {
+        const blob = await toBlob(receiptEl, {
+          quality: 1,
+          pixelRatio: 2.5,
+          backgroundColor: '#ffffff'
+        });
+
+        if (blob && navigator.clipboard && (window as any).ClipboardItem) {
+          await navigator.clipboard.write([
+            new (window as any).ClipboardItem({ 'image/png': blob })
+          ]);
+          setCaptureNotice('✅ Đã chụp ảnh & tải về máy! ĐÃ SAO CHÉP VÀO BỘ NHỚ TẠM (Nhấn Ctrl+V để gửi ngay qua Zalo/Viber).');
+        } else {
+          setCaptureNotice(`✅ Đã chụp ảnh phiếu và tải về máy: ${fileName}`);
+        }
+      } catch {
+        setCaptureNotice(`✅ Đã chụp ảnh phiếu và tải về máy: ${fileName}`);
+      }
+    } catch (err) {
+      console.error('Lỗi chụp hình phiếu:', err);
+      setCaptureNotice('❌ Lỗi khi chụp ảnh phiếu giao nhận. Vui lòng thử lại.');
+    } finally {
+      setIsCapturing(false);
+      setTimeout(() => {
+        setCaptureNotice('');
+      }, 7000);
+    }
+  };
+
   // Real cumulative computation (Cộng dồn thiệt!)
   const realAccumulated = Number((customPreviousVolume + customCurrentVolume).toFixed(2));
 
@@ -252,18 +315,39 @@ export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({
                 </span>
               </div>
               <p className="text-[11px] text-slate-400">
-                Đơn hàng: <strong className="text-white">{order.code}</strong> • Số phiếu: <strong className="text-orange-400">{trip?.ticketNumber || '0160131'}</strong>
+                Đơn hàng: <strong className="text-white">{order.code}</strong> • Số phiếu: <strong className="text-orange-400">{trip?.ticketNumber || sealNumber}</strong>
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
+            {/* NÚT CHỤP HÌNH PHIẾU NHANH */}
+            <button
+              onClick={handleQuickCapture}
+              disabled={isCapturing}
+              className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-md cursor-pointer transition active:scale-95"
+              title="Chụp hình phiếu sắc nét, tự động tải file ảnh PNG và sao chép vào bộ nhớ tạm (Ctrl+V gửi qua Zalo/Viber)"
+            >
+              {isCapturing ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Đang chụp...</span>
+                </>
+              ) : (
+                <>
+                  <Camera className="w-4 h-4 text-cyan-200" />
+                  <span>Chụp hình phiếu nhanh</span>
+                </>
+              )}
+            </button>
+
+            {/* NÚT IN RA MÁY IN THẬT */}
             <button
               onClick={handlePrint}
               className="px-4 py-2 bg-[#e25822] hover:bg-[#d04d1c] text-white font-black rounded-xl text-xs flex items-center gap-1.5 shadow-md cursor-pointer transition active:scale-95"
             >
               <Printer className="w-4 h-4" />
-              <span>In phiếu ngay (Ctrl+P)</span>
+              <span>In phiếu (Ctrl+P)</span>
             </button>
 
             <button
@@ -275,9 +359,22 @@ export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({
           </div>
         </div>
 
+        {/* Thông báo chụp hình thành công */}
+        {captureNotice && (
+          <div className="bg-emerald-600 text-white px-5 py-2 text-xs font-bold flex items-center justify-between shadow-inner print:hidden animate-in fade-in">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
+              <span>{captureNotice}</span>
+            </div>
+            <button onClick={() => setCaptureNotice('')} className="text-white/80 hover:text-white">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
         {/* TOOLBAR: Chèn chữ ký Người điều hành & Chỉnh sửa thông tin */}
         <div className="bg-white border-b border-slate-200 px-5 py-2.5 space-y-2 text-xs print:hidden">
-          {/* Row 1: Chữ ký Người điều hành */}
+          {/* Row 1: Chữ ký Người điều hành & Chụp hình */}
           <div className="flex flex-wrap items-center justify-between gap-3 bg-blue-50/80 p-2.5 rounded-xl border border-blue-200">
             <div className="flex items-center gap-2">
               <PenTool className="w-4 h-4 text-blue-700 shrink-0" />
@@ -459,11 +556,23 @@ export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({
 
         {/* Modal Footer */}
         <div className="bg-white border-t border-slate-200 px-5 py-2.5 flex items-center justify-between text-xs print:hidden">
-          <span className="text-slate-500 text-[11px]">
-            Phiếu in làm đúng 100% theo mẫu TSGTNT • Giữ nguyên bố cục và kích thước chuẩn
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-slate-500 text-[11px]">
+              Phiếu in chuẩn 100% TSGTNT • Có nút chụp hình nhanh để gửi Zalo cho lái xe và khách hàng
+            </span>
+          </div>
 
           <div className="flex items-center gap-2">
+            {/* Nút chụp hình ở footer */}
+            <button
+              onClick={handleQuickCapture}
+              disabled={isCapturing}
+              className="px-4 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-800 font-bold border border-blue-300 flex items-center gap-1.5 transition cursor-pointer"
+            >
+              <Camera className="w-4 h-4 text-blue-600" />
+              <span>Chụp ảnh phiếu</span>
+            </button>
+
             <button
               onClick={onClose}
               className="px-4 py-1.5 rounded-xl border border-slate-300 font-semibold text-slate-700 hover:bg-slate-100 transition cursor-pointer"

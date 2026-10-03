@@ -1,5 +1,6 @@
 import React from 'react';
 import { ConcreteOrder, DispatchTrip } from '../../types';
+import { TsgLogo } from '../common/TsgLogo';
 
 export type PaperSizeType = 'A4' | 'A5' | 'CONTINUOUS_210_279';
 
@@ -74,43 +75,8 @@ export const ConcreteDeliveryReceipt: React.FC<ConcreteDeliveryReceiptProps> = (
           <tr>
             {/* Col 1: TSG-TNT logo */}
             <td className="w-[24%] border border-black p-2 text-center align-middle">
-              <div className="flex flex-col items-center justify-center">
-                <div className="w-16 h-10 flex items-center justify-center mb-0.5">
-                  <svg viewBox="0 0 100 75" className="w-14 h-9">
-                    {/* Blue dynamic swooshes */}
-                    <path
-                      d="M 12 38 C 15 18, 48 10, 75 18 C 88 22, 92 34, 82 45 C 72 55, 42 60, 22 52"
-                      fill="none"
-                      stroke="#0284c7"
-                      strokeWidth="6"
-                      strokeLinecap="round"
-                    />
-                    <path
-                      d="M 22 42 C 30 26, 60 20, 78 28 C 88 34, 82 48, 68 52 C 48 56, 30 48, 25 42"
-                      fill="none"
-                      stroke="#38bdf8"
-                      strokeWidth="3.5"
-                      strokeLinecap="round"
-                    />
-                    {/* Red flame/crescent dynamic wing */}
-                    <path
-                      d="M 32 46 C 45 32, 70 28, 86 36 C 94 40, 88 52, 74 55 C 56 60, 38 52, 32 46"
-                      fill="none"
-                      stroke="#dc2626"
-                      strokeWidth="4"
-                      strokeLinecap="round"
-                    />
-                    {/* Rocket/plane icon center */}
-                    <circle cx="50" cy="38" r="9" fill="#0284c7" />
-                    <path d="M 44 38 L 56 38 M 50 32 L 50 44" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" />
-                  </svg>
-                </div>
-                <div className="text-red-600 font-extrabold text-[15px] tracking-wider leading-none">
-                  TSG-TNT
-                </div>
-                <div className="text-[10px] text-red-500 italic mt-0.5 tracking-tight">
-                  Cất cánh vươn cao
-                </div>
+              <div className="flex flex-col items-center justify-center py-1">
+                <TsgLogo className="w-full max-w-[135px]" />
               </div>
             </td>
 
