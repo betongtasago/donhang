@@ -165,6 +165,37 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [data]);
 
+  // Load real data from backend Cloud SQL database on mount
+  useEffect(() => {
+    async function loadBackendData() {
+      try {
+        const [ordersRes, tripsRes, trucksRes] = await Promise.all([
+          fetch('/api/orders'),
+          fetch('/api/trips'),
+          fetch('/api/trucks')
+        ]);
+        if (ordersRes.ok && tripsRes.ok && trucksRes.ok) {
+          const dbOrders = await ordersRes.json();
+          const dbTrips = await tripsRes.json();
+          const dbTrucks = await trucksRes.json();
+
+          if (Array.isArray(dbOrders) && dbOrders.length > 0) {
+            setData(prev => ({
+              ...prev,
+              orders: dbOrders,
+              trips: Array.isArray(dbTrips) && dbTrips.length > 0 ? dbTrips : prev.trips,
+              trucks: Array.isArray(dbTrucks) && dbTrucks.length > 0 ? dbTrucks : prev.trucks
+            }));
+            addSyncLog(`Đã kết nối và nạp ${dbOrders.length} đơn hàng từ cơ sở dữ liệu Cloud SQL PostgreSQL`, 'success');
+          }
+        }
+      } catch (err) {
+        console.warn('Backend load warning, running on cached data:', err);
+      }
+    }
+    loadBackendData();
+  }, []);
+
   // Set up BroadcastChannel for real-time cross-tab sync
   useEffect(() => {
     let channel: BroadcastChannel | null = null;
@@ -308,6 +339,14 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
       packetsSent: prev.packetsSent + 1
     }));
     addSyncLog(`Tạo mới đơn hàng ${newCode} cho ${orderInput.customerName} (${orderInput.totalVolume} m³)`, 'success');
+
+    // Sync to backend Cloud SQL
+    fetch('/api/orders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(orderInput)
+    }).catch(err => console.warn('Could not persist order to backend:', err));
+
     return newOrder;
   };
 
@@ -318,6 +357,13 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
     broadcastChange('STATE_UPDATE', nextData);
     setSecondsSinceSync(0);
     addSyncLog(`Cập nhật đơn hàng ID ${id}`, 'info');
+
+    // Sync to backend Cloud SQL
+    fetch(`/api/orders/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates)
+    }).catch(err => console.warn('Could not persist update to backend:', err));
   };
 
   const deleteOrder = (id: string) => {
@@ -328,6 +374,11 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
     broadcastChange('STATE_UPDATE', nextData);
     setSecondsSinceSync(0);
     addSyncLog(`Đã xóa đơn hàng ${target?.code || id}`, 'warning');
+
+    // Sync to backend Cloud SQL
+    fetch(`/api/orders/${id}`, {
+      method: 'DELETE'
+    }).catch(err => console.warn('Could not delete from backend:', err));
   };
 
   const createTrip = (tripInput: Omit<DispatchTrip, 'id' | 'ticketNumber'>): DispatchTrip => {
@@ -385,6 +436,14 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
     broadcastChange('STATE_UPDATE', nextData);
     setSecondsSinceSync(0);
     addSyncLog(`Xuất xe ${tripInput.truckPlate} (${tripInput.volume}m³). Lũy kế cộng dồn: ${newAccumulated}m³ / ${targetOrder?.totalVolume || 0}m³ cho đơn ${tripInput.orderCode}`, 'success');
+
+    // Sync trip to backend Cloud SQL
+    fetch('/api/trips', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(tripInput)
+    }).catch(err => console.warn('Could not persist trip to backend:', err));
+
     return newTrip;
   };
 
@@ -412,6 +471,13 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
     broadcastChange('STATE_UPDATE', nextData);
     setSecondsSinceSync(0);
     addSyncLog(`Chuyến ${targetTrip?.ticketNumber || tripId} chuyển trạng thái: ${status}`, 'info');
+
+    // Sync trip status update to backend Cloud SQL
+    fetch(`/api/trips/${tripId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status })
+    }).catch(err => console.warn('Could not persist trip status to backend:', err));
   };
 
   const updateTruckStatus = (truckId: string, status: TruckStatus, orderCode?: string) => {

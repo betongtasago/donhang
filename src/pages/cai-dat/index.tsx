@@ -16,6 +16,7 @@ import {
 import { useSync } from '../../sync/SyncContext';
 import { useAuth } from '../../auth/AuthContext';
 import { Users, UserPlus } from 'lucide-react';
+import { SupabaseSettingsCard } from './SupabaseSettingsCard';
 
 interface CaiDatPageProps {
   onOpenSyncModal: () => void;
@@ -152,6 +153,9 @@ export const CaiDatPage: React.FC<CaiDatPageProps> = ({ onOpenSyncModal, onOpenM
           </div>
         </div>
       </div>
+
+      {/* Supabase Realtime Storage Integration Section */}
+      <SupabaseSettingsCard />
 
       {/* Database & Backup Section */}
       <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs space-y-4">

@@ -110,10 +110,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [currentUser]);
 
   const login = async (username: string, password: string): Promise<{ success: boolean; error?: string }> => {
-    // Artificial small delay for realistic UX
-    await new Promise(r => setTimeout(r, 300));
-
     const cleanUser = username.trim().toLowerCase();
+
+    try {
+      // Try backend database API first
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: cleanUser, password })
+      });
+      const data = await res.json();
+      if (res.ok && data.success && data.user) {
+        setCurrentUser(data.user);
+        return { success: true };
+      } else if (!res.ok) {
+        return { success: false, error: data.error || 'Tên đăng nhập hoặc mật khẩu không đúng.' };
+      }
+    } catch (err) {
+      console.warn('Backend login fallback to local credentials:', err);
+    }
+
+    // Local fallback
     const account = storedAccounts.find(
       u => u.username.toLowerCase() === cleanUser && u.passwordHash === password
     );
@@ -180,6 +197,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     setStoredAccounts(prev => [newAccount, ...prev]);
+
+    // Asynchronously sync to backend Cloud SQL database
+    fetch('/api/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }).catch(err => console.warn('Could not sync user to backend database:', err));
+
     return { success: true };
   };
 
