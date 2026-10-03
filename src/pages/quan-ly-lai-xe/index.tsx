@@ -7,7 +7,19 @@ import { ProjectDistancesCard } from './ProjectDistancesCard';
 
 export const QuanLyLaiXePage: React.FC = () => {
   const { trucks, updateTruckStatus, trips } = useSync();
-  const [activeTab, setActiveTab] = useState<'chuyen_km' | 'cong_trinh_km' | 'doi_xe'>('chuyen_km');
+  const [activeTab, setActiveTab] = useState<'chuyen_km' | 'cong_trinh_km' | 'doi_xe'>(() => {
+    try {
+      const saved = localStorage.getItem('tsg_lai_xe_tab');
+      if (saved === 'chuyen_km' || saved === 'cong_trinh_km' || saved === 'doi_xe') return saved;
+    } catch {}
+    return 'chuyen_km';
+  });
+
+  React.useEffect(() => {
+    try {
+      localStorage.setItem('tsg_lai_xe_tab', activeTab);
+    } catch {}
+  }, [activeTab]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('ALL');
 

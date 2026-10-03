@@ -59,7 +59,22 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) =>
   const isAccountant = currentUser?.role === 'ACCOUNTANT' || isAdmin;
 
   // 1. SEPARATE SHEET TABS: Đơn hàng chính & phát sinh phân ra làm sheet riêng biệt
-  const [activeSheet, setActiveSheet] = useState<ActiveSheetType>('SHEET_CHINH');
+  const [activeSheet, setActiveSheet] = useState<ActiveSheetType>(() => {
+    try {
+      const saved = localStorage.getItem('tsg_don_hang_sheet');
+      if (saved === 'SHEET_CHINH' || saved === 'SHEET_PHAT_SINH' || saved === 'SHEET_ALL') {
+        return saved;
+      }
+    } catch {}
+    return 'SHEET_CHINH';
+  });
+
+  // Lưu activeSheet vào localStorage khi thay đổi
+  React.useEffect(() => {
+    try {
+      localStorage.setItem('tsg_don_hang_sheet', activeSheet);
+    } catch {}
+  }, [activeSheet]);
 
   // View modes
   const [viewMode, setViewMode] = useState<'table' | 'project_delivery'>('table');

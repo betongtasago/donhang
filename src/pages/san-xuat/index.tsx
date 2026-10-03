@@ -5,7 +5,19 @@ import { BaoCaoSanXuatView } from './BaoCaoSanXuatView';
 
 export const SanXuatPage: React.FC = () => {
   const { plants } = useSync();
-  const [activeTab, setActiveTab] = useState<'bao_cao' | 'giam_sat'>('bao_cao');
+  const [activeTab, setActiveTab] = useState<'bao_cao' | 'giam_sat'>(() => {
+    try {
+      const saved = localStorage.getItem('tsg_san_xuat_tab');
+      if (saved === 'bao_cao' || saved === 'giam_sat') return saved;
+    } catch {}
+    return 'bao_cao';
+  });
+
+  React.useEffect(() => {
+    try {
+      localStorage.setItem('tsg_san_xuat_tab', activeTab);
+    } catch {}
+  }, [activeTab]);
   const [selectedPlantId, setSelectedPlantId] = useState(plants[0]?.id || '');
 
   const activePlant = plants.find(p => p.id === selectedPlantId) || plants[0];

@@ -19,14 +19,69 @@ import { ThiNghiemPage } from './pages/thi-nghiem';
 import { XangDauPage } from './pages/xang-dau';
 import { CaiDatPage } from './pages/cai-dat';
 
+const VALID_PAGES = [
+  'don-hang',
+  'tong-quan',
+  'cong-no',
+  'san-xuat',
+  'quan-ly-lai-xe',
+  'thi-nghiem',
+  'xang-dau',
+  'cai-dat'
+];
+
+const getInitialPage = (): string => {
+  if (typeof window !== 'undefined') {
+    // 1. Kiểm tra URL hash (ví dụ: #/san-xuat)
+    const rawHash = window.location.hash.replace(/^#\/?/, '').split('?')[0].split('/')[0];
+    if (rawHash && VALID_PAGES.includes(rawHash)) {
+      return rawHash;
+    }
+    // 2. Kiểm tra bộ nhớ localStorage
+    try {
+      const saved = localStorage.getItem('tsg_current_page');
+      if (saved && VALID_PAGES.includes(saved)) {
+        return saved;
+      }
+    } catch {
+      // Ignore
+    }
+  }
+  return 'don-hang';
+};
+
 export const AppContent: React.FC = () => {
   const { currentUser } = useAuth();
   const { orders, trips } = useSync();
 
-  const [currentPage, setCurrentPage] = useState<string>('don-hang');
+  const [currentPage, setCurrentPage] = useState<string>(getInitialPage);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
   const [isMembersModalOpen, setIsMembersModalOpen] = useState(false);
+
+  // Đồng bộ trang hiện tại vào URL Hash & localStorage khi người dùng chuyển trang
+  React.useEffect(() => {
+    try {
+      localStorage.setItem('tsg_current_page', currentPage);
+      if (window.location.hash !== `#/${currentPage}`) {
+        window.location.hash = `#/${currentPage}`;
+      }
+    } catch {
+      // Ignore
+    }
+  }, [currentPage]);
+
+  // Lắng nghe sự kiện đổi hash (ví dụ bấm Back/Forward trình duyệt)
+  React.useEffect(() => {
+    const handleHashChange = () => {
+      const rawHash = window.location.hash.replace(/^#\/?/, '').split('?')[0].split('/')[0];
+      if (rawHash && VALID_PAGES.includes(rawHash) && rawHash !== currentPage) {
+        setCurrentPage(rawHash);
+      }
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, [currentPage]);
 
   // Print Receipt modal state
   const [printState, setPrintState] = useState<{
