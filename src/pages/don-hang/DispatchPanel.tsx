@@ -1,15 +1,16 @@
 import React from 'react';
 import { DispatchTrip, ConcreteOrder, TripStatus } from '../../types';
-import { Truck, Plus, CheckCircle2, Clock, Navigation, AlertCircle, FileText } from 'lucide-react';
+import { Truck, Plus, CheckCircle2, Clock, Navigation, AlertCircle, FileText, Edit2 } from 'lucide-react';
 import { useSync } from '../../sync/SyncContext';
 
 interface DispatchPanelProps {
   order: ConcreteOrder | null;
   onOpenDispatchAssign: () => void;
   onPrintTrip?: (trip: DispatchTrip) => void;
+  onEditTrip?: (trip: DispatchTrip) => void;
 }
 
-export const DispatchPanel: React.FC<DispatchPanelProps> = ({ order, onOpenDispatchAssign, onPrintTrip }) => {
+export const DispatchPanel: React.FC<DispatchPanelProps> = ({ order, onOpenDispatchAssign, onPrintTrip, onEditTrip }) => {
   const { trips, updateTripStatus } = useSync();
 
   const orderTrips = order ? trips.filter(t => t.orderId === order.id || t.orderCode === order.code) : [];
@@ -89,14 +90,24 @@ export const DispatchPanel: React.FC<DispatchPanelProps> = ({ order, onOpenDispa
                 </div>
               </div>
 
-              {/* Status & Change status & Print */}
-              <div className="flex items-center gap-1.5">
+              {/* Status & Change status & Print & Edit */}
+              <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                 {getStatusBadge(trip.status)}
+
+                {onEditTrip && (
+                  <button
+                    onClick={() => onEditTrip(trip)}
+                    className="p-1.5 rounded-lg bg-white hover:bg-blue-50 border border-slate-300 text-blue-600 transition cursor-pointer"
+                    title="Chỉnh sửa chi tiết phiếu (Mã phiếu, số xe, tài xế...)"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
 
                 {onPrintTrip && (
                   <button
                     onClick={() => onPrintTrip(trip)}
-                    className="p-1.5 rounded-lg bg-white hover:bg-slate-200 border border-slate-300 text-slate-700 transition"
+                    className="p-1.5 rounded-lg bg-white hover:bg-slate-200 border border-slate-300 text-slate-700 transition cursor-pointer"
                     title="In phiếu giao nhận bê tông (Hình 2)"
                   >
                     <FileText className="w-3.5 h-3.5 text-orange-600" />

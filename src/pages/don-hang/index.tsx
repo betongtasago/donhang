@@ -36,12 +36,13 @@ import {
 } from 'lucide-react';
 import { useSync } from '../../sync/SyncContext';
 import { useAuth } from '../../auth/AuthContext';
-import { ConcreteOrder, OrderStatus, OrderType, ProjectType } from '../../types';
+import { ConcreteOrder, OrderStatus, OrderType, ProjectType, DispatchTrip } from '../../types';
 import { OrderDetailPanel } from './OrderDetailPanel';
 import { DispatchPanel } from './DispatchPanel';
 import { CreateOrderModal } from './CreateOrderModal';
 import { EditOrderModal } from './EditOrderModal';
 import { DispatchAssignModal } from './DispatchAssignModal';
+import { EditTripModal } from './EditTripModal';
 import { ReportExportModal } from './ReportExportModal';
 import { ProjectDeliveryView } from './ProjectDeliveryView';
 import * as XLSX from 'xlsx';
@@ -105,6 +106,10 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) =>
 
   const [isAssignOpen, setIsAssignOpen] = useState(false);
   const [isReportOpen, setIsReportOpen] = useState(false);
+
+  // Edit Trip Modal state
+  const [editingTrip, setEditingTrip] = useState<DispatchTrip | null>(null);
+  const [isEditTripOpen, setIsEditTripOpen] = useState(false);
 
   // Available Years and Months from orders
   const availableYears = useMemo(() => {
@@ -1089,6 +1094,10 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) =>
                       order={selectedOrder}
                       onOpenDispatchAssign={() => setIsAssignOpen(true)}
                       onPrintTrip={(trip) => selectedOrder && onOpenPrintModal && onOpenPrintModal(selectedOrder, trip)}
+                      onEditTrip={(trip) => {
+                        setEditingTrip(trip);
+                        setIsEditTripOpen(true);
+                      }}
                     />
                   </div>
                 </div>
@@ -1125,6 +1134,18 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) =>
           onClose={() => setIsAssignOpen(false)}
         />
       )}
+
+      {/* Modal Chỉnh Sửa Chi Tiết Phiếu Xuất Xe (Đồng bộ số phiếu & báo cáo SX) */}
+      {selectedOrder && (
+        <EditTripModal
+          isOpen={isEditTripOpen}
+          onClose={() => setIsEditTripOpen(false)}
+          trip={editingTrip}
+          order={selectedOrder}
+          onOpenPrintModal={onOpenPrintModal}
+        />
+      )}
+
       <ReportExportModal isOpen={isReportOpen} onClose={() => setIsReportOpen(false)} />
     </div>
   );

@@ -82,16 +82,30 @@ export type TruckStatus = 'SAN_SANG' | 'DANG_NAP' | 'DANG_CHAY' | 'DANG_XA' | 'B
 
 export interface FleetTruck {
   id: string;
-  plateNumber: string; // e.g. 70C-128.45
-  truckType: 'Xe bồn 10m³' | 'Xe bồn 12m³' | 'Xe bơm cần 43m' | 'Xe bơm tĩnh';
+  code?: string; // Mã xe (18, 19, 27, 30, 35, 45, 63, 64, 264...)
+  plateNumber: string; // e.g. 51B-33618, 70C-128.45
+  truckType: 'Xe bồn 8m³' | 'Xe bồn 10m³' | 'Xe bồn 12m³' | 'Xe bơm cần 43m' | 'Xe bơm tĩnh' | string;
+  capacityM3?: number; // 8 hoặc 10 m3
   driverName: string;
   driverPhone: string;
   status: TruckStatus;
   currentOrderCode?: string;
-  plantLocation: string;
+  plantLocation: string; // Trạm TSG-TNT 1, Trạm TSG-TNT 2...
   fuelLevel: number; // %
   kmToday: number;
   tripsToday: number;
+  // Bảng theo dõi sắp tài & xác xe (TSG–TNT)
+  tareWeightKg?: number; // Xác xe (Kg) ví dụ 14,210 kg
+  weighDate?: string; // Ngày cân xác xe ví dụ 03/10/2026
+  shiftDate?: string; // Tài ngày ví dụ 03/10/2026
+  shiftTime?: string; // Giờ chạy ví dụ 6h30
+  leaveOrRepair?: string; // SỬA CHỮA, PHÉP...
+  note?: string; // Lưu ý (ví dụ HẠ TẢI 7m3, HẠ TẢI 9m3...)
+  leaveOff1?: boolean; // Lần 1
+  leaveOff2?: boolean; // Lần 2
+  leaveOff3?: boolean; // Lần 3
+  leaveCount?: number; // Tính 1 phép (0 hoặc 1)
+  totalLeave?: number; // Tổng phép
 }
 
 export interface PlantSilo {

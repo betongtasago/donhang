@@ -66,6 +66,9 @@ interface SyncContextType extends AppData {
   updateDriverTripConfig: (cfg: Partial<DriverTripRuleConfig>) => void;
   // Truck actions
   updateTruckStatus: (truckId: string, status: TruckStatus, orderCode?: string) => void;
+  addTruck: (truck: Omit<FleetTruck, 'id'>) => FleetTruck;
+  updateTruck: (truckId: string, updates: Partial<FleetTruck>) => void;
+  deleteTruck: (truckId: string) => void;
   // QC & Tests
   addLabTest: (test: Omit<LabTestSample, 'id'>) => void;
   // Fuel
@@ -583,6 +586,34 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
     addSyncLog(`Xe ${data.trucks.find(t => t.id === truckId)?.plateNumber} đổi trạng thái: ${status}`, 'info');
   };
 
+  const addTruck = (truckInput: Omit<FleetTruck, 'id'>): FleetTruck => {
+    const newTruck: FleetTruck = {
+      ...truckInput,
+      id: `trk-${Date.now()}`
+    };
+    const nextData = { ...data, trucks: [newTruck, ...data.trucks] };
+    setData(nextData);
+    broadcastChange('STATE_UPDATE', nextData);
+    addSyncLog(`Thêm xe mới: ${newTruck.plateNumber} (TX: ${newTruck.driverName})`, 'success');
+    return newTruck;
+  };
+
+  const updateTruck = (truckId: string, updates: Partial<FleetTruck>) => {
+    const nextTrucks = data.trucks.map(t => (t.id === truckId ? { ...t, ...updates } : t));
+    const nextData = { ...data, trucks: nextTrucks };
+    setData(nextData);
+    broadcastChange('STATE_UPDATE', nextData);
+    addSyncLog(`Cập nhật thông tin xe/tài xế ${truckId}`, 'info');
+  };
+
+  const deleteTruck = (truckId: string) => {
+    const nextTrucks = data.trucks.filter(t => t.id !== truckId);
+    const nextData = { ...data, trucks: nextTrucks };
+    setData(nextData);
+    broadcastChange('STATE_UPDATE', nextData);
+    addSyncLog(`Xóa xe khỏi danh sách đội xe`, 'warning');
+  };
+
   const addLabTest = (testInput: Omit<LabTestSample, 'id'>) => {
     const newTest: LabTestSample = {
       ...testInput,
@@ -766,6 +797,9 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updateTripStatus,
         updateTripDetails,
         updateTruckStatus,
+        addTruck,
+        updateTruck,
+        deleteTruck,
         addLabTest,
         addFuelLog,
         recordDebtPayment,

@@ -17,7 +17,9 @@ import {
   Pin,
   PinOff,
   Menu,
-  X
+  X,
+  CalendarRange,
+  TableProperties
 } from 'lucide-react';
 import { useSync } from '../../sync/SyncContext';
 import { useAuth } from '../../auth/AuthContext';
@@ -39,7 +41,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenMembersModal,
   onOpenPrintModal
 }) => {
-  const { orders, syncState, secondsSinceSync, selectedPlant, setSelectedPlant } = useSync();
+  const { orders, trucks, syncState, secondsSinceSync, selectedPlant, setSelectedPlant } = useSync();
   const { currentUser, logout, isAdmin } = useAuth();
 
   // State: Tab bên trái khi rê chuột vào mới hiện ra
@@ -52,7 +54,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'don-hang', label: 'Đơn hàng & Điều phối', icon: ClipboardList, badge: orders.length },
     { id: 'tong-quan', label: 'Tổng quan điều hành', icon: LayoutDashboard },
     { id: 'san-xuat', label: 'Sản xuất & Báo cáo', icon: Factory },
-    { id: 'quan-ly-lai-xe', label: 'Quản lý lái xe & Km', icon: Truck },
+    { id: 'bang-sap-tai', label: 'Bảng sắp tài TSG–TNT', icon: CalendarRange, badge: 'Chuẩn' },
+    { id: 'danh-sach-tai-xe', label: 'Đội xe & Tài xế (8m³ & 10m³)', icon: Truck, badge: `${trucks.length}` },
+    { id: 'quan-ly-lai-xe', label: 'Quản lý lái xe & Km', icon: Users },
     { id: 'cong-no', label: 'Công nợ khách hàng', icon: CreditCard },
     { id: 'thi-nghiem', label: 'Thí nghiệm & QC Lab', icon: FlaskConical },
     { id: 'xang-dau', label: 'Nhiên liệu & Xăng dầu', icon: Fuel },

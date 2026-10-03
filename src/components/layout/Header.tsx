@@ -16,8 +16,10 @@ const PAGE_TITLES: Record<string, { group: string; name: string }> = {
   'don-hang': { group: 'Kinh doanh', name: 'Đơn hàng' },
   'cong-no': { group: 'Kế toán', name: 'Công nợ' },
   'san-xuat': { group: 'Kỹ thuật', name: 'Sản xuất' },
-  'quan-ly-lai-xe': { group: 'Đội xe', name: 'Quản lý lái xe' },
-  'thi-nghiem': { group: 'KCS / Lab', name: 'Thí nghiệm' },
+  'bang-sap-tai': { group: 'Điều độ', name: 'Bảng sắp tài hằng ngày' },
+  'danh-sach-tai-xe': { group: 'Đội xe', name: 'Đội xe & Tài xế (8m³ & 10m³)' },
+  'quan-ly-lai-xe': { group: 'Đội xe', name: 'Quản lý lái xe & Km' },
+  'thi-nghiem': { group: 'KCS / Lab', name: 'Thí nghiệm & QC Lab' },
   'xang-dau': { group: 'Vật tư', name: 'Xăng dầu' },
   'cai-dat': { group: 'Hệ thống', name: 'Cài đặt' },
 };
