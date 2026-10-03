@@ -1,8 +1,13 @@
 import React, { useState } from 'react';
-import { SyncProvider } from './sync/SyncContext';
+import { SyncProvider, useSync } from './sync/SyncContext';
+import { AuthProvider, useAuth } from './auth/AuthContext';
+import { LoginScreen } from './auth/LoginScreen';
+import { MemberManagementModal } from './auth/MemberManagementModal';
+import { PrintReceiptModal } from './components/print/PrintReceiptModal';
 import { SyncModal } from './sync/SyncModal';
 import { Sidebar } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
+import { ConcreteOrder, DispatchTrip } from './types';
 
 // Distinct folder pages
 import { DonHangPage } from './pages/don-hang';
@@ -15,14 +20,48 @@ import { XangDauPage } from './pages/xang-dau';
 import { CaiDatPage } from './pages/cai-dat';
 
 export const AppContent: React.FC = () => {
+  const { currentUser } = useAuth();
+  const { orders, trips } = useSync();
+
   const [currentPage, setCurrentPage] = useState<string>('don-hang');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
+  const [isMembersModalOpen, setIsMembersModalOpen] = useState(false);
+
+  // Print Receipt modal state
+  const [printState, setPrintState] = useState<{
+    isOpen: boolean;
+    order: ConcreteOrder | null;
+    trip: DispatchTrip | null;
+  }>({
+    isOpen: false,
+    order: null,
+    trip: null
+  });
+
+  // If not logged in, enforce login screen
+  if (!currentUser) {
+    return <LoginScreen />;
+  }
+
+  const handleOpenPrintModal = (order?: ConcreteOrder, trip?: DispatchTrip) => {
+    const targetOrder = order || orders[0];
+    const targetTrip = trip || (targetOrder ? trips.find(t => t.orderId === targetOrder.id || t.orderCode === targetOrder.code) : null) || trips[0];
+    setPrintState({
+      isOpen: true,
+      order: targetOrder || null,
+      trip: targetTrip || null
+    });
+  };
 
   const renderCurrentPage = () => {
     switch (currentPage) {
       case 'don-hang':
-        return <DonHangPage />;
+        return (
+          <DonHangPage
+            onOpenPrintModal={(ord, trp) => handleOpenPrintModal(ord, trp)}
+          />
+        );
       case 'tong-quan':
         return <TongQuanPage />;
       case 'cong-no':
@@ -36,9 +75,18 @@ export const AppContent: React.FC = () => {
       case 'xang-dau':
         return <XangDauPage />;
       case 'cai-dat':
-        return <CaiDatPage onOpenSyncModal={() => setIsSyncModalOpen(true)} />;
+        return (
+          <CaiDatPage
+            onOpenSyncModal={() => setIsSyncModalOpen(true)}
+            onOpenMembersModal={() => setIsMembersModalOpen(true)}
+          />
+        );
       default:
-        return <DonHangPage />;
+        return (
+          <DonHangPage
+            onOpenPrintModal={(ord, trp) => handleOpenPrintModal(ord, trp)}
+          />
+        );
     }
   };
 
@@ -53,6 +101,8 @@ export const AppContent: React.FC = () => {
         }}
         isOpen={isSidebarOpen}
         onOpenSyncModal={() => setIsSyncModalOpen(true)}
+        onOpenMembersModal={() => setIsMembersModalOpen(true)}
+        onOpenPrintModal={() => handleOpenPrintModal()}
       />
 
       {/* Backdrop for mobile */}
@@ -69,6 +119,8 @@ export const AppContent: React.FC = () => {
           currentPage={currentPage}
           onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
           onOpenSyncModal={() => setIsSyncModalOpen(true)}
+          onOpenMembersModal={() => setIsMembersModalOpen(true)}
+          onOpenPrintModal={() => handleOpenPrintModal()}
         />
 
         <main className="flex-1 overflow-y-auto bg-[#f8fafc]">
@@ -81,14 +133,32 @@ export const AppContent: React.FC = () => {
         isOpen={isSyncModalOpen}
         onClose={() => setIsSyncModalOpen(false)}
       />
+
+      {/* Member Management Modal (Admin only can create) */}
+      <MemberManagementModal
+        isOpen={isMembersModalOpen}
+        onClose={() => setIsMembersModalOpen(false)}
+      />
+
+      {/* Print Receipt Modal matching Image 2 */}
+      {printState.isOpen && printState.order && (
+        <PrintReceiptModal
+          isOpen={printState.isOpen}
+          order={printState.order}
+          trip={printState.trip}
+          onClose={() => setPrintState(prev => ({ ...prev, isOpen: false }))}
+        />
+      )}
     </div>
   );
 };
 
 export default function App() {
   return (
-    <SyncProvider>
-      <AppContent />
-    </SyncProvider>
+    <AuthProvider>
+      <SyncProvider>
+        <AppContent />
+      </SyncProvider>
+    </AuthProvider>
   );
 }

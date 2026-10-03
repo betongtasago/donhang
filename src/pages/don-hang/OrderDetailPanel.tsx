@@ -6,9 +6,10 @@ import { useSync } from '../../sync/SyncContext';
 interface OrderDetailPanelProps {
   order: ConcreteOrder | null;
   onOpenDispatchAssign: () => void;
+  onPrintOrder?: (order: ConcreteOrder) => void;
 }
 
-export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ order, onOpenDispatchAssign }) => {
+export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ order, onOpenDispatchAssign, onPrintOrder }) => {
   const { updateOrder } = useSync();
 
   if (!order) {
@@ -34,6 +35,17 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ order, onOpe
           <span className="text-xs font-bold text-slate-900 ml-1">[{order.code}]</span>
         </div>
         <div className="flex items-center gap-2">
+          {onPrintOrder && (
+            <button
+              onClick={() => onPrintOrder(order)}
+              className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-orange-50 hover:bg-orange-100 text-orange-700 font-bold text-xs border border-orange-200 transition"
+              title="In phiếu giao nhận bê tông giống Hình 2"
+            >
+              <FileText className="w-3.5 h-3.5" />
+              In phiếu giao nhận
+            </button>
+          )}
+
           <select
             value={order.status}
             onChange={(e) => updateOrder(order.id, { status: e.target.value as any })}

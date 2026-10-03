@@ -23,8 +23,13 @@ import { DispatchPanel } from './DispatchPanel';
 import { CreateOrderModal } from './CreateOrderModal';
 import { DispatchAssignModal } from './DispatchAssignModal';
 import { ReportExportModal } from './ReportExportModal';
+import { Printer } from 'lucide-react';
 
-export const DonHangPage: React.FC = () => {
+interface DonHangPageProps {
+  onOpenPrintModal?: (order: ConcreteOrder, trip?: any) => void;
+}
+
+export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) => {
   const { orders, trips, trucks, syncNow, syncState } = useSync();
 
   // Search & filter state
@@ -126,6 +131,17 @@ export const DonHangPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-3 shrink-0">
+          {selectedOrder && onOpenPrintModal && (
+            <button
+              onClick={() => onOpenPrintModal(selectedOrder)}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-orange-50 hover:bg-orange-100 border border-orange-200 text-xs font-bold text-orange-700 shadow-xs transition cursor-pointer"
+              title="In phiếu giao nhận bê tông giống Hình 2"
+            >
+              <Printer className="w-4 h-4 text-orange-600" />
+              In phiếu (Hình 2)
+            </button>
+          )}
+
           <button
             onClick={() => setIsReportOpen(true)}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-300 text-xs font-bold text-slate-700 shadow-xs transition"
@@ -415,17 +431,32 @@ export const DonHangPage: React.FC = () => {
 
                       {/* Actions */}
                       <td className="py-3 px-4 text-center whitespace-nowrap">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedOrderId(order.id);
-                            setIsAssignOpen(true);
-                          }}
-                          className="p-1 rounded-lg hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition"
-                          title="Cấp xe cho đơn này"
-                        >
-                          <MoreVertical className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center justify-center gap-1">
+                          {onOpenPrintModal && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedOrderId(order.id);
+                                onOpenPrintModal(order);
+                              }}
+                              className="p-1 rounded-lg hover:bg-orange-100 text-orange-600 transition"
+                              title="In phiếu giao nhận bê tông"
+                            >
+                              <Printer className="w-4 h-4" />
+                            </button>
+                          )}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedOrderId(order.id);
+                              setIsAssignOpen(true);
+                            }}
+                            className="p-1 rounded-lg hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition"
+                            title="Cấp xe cho đơn này"
+                          >
+                            <MoreVertical className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -441,11 +472,13 @@ export const DonHangPage: React.FC = () => {
         <OrderDetailPanel
           order={selectedOrder}
           onOpenDispatchAssign={() => setIsAssignOpen(true)}
+          onPrintOrder={(ord) => onOpenPrintModal && onOpenPrintModal(ord)}
         />
 
         <DispatchPanel
           order={selectedOrder}
           onOpenDispatchAssign={() => setIsAssignOpen(true)}
+          onPrintTrip={(trip) => selectedOrder && onOpenPrintModal && onOpenPrintModal(selectedOrder, trip)}
         />
       </div>
 

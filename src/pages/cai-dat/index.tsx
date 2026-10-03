@@ -14,12 +14,15 @@ import {
   Layers
 } from 'lucide-react';
 import { useSync } from '../../sync/SyncContext';
+import { useAuth } from '../../auth/AuthContext';
+import { Users, UserPlus } from 'lucide-react';
 
 interface CaiDatPageProps {
   onOpenSyncModal: () => void;
+  onOpenMembersModal?: () => void;
 }
 
-export const CaiDatPage: React.FC<CaiDatPageProps> = ({ onOpenSyncModal }) => {
+export const CaiDatPage: React.FC<CaiDatPageProps> = ({ onOpenSyncModal, onOpenMembersModal }) => {
   const {
     syncState,
     secondsSinceSync,
@@ -31,6 +34,7 @@ export const CaiDatPage: React.FC<CaiDatPageProps> = ({ onOpenSyncModal }) => {
     selectedPlant,
     setSelectedPlant
   } = useSync();
+  const { currentUser, isAdmin } = useAuth();
 
   const [importJson, setImportJson] = useState('');
   const [statusMsg, setStatusMsg] = useState('');
@@ -206,25 +210,39 @@ export const CaiDatPage: React.FC<CaiDatPageProps> = ({ onOpenSyncModal }) => {
 
       {/* Dispatcher Profile Card */}
       <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs space-y-4">
-        <div className="flex items-center gap-2.5 border-b border-slate-100 pb-3">
-          <User className="w-5 h-5 text-orange-600" />
-          <div>
-            <h2 className="text-sm font-bold text-slate-900">Thông Tin Điều Phối Viên</h2>
-            <p className="text-xs text-slate-500">Phân quyền vận hành trạm Tây Ninh</p>
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div className="flex items-center gap-2.5">
+            <User className="w-5 h-5 text-orange-600" />
+            <div>
+              <h2 className="text-sm font-bold text-slate-900">Tài Khoản & Phân Quyền Người Dùng</h2>
+              <p className="text-xs text-slate-500">Phân quyền vận hành trạm Tây Ninh và tạo tài khoản</p>
+            </div>
           </div>
+
+          {onOpenMembersModal && (
+            <button
+              onClick={onOpenMembersModal}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-xs font-bold shadow-xs transition"
+            >
+              <Users className="w-3.5 h-3.5" />
+              {isAdmin ? 'Quản lý & Tạo tài khoản (+)' : 'Xem danh sách thành viên'}
+            </button>
+          )}
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
           <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
             <span className="text-slate-500">Họ và tên:</span>
-            <div className="font-bold text-slate-900 text-sm mt-0.5">Mai Thị Kim Oanh</div>
-            <div className="text-[11px] text-slate-500">Email: oanh.mtk@tasago.vn</div>
+            <div className="font-bold text-slate-900 text-sm mt-0.5">{currentUser?.fullName || 'Mai Thị Kim Oanh'}</div>
+            <div className="text-[11px] text-slate-500">Email: {currentUser?.email || 'admin@tasago.vn'}</div>
           </div>
 
           <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
             <span className="text-slate-500">Vai trò hệ thống:</span>
-            <div className="font-bold text-orange-600 text-sm mt-0.5">Trưởng Ca Điều Phối Bê Tông</div>
-            <div className="text-[11px] text-slate-500">Quyền hạn: Duyệt đơn, điều xe bồn, cấp phiếu xuất</div>
+            <div className="font-bold text-orange-600 text-sm mt-0.5">{currentUser?.roleTitle || 'Quản trị viên'}</div>
+            <div className="text-[11px] text-slate-500">
+              {isAdmin ? 'Quyền cao nhất: Tạo tài khoản, điều xe, xoá sửa đơn' : 'Quyền hạn: Điều xe bồn, cấp phiếu xuất'}
+            </div>
           </div>
         </div>
       </div>

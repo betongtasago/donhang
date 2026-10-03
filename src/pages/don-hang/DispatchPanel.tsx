@@ -1,14 +1,15 @@
 import React from 'react';
 import { DispatchTrip, ConcreteOrder, TripStatus } from '../../types';
-import { Truck, Plus, CheckCircle2, Clock, Navigation, AlertCircle } from 'lucide-react';
+import { Truck, Plus, CheckCircle2, Clock, Navigation, AlertCircle, FileText } from 'lucide-react';
 import { useSync } from '../../sync/SyncContext';
 
 interface DispatchPanelProps {
   order: ConcreteOrder | null;
   onOpenDispatchAssign: () => void;
+  onPrintTrip?: (trip: DispatchTrip) => void;
 }
 
-export const DispatchPanel: React.FC<DispatchPanelProps> = ({ order, onOpenDispatchAssign }) => {
+export const DispatchPanel: React.FC<DispatchPanelProps> = ({ order, onOpenDispatchAssign, onPrintTrip }) => {
   const { trips, updateTripStatus } = useSync();
 
   const orderTrips = order ? trips.filter(t => t.orderId === order.id || t.orderCode === order.code) : [];
@@ -88,9 +89,19 @@ export const DispatchPanel: React.FC<DispatchPanelProps> = ({ order, onOpenDispa
                 </div>
               </div>
 
-              {/* Status & Change status */}
-              <div className="flex items-center gap-2">
+              {/* Status & Change status & Print */}
+              <div className="flex items-center gap-1.5">
                 {getStatusBadge(trip.status)}
+
+                {onPrintTrip && (
+                  <button
+                    onClick={() => onPrintTrip(trip)}
+                    className="p-1.5 rounded-lg bg-white hover:bg-slate-200 border border-slate-300 text-slate-700 transition"
+                    title="In phiếu giao nhận bê tông (Hình 2)"
+                  >
+                    <FileText className="w-3.5 h-3.5 text-orange-600" />
+                  </button>
+                )}
 
                 <select
                   value={trip.status}

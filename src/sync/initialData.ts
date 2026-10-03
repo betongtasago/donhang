@@ -2,6 +2,28 @@ import { ConcreteOrder, DispatchTrip, FleetTruck, BatchingPlant, CustomerDebt, L
 
 export const INITIAL_ORDERS: ConcreteOrder[] = [
   {
+    id: 'ord-dev-001',
+    code: 'DH-261003-001',
+    customerName: 'CÔNG TY CỔ PHẦN DEVELOPMENT',
+    plantLocation: 'Tây Ninh',
+    projectTitle: 'DỰ ÁN KCN PHƯỚC ĐÔNG',
+    categoryItem: 'LÓT',
+    totalVolume: 5,
+    deliveredVolume: 5,
+    deliveryTime: '13:25',
+    deliveryDate: '2026-10-03',
+    status: 'HOAN_THANH',
+    grade: 'M150R28',
+    slump: '10+-2',
+    additive: 'R28',
+    pumpType: 'Xả máng trực tiếp',
+    contactPerson: 'Người giao nhận',
+    contactPhone: '0908 777 666',
+    notes: 'Đường N8, KCN Phước Đông, Phường Gia Lộc, Tỉnh Tây Ninh',
+    assignedTrucksCount: 1,
+    updatedAt: new Date().toISOString()
+  },
+  {
     id: 'ord-001',
     code: 'DH-260930-001',
     customerName: 'CÔNG TY TNHH XÂY DỰNG TÂN NHẬT NGUYỆT',
@@ -114,6 +136,21 @@ export const INITIAL_ORDERS: ConcreteOrder[] = [
 ];
 
 export const INITIAL_TRIPS: DispatchTrip[] = [
+  {
+    id: 'trip-dev-001',
+    orderId: 'ord-dev-001',
+    orderCode: 'DH-261003-001',
+    ticketNumber: '0160190',
+    truckPlate: '51M 97571',
+    driverName: 'Bùi Thái Sơn',
+    driverPhone: '0903 555 777',
+    volume: 5,
+    departureTime: '13:25',
+    arrivalEstimate: '14:00',
+    status: 'HOAN_THANH',
+    slumpTested: '10+-2',
+    grade: 'M150R28'
+  },
   {
     id: 'trip-001',
     orderId: 'ord-001',

@@ -12,24 +12,33 @@ import {
   MoreHorizontal,
   Radio,
   CheckCircle2,
-  AlertTriangle
+  AlertTriangle,
+  Users,
+  LogOut,
+  Printer
 } from 'lucide-react';
 import { useSync } from '../../sync/SyncContext';
+import { useAuth } from '../../auth/AuthContext';
 
 interface SidebarProps {
   currentPage: string;
   onSelectPage: (page: string) => void;
   isOpen: boolean;
   onOpenSyncModal: () => void;
+  onOpenMembersModal?: () => void;
+  onOpenPrintModal?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
   currentPage,
   onSelectPage,
   isOpen,
-  onOpenSyncModal
+  onOpenSyncModal,
+  onOpenMembersModal,
+  onOpenPrintModal
 }) => {
   const { orders, syncState, secondsSinceSync, selectedPlant, setSelectedPlant } = useSync();
+  const { currentUser, logout, isAdmin } = useAuth();
 
   const navItems = [
     { id: 'tong-quan', label: 'Tổng quan', icon: LayoutDashboard },
@@ -173,6 +182,35 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <Radio className="w-3.5 h-3.5 text-slate-500 group-hover:text-orange-400 transition shrink-0" />
         </button>
 
+        {/* Member Management button (Only Admin can create, visible to all or Admin) */}
+        {onOpenMembersModal && (
+          <button
+            onClick={onOpenMembersModal}
+            className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800/60 transition"
+          >
+            <div className="flex items-center gap-3">
+              <Users className="w-4 h-4 text-orange-400" />
+              <span>Quản lý thành viên</span>
+            </div>
+            {isAdmin && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-950 text-orange-400 font-semibold border border-orange-800">
+                Admin
+              </span>
+            )}
+          </button>
+        )}
+
+        {/* Quick Print button */}
+        {onOpenPrintModal && (
+          <button
+            onClick={onOpenPrintModal}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800/60 transition"
+          >
+            <Printer className="w-4 h-4 text-orange-400" />
+            <span>In phiếu giao nhận</span>
+          </button>
+        )}
+
         {/* Settings button */}
         <button
           onClick={() => onSelectPage('cai-dat')}
@@ -186,23 +224,35 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <span>Cài đặt</span>
         </button>
 
-        {/* User Card */}
-        <div className="flex items-center justify-between p-2 rounded-xl bg-[#1d2432]/60 border border-slate-800/60">
+        {/* User Card with Logout */}
+        <div className="flex items-center justify-between p-2 rounded-xl bg-[#1d2432]/80 border border-slate-800/80">
           <div className="flex items-center gap-2.5 overflow-hidden">
             <div className="w-8 h-8 rounded-lg bg-[#e25822] flex items-center justify-center font-bold text-white text-xs shrink-0">
-              MK
+              {currentUser?.fullName
+                ? currentUser.fullName
+                    .split(' ')
+                    .map((s) => s[0])
+                    .slice(-2)
+                    .join('')
+                : 'MK'}
             </div>
             <div className="truncate">
-              <div className="text-xs font-semibold text-white truncate">Mai Thị Kim Oanh</div>
-              <div className="text-[10px] text-slate-400 truncate">Điều phối viên</div>
+              <div className="text-xs font-semibold text-white truncate">
+                {currentUser?.fullName || 'Mai Thị Kim Oanh'}
+              </div>
+              <div className="text-[10px] text-slate-400 truncate flex items-center gap-1">
+                <span>{currentUser?.roleTitle || 'Điều phối viên'}</span>
+                {isAdmin && <span className="text-orange-400 font-bold">• Admin</span>}
+              </div>
             </div>
           </div>
+
           <button
-            onClick={() => onSelectPage('cai-dat')}
-            className="text-slate-400 hover:text-white p-1 rounded hover:bg-slate-700/50"
-            title="Tuỳ chọn người dùng"
+            onClick={logout}
+            className="text-slate-400 hover:text-rose-400 p-1.5 rounded hover:bg-rose-950/40 transition"
+            title="Đăng xuất khỏi hệ thống"
           >
-            <MoreHorizontal className="w-4 h-4" />
+            <LogOut className="w-4 h-4" />
           </button>
         </div>
       </div>
