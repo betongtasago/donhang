@@ -28,7 +28,11 @@ import {
   Columns,
   X,
   ExternalLink,
-  UserCheck
+  UserCheck,
+  Sheet,
+  TableProperties,
+  ArrowUpDown,
+  FileSpreadsheet
 } from 'lucide-react';
 import { useSync } from '../../sync/SyncContext';
 import { useAuth } from '../../auth/AuthContext';
@@ -45,21 +49,31 @@ interface DonHangPageProps {
   onOpenPrintModal?: (order: ConcreteOrder, trip?: any) => void;
 }
 
+export type ActiveSheetType = 'SHEET_CHINH' | 'SHEET_PHAT_SINH' | 'SHEET_ALL';
+
 export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) => {
   const { orders, trips, trucks, syncNow, syncState } = useSync();
   const { currentUser, isAdmin } = useAuth();
 
   const isAccountant = currentUser?.role === 'ACCOUNTANT' || isAdmin;
 
+  // 1. SEPARATE SHEET TABS: Đơn hàng chính & phát sinh phân ra làm sheet riêng biệt
+  const [activeSheet, setActiveSheet] = useState<ActiveSheetType>('SHEET_CHINH');
+
   // View modes
   const [viewMode, setViewMode] = useState<'table' | 'project_delivery'>('table');
   const [isDetailPanelOpen, setIsDetailPanelOpen] = useState(false);
 
-  // Search & filter states
+  // 2. TÌM ĐƠN HÀNG THEO NGÀY THÁNG NĂM (Nâng cao)
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedDate, setSelectedDate] = useState('');
+  const [filterYear, setFilterYear] = useState<string>('ALL');
+  const [filterMonth, setFilterMonth] = useState<string>('ALL');
+  const [filterDay, setFilterDay] = useState<string>(''); // YYYY-MM-DD
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
+  const [quickDatePreset, setQuickDatePreset] = useState<string>('ALL');
+
   const [statusFilter, setStatusFilter] = useState('ALL');
-  const [orderTypeFilter, setOrderTypeFilter] = useState<'ALL' | 'CHINH' | 'PHAT_SINH'>('ALL');
   const [projectTypeFilter, setProjectTypeFilter] = useState<'ALL' | 'DA' | 'DD'>('ALL');
 
   // Selected order
@@ -76,40 +90,145 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) =>
   const [isAssignOpen, setIsAssignOpen] = useState(false);
   const [isReportOpen, setIsReportOpen] = useState(false);
 
-  // Computed metrics
-  const runningTrucksCount = trucks.filter(t => t.status === 'DANG_CHAY' || t.status === 'DANG_XA').length;
-  const totalVolumeDelivered = orders.reduce((acc, curr) => acc + curr.deliveredVolume, 0);
-  const totalVolumeOrdered = orders.reduce((acc, curr) => acc + curr.totalVolume, 0);
+  // Available Years and Months from orders
+  const availableYears = useMemo(() => {
+    const years = new Set<string>();
+    orders.forEach(o => {
+      if (o.deliveryDate) {
+        years.add(o.deliveryDate.split('-')[0]);
+      }
+    });
+    return Array.from(years).sort().reverse();
+  }, [orders]);
 
-  // Filtered orders list
+  const availableMonths = [
+    { value: '01', label: 'Tháng 1' },
+    { value: '02', label: 'Tháng 2' },
+    { value: '03', label: 'Tháng 3' },
+    { value: '04', label: 'Tháng 4' },
+    { value: '05', label: 'Tháng 5' },
+    { value: '06', label: 'Tháng 6' },
+    { value: '07', label: 'Tháng 7' },
+    { value: '08', label: 'Tháng 8' },
+    { value: '09', label: 'Tháng 9' },
+    { value: '10', label: 'Tháng 10' },
+    { value: '11', label: 'Tháng 11' },
+    { value: '12', label: 'Tháng 12' },
+  ];
+
+  // Quick Date presets
+  const handleSelectDatePreset = (preset: string) => {
+    setQuickDatePreset(preset);
+    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+
+    if (preset === 'TODAY') {
+      setFilterDay('2026-10-03'); // Reference day for demo data
+      setFilterYear('2026');
+      setFilterMonth('10');
+      setStartDate('');
+      setEndDate('');
+    } else if (preset === 'YESTERDAY') {
+      setFilterDay('2026-10-02');
+      setFilterYear('2026');
+      setFilterMonth('10');
+      setStartDate('');
+      setEndDate('');
+    } else if (preset === 'THIS_MONTH') {
+      setFilterDay('');
+      setFilterYear('2026');
+      setFilterMonth('10');
+      setStartDate('');
+      setEndDate('');
+    } else if (preset === 'ALL') {
+      setFilterDay('');
+      setFilterYear('ALL');
+      setFilterMonth('ALL');
+      setStartDate('');
+      setEndDate('');
+    }
+  };
+
+  // Filtered orders according to Active Sheet and Date/Search filters
   const filteredOrders = useMemo(() => {
     return orders.filter(order => {
-      const matchSearch =
-        !searchTerm.trim() ||
-        order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.projectTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (order.customerCode && order.customerCode.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (order.technicianName && order.technicianName.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        order.grade.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.categoryItem.toLowerCase().includes(searchTerm.toLowerCase());
+      // 1. Sheet Separation:
+      if (activeSheet === 'SHEET_CHINH' && (order.orderType || 'CHINH') !== 'CHINH') {
+        return false;
+      }
+      if (activeSheet === 'SHEET_PHAT_SINH' && order.orderType !== 'PHAT_SINH') {
+        return false;
+      }
 
-      const matchDate = !selectedDate || order.deliveryDate === selectedDate;
-      const matchStatus = statusFilter === 'ALL' || order.status === statusFilter;
-      const matchOrderType = orderTypeFilter === 'ALL' || (order.orderType || 'CHINH') === orderTypeFilter;
-      const matchProjectType = projectTypeFilter === 'ALL' || (order.projectType || 'DA') === projectTypeFilter;
+      // 2. Date Filtering: Ngày / Tháng / Năm
+      if (filterDay && order.deliveryDate !== filterDay) {
+        return false;
+      }
 
-      return matchSearch && matchDate && matchStatus && matchOrderType && matchProjectType;
+      if (filterYear !== 'ALL') {
+        const orderYear = order.deliveryDate ? order.deliveryDate.split('-')[0] : '';
+        if (orderYear !== filterYear) return false;
+      }
+
+      if (filterMonth !== 'ALL') {
+        const orderMonth = order.deliveryDate ? order.deliveryDate.split('-')[1] : '';
+        if (orderMonth !== filterMonth) return false;
+      }
+
+      if (startDate && order.deliveryDate < startDate) {
+        return false;
+      }
+
+      if (endDate && order.deliveryDate > endDate) {
+        return false;
+      }
+
+      // 3. Search Term
+      if (searchTerm.trim()) {
+        const term = searchTerm.toLowerCase();
+        const match =
+          order.customerName.toLowerCase().includes(term) ||
+          order.code.toLowerCase().includes(term) ||
+          order.projectTitle.toLowerCase().includes(term) ||
+          (order.customerCode && order.customerCode.toLowerCase().includes(term)) ||
+          (order.parentOrderCode && order.parentOrderCode.toLowerCase().includes(term)) ||
+          (order.technicianName && order.technicianName.toLowerCase().includes(term)) ||
+          order.grade.toLowerCase().includes(term) ||
+          order.categoryItem.toLowerCase().includes(term);
+        if (!match) return false;
+      }
+
+      // 4. Status Filter
+      if (statusFilter !== 'ALL' && order.status !== statusFilter) {
+        return false;
+      }
+
+      // 5. Project Type Filter (DA / DD)
+      if (projectTypeFilter !== 'ALL' && (order.projectType || 'DA') !== projectTypeFilter) {
+        return false;
+      }
+
+      return true;
     });
-  }, [orders, searchTerm, selectedDate, statusFilter, orderTypeFilter, projectTypeFilter]);
+  }, [orders, activeSheet, filterDay, filterYear, filterMonth, startDate, endDate, searchTerm, statusFilter, projectTypeFilter]);
 
+  // Counts for each sheet
+  const countChinh = useMemo(() => orders.filter(o => (o.orderType || 'CHINH') === 'CHINH').length, [orders]);
+  const countPhatSinh = useMemo(() => orders.filter(o => o.orderType === 'PHAT_SINH').length, [orders]);
+  const countAll = orders.length;
+
+  const runningTrucksCount = trucks.filter(t => t.status === 'DANG_CHAY' || t.status === 'DANG_XA').length;
   const selectedOrder = orders.find(o => o.id === selectedOrderId) || filteredOrders[0] || orders[0] || null;
 
   const handleClearFilter = () => {
     setSearchTerm('');
-    setSelectedDate('');
+    setFilterYear('ALL');
+    setFilterMonth('ALL');
+    setFilterDay('');
+    setStartDate('');
+    setEndDate('');
+    setQuickDatePreset('ALL');
     setStatusFilter('ALL');
-    setOrderTypeFilter('ALL');
     setProjectTypeFilter('ALL');
   };
 
@@ -134,6 +253,74 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) =>
     setSelectedOrderId(order.id);
     setViewMode('project_delivery');
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Export Sheet to Excel (.csv with UTF-8 BOM)
+  const handleExportCurrentSheet = () => {
+    const sheetName =
+      activeSheet === 'SHEET_CHINH'
+        ? 'Don_Hang_Chinh'
+        : activeSheet === 'SHEET_PHAT_SINH'
+        ? 'Don_Hang_Phat_Sinh'
+        : 'Tat_Ca_Don_Hang';
+
+    const header = [
+      'STT',
+      'Loại đơn',
+      'Mã đơn hàng',
+      'Đơn chính gốc',
+      'Ngày giao',
+      'Giờ giao',
+      'Mã khách hàng',
+      'Tên khách hàng',
+      'Tên công trình',
+      'Loại C.Trình (DA/DD)',
+      'Cự ly (km)',
+      'Hạng mục',
+      'Mã mác bê tông',
+      'Độ sụt',
+      'Phụ gia',
+      'Loại bơm',
+      'KL Đặt (m3)',
+      'Đã cấp (m3)',
+      'Kỹ thuật giao nhận',
+      'Trạng thái',
+      'Ghi chú'
+    ];
+
+    const rows = filteredOrders.map((o, idx) => [
+      idx + 1,
+      o.orderType === 'PHAT_SINH' ? 'PHÁT SINH' : 'ĐƠN CHÍNH',
+      `"${o.code}"`,
+      `"${o.parentOrderCode || ''}"`,
+      o.deliveryDate,
+      o.deliveryTime,
+      `"${o.customerCode || ''}"`,
+      `"${o.customerName.replace(/"/g, '""')}"`,
+      `"${o.projectTitle.replace(/"/g, '""')}"`,
+      o.projectType || 'DA',
+      o.distanceKm || 15,
+      `"${o.categoryItem}"`,
+      `"${o.grade}"`,
+      `"${o.slump}"`,
+      `"${o.additive || 'Không'}"`,
+      `"${o.pumpType || 'Bơm cần'}"`,
+      o.totalVolume,
+      o.deliveredVolume,
+      `"${o.technicianName || 'Nguyễn Văn Nam'}"`,
+      o.status,
+      `"${(o.notes || '').replace(/"/g, '""')}"`
+    ]);
+
+    const csvContent = '\uFEFF' + [header.join(','), ...rows.map(e => e.join(','))].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `TSG_Sheet_${sheetName}_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const getStatusBadge = (status: OrderStatus) => {
@@ -177,7 +364,7 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) =>
   };
 
   return (
-    <div className="p-3 sm:p-5 space-y-3.5 max-w-[1700px] mx-auto min-h-screen flex flex-col">
+    <div className="p-3 sm:p-5 space-y-3 max-w-[1750px] mx-auto min-h-screen flex flex-col">
       {/* Project Delivery Screen */}
       {viewMode === 'project_delivery' && selectedOrder ? (
         <ProjectDeliveryView
@@ -188,54 +375,40 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) =>
         />
       ) : (
         <>
-          {/* 1. COMPACT TOP HEADER & QUICK METRICS BAR */}
-          <div className="bg-white rounded-2xl p-3 sm:px-5 sm:py-3.5 border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
-            {/* Left: Title & Inline KPI Chips */}
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          {/* 1. TOP TITLE & ACTIONS BAR */}
+          <div className="bg-white rounded-2xl p-3 sm:px-5 sm:py-3 border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
+            {/* Left: Title & Quick inline status */}
+            <div className="flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-orange-600 animate-pulse"></span>
                 <h1 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
-                  Đơn Hàng & Điều Phối Bê Tông
+                  Quản Lý Đơn Hàng & Điều Phối Bê Tông
                 </h1>
               </div>
 
-              {/* Inline compact KPI tags */}
-              <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
-                <span className="px-2 py-0.5 rounded-lg bg-slate-100 font-bold text-slate-700 border border-slate-200">
-                  Tổng: <strong>{orders.length}</strong>
-                </span>
-
-                <span className="px-2 py-0.5 rounded-lg bg-blue-50 font-bold text-blue-700 border border-blue-200">
-                  {orders.filter(o => o.orderType === 'CHINH').length} chính
-                </span>
-
-                <span className="px-2 py-0.5 rounded-lg bg-orange-50 font-bold text-orange-700 border border-orange-200">
-                  {orders.filter(o => o.orderType === 'PHAT_SINH').length} phát sinh
-                </span>
-
-                <span className="px-2 py-0.5 rounded-lg bg-emerald-50 font-bold text-emerald-700 border border-emerald-200 hidden sm:inline-block">
+              <div className="flex items-center gap-1.5 text-[11px]">
+                <span className="px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-700 font-bold border border-emerald-200">
                   {runningTrucksCount} xe đang chạy
                 </span>
-
-                <span className="px-2 py-0.5 rounded-lg bg-purple-50 font-bold text-purple-700 border border-purple-200 hidden md:inline-block">
-                  {totalVolumeDelivered} / {totalVolumeOrdered} m³ đã cấp
+                <span className="px-2 py-0.5 rounded-lg bg-purple-50 text-purple-700 font-bold border border-purple-200">
+                  {orders.reduce((acc, curr) => acc + curr.deliveredVolume, 0)} / {orders.reduce((acc, curr) => acc + curr.totalVolume, 0)} m³ đã cấp
                 </span>
               </div>
             </div>
 
-            {/* Right: Actions */}
+            {/* Right: Quick Actions */}
             <div className="flex items-center gap-2 shrink-0">
-              {/* Button: + Đơn phát sinh */}
+              {/* + Đơn phát sinh */}
               <button
                 onClick={() => handleOpenCreateIncurred()}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold shadow-xs transition cursor-pointer"
-                title="Tạo đơn hàng phát sinh (Người dùng/Điều phối tạo, sao chép từ đơn chính)"
+                title="Tạo đơn hàng phát sinh (Sao chép từ đơn chính)"
               >
                 <Copy className="w-3.5 h-3.5" />
                 <span>+ Đơn phát sinh</span>
               </button>
 
-              {/* Button: + Đơn chính (Kế toán / Admin) */}
+              {/* + Đơn chính (Kế toán / Admin) */}
               {isAccountant ? (
                 <button
                   onClick={handleOpenCreatePrimary}
@@ -256,7 +429,7 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) =>
                 <button
                   onClick={() => onOpenPrintModal(selectedOrder)}
                   className="p-1.5 rounded-xl bg-slate-100 hover:bg-orange-50 text-slate-600 hover:text-orange-600 border border-slate-200 transition cursor-pointer"
-                  title="In phiếu giao nhận bê tông"
+                  title="In phiếu giao nhận bê tông (kết nối máy in thật)"
                 >
                   <Printer className="w-4 h-4" />
                 </button>
@@ -279,103 +452,151 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) =>
             </div>
           </div>
 
-          {/* 2. COMPACT SINGLE-ROW FILTER & SEARCH TOOLBAR */}
-          <div className="bg-white rounded-2xl px-4 py-2.5 border border-slate-200/80 shadow-xs flex flex-wrap items-center justify-between gap-2.5 text-xs">
-            {/* Search Input */}
-            <div className="relative flex-1 min-w-[220px] max-w-md">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Tìm mã đơn, khách hàng, công trình, kỹ thuật..."
-                className="w-full pl-8 pr-7 py-1.5 bg-slate-50 hover:bg-slate-100/70 focus:bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-orange-500 transition"
-              />
-              {searchTerm && (
-                <button
-                  onClick={() => setSearchTerm('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-
-            {/* Quick Segment Filter Buttons */}
-            <div className="flex flex-wrap items-center gap-1.5">
-              <button
-                onClick={() => setOrderTypeFilter('ALL')}
-                className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition cursor-pointer ${
-                  orderTypeFilter === 'ALL'
-                    ? 'bg-slate-900 text-white'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
-              >
-                Tất cả ({orders.length})
-              </button>
-
-              <button
-                onClick={() => setOrderTypeFilter('CHINH')}
-                className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition cursor-pointer ${
-                  orderTypeFilter === 'CHINH'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200'
-                }`}
-              >
-                Đơn chính ({orders.filter(o => o.orderType === 'CHINH').length})
-              </button>
-
-              <button
-                onClick={() => setOrderTypeFilter('PHAT_SINH')}
-                className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition cursor-pointer ${
-                  orderTypeFilter === 'PHAT_SINH'
-                    ? 'bg-orange-600 text-white'
-                    : 'bg-orange-50 text-orange-700 hover:bg-orange-100 border border-orange-200'
-                }`}
-              >
-                Phát sinh ({orders.filter(o => o.orderType === 'PHAT_SINH').length})
-              </button>
-
-              <div className="h-4 w-[1px] bg-slate-200 mx-0.5 hidden sm:block"></div>
-
-              <button
-                onClick={() => setProjectTypeFilter(projectTypeFilter === 'DA' ? 'ALL' : 'DA')}
-                className={`px-2 py-1 rounded-lg font-bold text-[11px] transition cursor-pointer ${
-                  projectTypeFilter === 'DA'
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200'
-                }`}
-              >
-                Dự án (DA)
-              </button>
-
-              <button
-                onClick={() => setProjectTypeFilter(projectTypeFilter === 'DD' ? 'ALL' : 'DD')}
-                className={`px-2 py-1 rounded-lg font-bold text-[11px] transition cursor-pointer ${
-                  projectTypeFilter === 'DD'
-                    ? 'bg-purple-600 text-white'
-                    : 'bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200'
-                }`}
-              >
-                Dân dụng (DD)
-              </button>
-            </div>
-
-            {/* Date filter dropdown */}
+          {/* 2. EXCEL-LIKE SEPARATE SHEET TABS: PHÂN SHEET ĐƠN CHÍNH & PHÁT SINH */}
+          <div className="bg-slate-200/90 p-1.5 rounded-2xl flex flex-wrap items-center justify-between gap-2 border border-slate-300 shadow-inner">
             <div className="flex items-center gap-1.5">
-              <select
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="px-2.5 py-1 text-xs border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:ring-1 focus:ring-orange-500 cursor-pointer font-medium"
+              {/* Sheet 1: ĐƠN HÀNG CHÍNH */}
+              <button
+                onClick={() => setActiveSheet('SHEET_CHINH')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition cursor-pointer ${
+                  activeSheet === 'SHEET_CHINH'
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'bg-white/80 hover:bg-white text-slate-700 hover:text-blue-700'
+                }`}
               >
-                <option value="">-- Mọi ngày giao --</option>
-                {Array.from(new Set(orders.map(o => o.deliveryDate))).sort().reverse().map(d => (
-                  <option key={d} value={d}>
-                    Ngày {d.split('-').reverse().join('/')}
-                  </option>
-                ))}
-              </select>
+                <FileSpreadsheet className="w-4 h-4" />
+                <span>SHEET 1: ĐƠN HÀNG CHÍNH (Kế toán)</span>
+                <span className={`text-[10px] px-2 py-0.2 rounded-full font-bold ${
+                  activeSheet === 'SHEET_CHINH' ? 'bg-blue-800 text-white' : 'bg-blue-100 text-blue-800'
+                }`}>
+                  {countChinh} đơn
+                </span>
+              </button>
 
+              {/* Sheet 2: ĐƠN HÀNG PHÁT SINH */}
+              <button
+                onClick={() => setActiveSheet('SHEET_PHAT_SINH')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition cursor-pointer ${
+                  activeSheet === 'SHEET_PHAT_SINH'
+                    ? 'bg-orange-500 text-white shadow-md'
+                    : 'bg-white/80 hover:bg-white text-slate-700 hover:text-orange-600'
+                }`}
+              >
+                <Sheet className="w-4 h-4" />
+                <span>SHEET 2: ĐƠN HÀNG PHÁT SINH (Điều phối)</span>
+                <span className={`text-[10px] px-2 py-0.2 rounded-full font-bold ${
+                  activeSheet === 'SHEET_PHAT_SINH' ? 'bg-orange-700 text-white' : 'bg-orange-100 text-orange-800'
+                }`}>
+                  {countPhatSinh} đơn
+                </span>
+              </button>
+
+              {/* Sheet 3: TỔNG HỢP TOÀN BỘ */}
+              <button
+                onClick={() => setActiveSheet('SHEET_ALL')}
+                className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                  activeSheet === 'SHEET_ALL'
+                    ? 'bg-slate-900 text-white shadow-md'
+                    : 'bg-white/80 hover:bg-white text-slate-700'
+                }`}
+              >
+                <TableProperties className="w-4 h-4" />
+                <span>Sheet 3: Toàn bộ đơn ({countAll})</span>
+              </button>
+            </div>
+
+            {/* Export Current Sheet to Excel */}
+            <button
+              onClick={handleExportCurrentSheet}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition cursor-pointer"
+              title="Xuất bảng số liệu sheet hiện tại ra file Excel (.csv)"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Xuất Sheet ra Excel</span>
+            </button>
+          </div>
+
+          {/* 3. TÌM ĐƠN HÀNG THEO NGÀY THÁNG NĂM & CÔNG CỤ LỌC NÂNG CAO */}
+          <div className="bg-white rounded-2xl p-3 border border-slate-200/80 shadow-xs space-y-2.5 text-xs">
+            {/* Row 1: Search Text & Date Filters (Ngày / Tháng / Năm) */}
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Search text */}
+              <div className="relative flex-1 min-w-[200px] max-w-sm">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Tìm mã đơn, khách hàng, công trình, kỹ thuật..."
+                  className="w-full pl-8 pr-7 py-1.5 bg-slate-50 hover:bg-slate-100/60 focus:bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-orange-500 transition"
+                />
+                {searchTerm && (
+                  <button
+                    onClick={() => setSearchTerm('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+
+              {/* Lọc theo Năm */}
+              <div className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-xl border border-slate-200">
+                <span className="text-[11px] text-slate-500 font-bold">Năm:</span>
+                <select
+                  value={filterYear}
+                  onChange={(e) => {
+                    setFilterYear(e.target.value);
+                    setQuickDatePreset('CUSTOM');
+                  }}
+                  className="bg-transparent text-xs font-bold text-slate-800 focus:outline-none cursor-pointer"
+                >
+                  <option value="ALL">Mọi năm</option>
+                  {availableYears.map(yr => (
+                    <option key={yr} value={yr}>Năm {yr}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Lọc theo Tháng */}
+              <div className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-xl border border-slate-200">
+                <span className="text-[11px] text-slate-500 font-bold">Tháng:</span>
+                <select
+                  value={filterMonth}
+                  onChange={(e) => {
+                    setFilterMonth(e.target.value);
+                    setQuickDatePreset('CUSTOM');
+                  }}
+                  className="bg-transparent text-xs font-bold text-slate-800 focus:outline-none cursor-pointer"
+                >
+                  <option value="ALL">Mọi tháng</option>
+                  {availableMonths.map(m => (
+                    <option key={m.value} value={m.value}>{m.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Lọc theo Ngày cụ thể (Date Picker) */}
+              <div className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-xl border border-slate-200">
+                <Calendar className="w-3.5 h-3.5 text-orange-600" />
+                <span className="text-[11px] text-slate-500 font-bold">Ngày:</span>
+                <input
+                  type="date"
+                  value={filterDay}
+                  onChange={(e) => {
+                    setFilterDay(e.target.value);
+                    setQuickDatePreset('CUSTOM');
+                  }}
+                  className="bg-transparent text-xs font-mono font-bold text-slate-800 focus:outline-none cursor-pointer"
+                />
+                {filterDay && (
+                  <button onClick={() => setFilterDay('')} className="text-slate-400 hover:text-slate-600">
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+
+              {/* Lọc theo Trạng thái */}
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
@@ -389,53 +610,182 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) =>
                 <option value="TAM_HOAN">Tạm hoãn</option>
               </select>
 
-              {(searchTerm || selectedDate || statusFilter !== 'ALL' || orderTypeFilter !== 'ALL' || projectTypeFilter !== 'ALL') && (
+              {/* Lọc theo Loại C.Trình (DA/DD) */}
+              <div className="flex items-center gap-1">
                 <button
-                  onClick={handleClearFilter}
-                  className="px-2 py-1 text-[11px] font-bold text-slate-500 hover:text-slate-900 transition"
-                  title="Xóa toàn bộ bộ lọc"
+                  onClick={() => setProjectTypeFilter(projectTypeFilter === 'DA' ? 'ALL' : 'DA')}
+                  className={`px-2 py-1 rounded-lg font-bold text-[11px] transition cursor-pointer ${
+                    projectTypeFilter === 'DA'
+                      ? 'bg-indigo-600 text-white'
+                      : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200'
+                  }`}
                 >
-                  Xóa lọc
+                  Dự án (DA)
                 </button>
-              )}
+
+                <button
+                  onClick={() => setProjectTypeFilter(projectTypeFilter === 'DD' ? 'ALL' : 'DD')}
+                  className={`px-2 py-1 rounded-lg font-bold text-[11px] transition cursor-pointer ${
+                    projectTypeFilter === 'DD'
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200'
+                  }`}
+                >
+                  Dân dụng (DD)
+                </button>
+              </div>
+
+              {/* Refresh & Clear */}
+              <button
+                onClick={handleClearFilter}
+                className="px-2 py-1 text-[11px] font-bold text-slate-500 hover:text-slate-900 transition"
+                title="Xóa bộ lọc ngày tháng"
+              >
+                Xóa lọc
+              </button>
 
               <button
                 onClick={() => syncNow()}
-                title="Làm mới & Đồng bộ"
+                title="Đồng bộ ngay"
                 className="p-1 text-slate-400 hover:text-orange-600 transition"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${syncState.status === 'syncing' ? 'animate-spin text-orange-600' : ''}`} />
               </button>
             </div>
+
+            {/* Row 2: Nút Lọc Thời Gian Nhanh (Hôm nay, Hôm qua, Tháng này, Toàn thời gian) */}
+            <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-slate-100">
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mr-1">
+                Lọc nhanh:
+              </span>
+
+              <button
+                onClick={() => handleSelectDatePreset('TODAY')}
+                className={`px-2 py-0.5 rounded-lg text-[11px] font-bold transition cursor-pointer ${
+                  quickDatePreset === 'TODAY'
+                    ? 'bg-orange-500 text-white'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                Hôm nay (03/10/2026)
+              </button>
+
+              <button
+                onClick={() => handleSelectDatePreset('YESTERDAY')}
+                className={`px-2 py-0.5 rounded-lg text-[11px] font-bold transition cursor-pointer ${
+                  quickDatePreset === 'YESTERDAY'
+                    ? 'bg-orange-500 text-white'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                Hôm qua (02/10/2026)
+              </button>
+
+              <button
+                onClick={() => handleSelectDatePreset('THIS_MONTH')}
+                className={`px-2 py-0.5 rounded-lg text-[11px] font-bold transition cursor-pointer ${
+                  quickDatePreset === 'THIS_MONTH'
+                    ? 'bg-orange-500 text-white'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                Tháng này (10/2026)
+              </button>
+
+              <button
+                onClick={() => handleSelectDatePreset('ALL')}
+                className={`px-2 py-0.5 rounded-lg text-[11px] font-bold transition cursor-pointer ${
+                  quickDatePreset === 'ALL'
+                    ? 'bg-slate-800 text-white'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                Toàn bộ thời gian
+              </button>
+
+              {/* Date Range Inputs */}
+              <div className="flex items-center gap-1 ml-auto text-[11px] text-slate-500">
+                <span>Từ:</span>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="px-1.5 py-0.5 border border-slate-200 rounded font-mono text-[10px]"
+                />
+                <span>Đến:</span>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="px-1.5 py-0.5 border border-slate-200 rounded font-mono text-[10px]"
+                />
+              </div>
+            </div>
           </div>
 
-          {/* 3. ULTRA-CLEAN, HIGH-DENSITY ORDERS TABLE (SHOWS 15-20+ ORDERS ON 1 SCREEN) */}
+          {/* 4. HIGH-DENSITY SHEET TABLE */}
           <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden flex-1 flex flex-col">
+            {/* Sheet Banner Indicator */}
+            <div className={`px-4 py-1.5 text-xs font-bold flex items-center justify-between border-b ${
+              activeSheet === 'SHEET_CHINH'
+                ? 'bg-blue-50/70 text-blue-900 border-blue-200'
+                : activeSheet === 'SHEET_PHAT_SINH'
+                ? 'bg-amber-50/70 text-amber-900 border-amber-200'
+                : 'bg-slate-100 text-slate-800 border-slate-200'
+            }`}>
+              <div className="flex items-center gap-2">
+                {activeSheet === 'SHEET_CHINH' ? (
+                  <>
+                    <Shield className="w-3.5 h-3.5 text-blue-600" />
+                    <span>SHEET 1: DANH SÁCH ĐƠN HÀNG CHÍNH (Hợp đồng kế toán khởi tạo)</span>
+                  </>
+                ) : activeSheet === 'SHEET_PHAT_SINH' ? (
+                  <>
+                    <Copy className="w-3.5 h-3.5 text-orange-600" />
+                    <span>SHEET 2: DANH SÁCH ĐƠN HÀNG PHÁT SINH (Đơn đổ bù, vét móng sao chép từ đơn chính)</span>
+                  </>
+                ) : (
+                  <>
+                    <TableProperties className="w-3.5 h-3.5 text-slate-600" />
+                    <span>SHEET 3: BẢNG TỔNG HỢP TOÀN BỘ ĐƠN HÀNG</span>
+                  </>
+                )}
+              </div>
+
+              <div className="text-[11px] font-normal">
+                Khối lượng sheet này: <strong className="font-bold">{filteredOrders.reduce((s, o) => s + o.totalVolume, 0)} m³</strong>
+                <span className="mx-2">•</span>
+                Đã cấp: <strong className="text-orange-600 font-bold">{filteredOrders.reduce((s, o) => s + o.deliveredVolume, 0)} m³</strong>
+              </div>
+            </div>
+
             <div className="overflow-x-auto flex-1">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="bg-slate-100/90 border-b border-slate-200/90 text-slate-600 text-[11px] font-bold uppercase tracking-wider sticky top-0 z-10">
-                    <th className="py-2.5 px-3 text-center w-12">STT</th>
-                    <th className="py-2.5 px-3 whitespace-nowrap bg-orange-50/60 text-orange-950 border-r border-orange-100">
-                      NGÀY GIAO & GIỜ
+                    <th className="py-2 px-3 text-center w-10">STT</th>
+                    <th className="py-2 px-3 whitespace-nowrap bg-orange-50/60 text-orange-950 border-r border-orange-100">
+                      NGÀY & GIỜ GIAO
                     </th>
-                    <th className="py-2.5 px-3 whitespace-nowrap">MÃ ĐƠN & LOẠI</th>
-                    <th className="py-2.5 px-3">TÊN KHÁCH HÀNG</th>
-                    <th className="py-2.5 px-3">CÔNG TRÌNH & CỰ LY</th>
-                    <th className="py-2.5 px-3">HẠNG MỤC</th>
-                    <th className="py-2.5 px-3">MÁC / SỤT</th>
-                    <th className="py-2.5 px-3 text-right">KLĐH</th>
-                    <th className="py-2.5 px-3 text-right text-orange-600">ĐÃ CẤP</th>
-                    <th className="py-2.5 px-3">GIAO NHẬN (KỸ THUẬT)</th>
-                    <th className="py-2.5 px-3 text-center">TRẠNG THÁI</th>
-                    <th className="py-2.5 px-3 text-center">THAO TÁC</th>
+                    <th className="py-2 px-3 whitespace-nowrap">
+                      {activeSheet === 'SHEET_PHAT_SINH' ? 'MÃ ĐƠN & GỐC' : 'MÃ ĐƠN HÀNG'}
+                    </th>
+                    <th className="py-2 px-3">TÊN KHÁCH HÀNG</th>
+                    <th className="py-2 px-3">CÔNG TRÌNH & CỰ LY</th>
+                    <th className="py-2 px-3">HẠNG MỤC</th>
+                    <th className="py-2 px-3">MÁC / SỤT</th>
+                    <th className="py-2 px-3 text-right">KLĐH</th>
+                    <th className="py-2 px-3 text-right text-orange-600">ĐÃ CẤP</th>
+                    <th className="py-2 px-3">GIAO NHẬN (KỸ THUẬT)</th>
+                    <th className="py-2 px-3 text-center">TRẠNG THÁI</th>
+                    <th className="py-2 px-3 text-center">THAO TÁC</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {filteredOrders.length === 0 ? (
                     <tr>
                       <td colSpan={12} className="py-12 text-center text-slate-400">
-                        Không có đơn hàng nào phù hợp với bộ lọc hiện tại. Bấm "Xóa lọc" để xem toàn bộ danh sách.
+                        Không có đơn hàng nào trong sheet này phù hợp với bộ lọc ngày tháng.
                       </td>
                     </tr>
                   ) : (
@@ -461,16 +811,16 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) =>
                             {idx + 1}
                           </td>
 
-                          {/* 1. NGÀY GIAO & GIỜ (Prominent, click to jump to project delivery) */}
+                          {/* 1. NGÀY & GIỜ GIAO */}
                           <td
                             onClick={(e) => {
                               e.stopPropagation();
                               handleOpenProjectDelivery(order);
                             }}
                             className="py-2 px-3 whitespace-nowrap bg-orange-50/30 border-r border-orange-100/60"
-                            title="Bấm vào ngày để vào mục cấp hàng công trình này"
+                            title="Bấm vào để vào trang điều phối cấp hàng công trình này"
                           >
-                            <div className="flex items-center gap-1.5 font-bold text-orange-700 group-hover:text-orange-600 group-hover:underline">
+                            <div className="flex items-center gap-1 font-bold text-orange-700 group-hover:text-orange-600 group-hover:underline">
                               <Calendar className="w-3.5 h-3.5 text-orange-600 shrink-0" />
                               <span>{order.deliveryDate.split('-').reverse().join('/')}</span>
                             </div>
@@ -480,7 +830,7 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) =>
                             </div>
                           </td>
 
-                          {/* 2. MÃ ĐƠN & PHÂN LOẠI */}
+                          {/* 2. MÃ ĐƠN HÀNG */}
                           <td className="py-2 px-3 whitespace-nowrap">
                             <div className="font-mono font-bold text-slate-900 text-xs">
                               {order.code}
@@ -489,17 +839,12 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) =>
                               {isPhatSinh ? (
                                 <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
                                   <Copy className="w-2 h-2" />
-                                  Phát sinh
+                                  Phát sinh {order.parentOrderCode ? `(Gốc: ${order.parentOrderCode})` : ''}
                                 </span>
                               ) : (
                                 <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[9px] font-bold bg-blue-100 text-blue-900 border border-blue-300">
                                   <Shield className="w-2 h-2" />
                                   Đơn chính
-                                </span>
-                              )}
-                              {order.parentOrderCode && (
-                                <span className="text-[9px] font-mono text-slate-400">
-                                  ({order.parentOrderCode})
                                 </span>
                               )}
                             </div>
@@ -593,7 +938,7 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) =>
                               <button
                                 onClick={() => handleOpenProjectDelivery(order)}
                                 className="px-2 py-0.5 rounded bg-orange-500 hover:bg-orange-600 text-white font-bold text-[10px] transition cursor-pointer flex items-center gap-0.5"
-                                title="Chuyển vào mục cấp hàng công trình này"
+                                title="Chuyển vào trang cấp hàng công trình này"
                               >
                                 <span>Cấp hàng</span>
                                 <ChevronRight className="w-3 h-3" />
@@ -602,7 +947,7 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) =>
                               {/* Copy phát sinh */}
                               <button
                                 onClick={() => handleOpenCreateIncurred(order)}
-                                className="p-1 rounded hover:bg-amber-100 text-amber-700 transition"
+                                className="p-1 rounded hover:bg-amber-100 text-amber-700 transition cursor-pointer"
                                 title="Sao chép từ đơn này để tạo Đơn hàng phát sinh"
                               >
                                 <Copy className="w-3.5 h-3.5" />
@@ -612,22 +957,22 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) =>
                               {isAccountant && (
                                 <button
                                   onClick={() => handleOpenEditOrder(order)}
-                                  className="p-1 rounded hover:bg-blue-100 text-blue-700 transition"
+                                  className="p-1 rounded hover:bg-blue-100 text-blue-700 transition cursor-pointer"
                                   title="Chỉnh sửa đơn hàng (Quyền Admin / Kế toán)"
                                 >
                                   <Edit2 className="w-3.5 h-3.5" />
                                 </button>
                               )}
 
-                              {/* In phiếu */}
+                              {/* In phiếu (Kết nối máy in thật) */}
                               {onOpenPrintModal && (
                                 <button
                                   onClick={() => {
                                     setSelectedOrderId(order.id);
                                     onOpenPrintModal(order);
                                   }}
-                                  className="p-1 rounded hover:bg-orange-100 text-orange-600 transition"
-                                  title="In phiếu giao nhận"
+                                  className="p-1 rounded hover:bg-orange-100 text-orange-600 transition cursor-pointer"
+                                  title="In phiếu giao nhận ra máy in vật lý (Hình 2)"
                                 >
                                   <Printer className="w-3.5 h-3.5" />
                                 </button>
@@ -639,7 +984,7 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) =>
                                   setSelectedOrderId(order.id);
                                   setIsAssignOpen(true);
                                 }}
-                                className="p-1 rounded hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition"
+                                className="p-1 rounded hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition cursor-pointer"
                                 title="Cấp xe bồn cho đơn này"
                               >
                                 <Plus className="w-3.5 h-3.5" />
@@ -654,23 +999,28 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) =>
               </table>
             </div>
 
-            {/* Bottom table status counter */}
-            <div className="px-4 py-2 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500">
+            {/* Bottom Sheet Status */}
+            <div className="px-4 py-2 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between text-[11px] text-slate-500">
               <div>
-                Đang hiển thị <strong>{filteredOrders.length}</strong> / {orders.length} đơn hàng bê tông
+                Đang xem <strong>{filteredOrders.length}</strong> đơn trong {
+                  activeSheet === 'SHEET_CHINH'
+                    ? 'Sheet 1 (Đơn chính)'
+                    : activeSheet === 'SHEET_PHAT_SINH'
+                    ? 'Sheet 2 (Đơn phát sinh)'
+                    : 'Toàn bộ đơn hàng'
+                }
               </div>
               <div className="flex items-center gap-3">
-                <span>Tổng khối lượng đặt: <strong className="text-slate-800 font-bold">{filteredOrders.reduce((s, o) => s + o.totalVolume, 0)} m³</strong></span>
+                <span>Tổng KL đặt: <strong className="text-slate-800 font-bold">{filteredOrders.reduce((s, o) => s + o.totalVolume, 0)} m³</strong></span>
                 <span>•</span>
                 <span>Đã cấp: <strong className="text-orange-600 font-bold">{filteredOrders.reduce((s, o) => s + o.deliveredVolume, 0)} m³</strong></span>
               </div>
             </div>
           </div>
 
-          {/* 4. COLLAPSIBLE BOTTOM DRAWER FOR DISPATCH & ORDER DETAILS */}
+          {/* 5. COLLAPSIBLE BOTTOM DRAWER FOR DISPATCH & ORDER DETAILS */}
           {selectedOrder && (
             <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden transition-all duration-200">
-              {/* Collapsible toggle bar */}
               <div
                 onClick={() => setIsDetailPanelOpen(!isDetailPanelOpen)}
                 className="p-3 bg-slate-900 text-white flex items-center justify-between cursor-pointer hover:bg-slate-800 transition"
@@ -696,7 +1046,6 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({ onOpenPrintModal }) =>
                 </div>
               </div>
 
-              {/* Collapsible Content */}
               {isDetailPanelOpen && (
                 <div className="p-4 bg-slate-50/60 border-t border-slate-200 animate-in fade-in duration-150">
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
