@@ -211,7 +211,7 @@ export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({
     setIsDrawSignatureModalOpen(false);
   };
 
-  // CHỤP HÌNH PHIẾU NHANH (Fast Ticket Screenshot)
+  // CHỤP HÌNH PHIẾU VÀ LƯU VÀO BỘ NHỚ TẠM (CHỈ SAO CHÉP CLIPBOARD, KHÔNG TỰ ĐỘNG TẢI FILE)
   const handleQuickCapture = async () => {
     const receiptEl = document.getElementById('print-receipt-container');
     if (!receiptEl) {
@@ -220,45 +220,30 @@ export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({
     }
 
     setIsCapturing(true);
-    setCaptureNotice('Đang chụp ảnh phiếu giao nhận với độ phân giải cao...');
+    setCaptureNotice('Đang chụp ảnh phiếu giao nhận vào bộ nhớ tạm...');
 
     try {
-      // 1. Chụp ảnh chất lượng 2x nét căng
-      const dataUrl = await toPng(receiptEl, {
+      const blob = await toBlob(receiptEl, {
         quality: 1,
         pixelRatio: 2.5,
         backgroundColor: '#ffffff'
       });
 
-      // 2. Tự động tải file ảnh PNG về máy
-      const fileName = `Phieu-Giao-Nhan-${trip?.ticketNumber || sealNumber || order.code}.png`;
-      const link = document.createElement('a');
-      link.download = fileName;
-      link.href = dataUrl;
-      link.click();
-
-      // 3. Tự động sao chép vào Clipboard (để dán thẳng vào Zalo/Viber bằng Ctrl+V)
-      try {
-        const blob = await toBlob(receiptEl, {
-          quality: 1,
-          pixelRatio: 2.5,
-          backgroundColor: '#ffffff'
-        });
-
-        if (blob && navigator.clipboard && (window as any).ClipboardItem) {
-          await navigator.clipboard.write([
-            new (window as any).ClipboardItem({ 'image/png': blob })
-          ]);
-          setCaptureNotice('✅ Đã chụp ảnh & tải về máy! ĐÃ SAO CHÉP VÀO BỘ NHỚ TẠM (Nhấn Ctrl+V để gửi ngay qua Zalo/Viber).');
-        } else {
-          setCaptureNotice(`✅ Đã chụp ảnh phiếu và tải về máy: ${fileName}`);
-        }
-      } catch {
-        setCaptureNotice(`✅ Đã chụp ảnh phiếu và tải về máy: ${fileName}`);
+      if (!blob) {
+        throw new Error('Không thể kết xuất ảnh phiếu');
       }
-    } catch (err) {
-      console.error('Lỗi chụp hình phiếu:', err);
-      setCaptureNotice('❌ Lỗi khi chụp ảnh phiếu giao nhận. Vui lòng thử lại.');
+
+      if (navigator.clipboard && (window as any).ClipboardItem) {
+        await navigator.clipboard.write([
+          new (window as any).ClipboardItem({ 'image/png': blob })
+        ]);
+        setCaptureNotice('✅ ĐÃ SAO CHÉP ẢNH PHIẾU VÀO BỘ NHỚ TẠM! Bạn chỉ cần mở Zalo / Viber và nhấn Ctrl + V để gửi.');
+      } else {
+        setCaptureNotice('⚠️ Trình duyệt cần cấp quyền sao chép hình ảnh vào bộ nhớ tạm.');
+      }
+    } catch (err: any) {
+      console.error('Lỗi sao chép ảnh phiếu:', err);
+      setCaptureNotice('❌ Lỗi khi chụp và sao chép ảnh: ' + (err?.message || err));
     } finally {
       setIsCapturing(false);
       setTimeout(() => {
@@ -321,22 +306,22 @@ export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-            {/* NÚT CHỤP HÌNH PHIẾU NHANH */}
+            {/* NÚT CHỤP MÀN HÌNH PHIẾU (CHỈ LƯU BỘ NHỚ TẠM) */}
             <button
               onClick={handleQuickCapture}
               disabled={isCapturing}
               className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-md cursor-pointer transition active:scale-95"
-              title="Chụp hình phiếu sắc nét, tự động tải file ảnh PNG và sao chép vào bộ nhớ tạm (Ctrl+V gửi qua Zalo/Viber)"
+              title="Chụp màn hình phiếu và lưu vào bộ nhớ tạm (không tải về máy), nhấn Ctrl+V để gửi ngay qua Zalo/Viber"
             >
               {isCapturing ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Đang chụp...</span>
+                  <span>Đang sao chép...</span>
                 </>
               ) : (
                 <>
-                  <Camera className="w-4 h-4 text-cyan-200" />
-                  <span>Chụp hình phiếu nhanh</span>
+                  <Copy className="w-4 h-4 text-cyan-200" />
+                  <span>Chụp lưu bộ nhớ tạm (Ctrl+V)</span>
                 </>
               )}
             </button>
@@ -568,9 +553,10 @@ export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({
               onClick={handleQuickCapture}
               disabled={isCapturing}
               className="px-4 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-800 font-bold border border-blue-300 flex items-center gap-1.5 transition cursor-pointer"
+              title="Chụp phiếu và lưu vào bộ nhớ tạm (không tải về máy), nhấn Ctrl+V để dán vào Zalo/Viber"
             >
-              <Camera className="w-4 h-4 text-blue-600" />
-              <span>Chụp ảnh phiếu</span>
+              <Copy className="w-4 h-4 text-blue-600" />
+              <span>Chụp vào bộ nhớ tạm</span>
             </button>
 
             <button
