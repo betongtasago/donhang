@@ -34,6 +34,7 @@ export interface DispatchTrip {
   driverName: string;
   driverPhone: string;
   volume: number; // m³ (e.g. 8)
+  accumulatedVolume?: number; // m³ cộng dồn lũy kế
   departureTime: string; // e.g. 18:15
   arrivalEstimate: string; // e.g. 18:45
   status: TripStatus;

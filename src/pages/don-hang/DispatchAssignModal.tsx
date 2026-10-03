@@ -74,8 +74,10 @@ export const DispatchAssignModal: React.FC<DispatchAssignModalProps> = ({ order,
             <div className="font-semibold text-slate-800 text-xs truncate">{order.customerName}</div>
             <div className="text-[11px] text-slate-500 mt-0.5 truncate">{order.projectTitle} - {order.categoryItem}</div>
             <div className="mt-2 flex items-center justify-between text-xs pt-2 border-t border-slate-200">
-              <span>Đã cấp: <strong>{order.deliveredVolume} / {order.totalVolume} m³</strong></span>
-              <span className="text-orange-600 font-bold">Còn lại: {Math.max(0, order.totalVolume - order.deliveredVolume)} m³</span>
+              <span>Đã cấp hiện tại: <strong>{order.deliveredVolume} / {order.totalVolume} m³</strong></span>
+              <span className="text-orange-600 font-bold">
+                Sau khi cấp xe: {order.deliveredVolume + volume} m³ (Lũy kế cộng dồn)
+              </span>
             </div>
           </div>
 

@@ -335,20 +335,27 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const dateCode = new Date().toISOString().slice(2, 10).replace(/-/g, '');
     const newTicket = `PKX-${dateCode}-${ticketSeq}`;
 
+    // Find current order to calculate cumulative delivered volume
+    const targetOrder = data.orders.find(o => o.id === tripInput.orderId || o.code === tripInput.orderCode);
+    const prevDelivered = targetOrder ? targetOrder.deliveredVolume : 0;
+    const newAccumulated = prevDelivered + tripInput.volume;
+
     const newTrip: DispatchTrip = {
       ...tripInput,
       id: `trip-${Date.now()}`,
-      ticketNumber: newTicket
+      ticketNumber: newTicket,
+      accumulatedVolume: newAccumulated
     };
 
-    // Update order delivered volume and assigned truck count
+    // Update order delivered volume (lũy kế tăng cộng dồn vào đơn hàng)
     const nextOrders = data.orders.map(o => {
       if (o.id === tripInput.orderId || o.code === tripInput.orderCode) {
+        const totalDelivered = o.deliveredVolume + tripInput.volume;
         return {
           ...o,
-          deliveredVolume: Math.min(o.totalVolume, o.deliveredVolume + tripInput.volume),
+          deliveredVolume: totalDelivered,
           assignedTrucksCount: o.assignedTrucksCount + 1,
-          status: 'DANG_CHAY' as OrderStatus
+          status: (totalDelivered >= o.totalVolume ? 'HOAN_THANH' : 'DANG_CHAY') as OrderStatus
         };
       }
       return o;
@@ -377,7 +384,7 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setData(nextData);
     broadcastChange('STATE_UPDATE', nextData);
     setSecondsSinceSync(0);
-    addSyncLog(`Xuất phiếu ${newTicket} - Xe ${tripInput.truckPlate} cấp ${tripInput.volume}m³ cho ${tripInput.orderCode}`, 'success');
+    addSyncLog(`Xuất xe ${tripInput.truckPlate} (${tripInput.volume}m³). Lũy kế cộng dồn: ${newAccumulated}m³ / ${targetOrder?.totalVolume || 0}m³ cho đơn ${tripInput.orderCode}`, 'success');
     return newTrip;
   };
 
