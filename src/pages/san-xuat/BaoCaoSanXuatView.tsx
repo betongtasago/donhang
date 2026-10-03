@@ -58,10 +58,12 @@ export const BaoCaoSanXuatView: React.FC = () => {
   const totalProjectDA = filteredOrders.filter(o => (o.projectType || 'DA') === 'DA').reduce((sum, o) => sum + o.totalVolume, 0);
   const totalProjectDD = filteredOrders.filter(o => o.projectType === 'DD').reduce((sum, o) => sum + o.totalVolume, 0);
 
-  // Export to Excel (.xlsx format chuẩn)
+  // Export to Excel (.xlsx format chuẩn - đồng bộ mã trên phiếu)
   const handleExportXLSX = () => {
     const headers = [
       'STT',
+      'Mã đơn hàng',
+      'Mã trên phiếu (Số phiếu xuất)',
       'Ngày sản xuất',
       'Mã C.Trình',
       'Tên công ty / Khách hàng',
@@ -78,39 +80,47 @@ export const BaoCaoSanXuatView: React.FC = () => {
       'Ghi chú trên phiếu'
     ];
 
-    const rows = filteredOrders.map((ord, idx) => [
-      idx + 1,
-      ord.deliveryDate,
-      ord.customerCode || '---',
-      ord.customerName,
-      ord.projectTitle,
-      ord.categoryItem,
-      ord.grade,
-      ord.totalVolume,
-      ord.deliveredVolume,
-      ord.projectType === 'DD' ? 'Dân dụng (DD)' : 'Dự án (DA)',
-      ord.deliveryTime,
-      ord.technicianName || 'Nguyễn Văn Nam',
-      ord.orderType === 'PHAT_SINH' ? 'Phát sinh' : 'Đơn chính',
-      ord.parentOrderCode || '---',
-      ord.notes || ''
-    ]);
+    const rows = filteredOrders.map((ord, idx) => {
+      const orderTrips = trips.filter(t => t.orderId === ord.id || t.orderCode === ord.code);
+      const ticketNumbers = orderTrips.map(t => t.ticketNumber).join(', ') || 'Chưa cấp phiếu';
+      return [
+        idx + 1,
+        ord.code,
+        ticketNumbers,
+        ord.deliveryDate,
+        ord.customerCode || '---',
+        ord.customerName,
+        ord.projectTitle,
+        ord.categoryItem,
+        ord.grade,
+        ord.totalVolume,
+        ord.deliveredVolume,
+        ord.projectType === 'DD' ? 'Dân dụng (DD)' : 'Dự án (DA)',
+        ord.deliveryTime,
+        ord.technicianName || 'Nguyễn Văn Nam',
+        ord.orderType === 'PHAT_SINH' ? 'Phát sinh' : 'Đơn chính',
+        ord.parentOrderCode || '---',
+        ord.notes || ''
+      ];
+    });
 
     const sheetData = [
-      ['BÁO CÁO SẢN XUẤT BÊ TÔNG TSG TNT THEO NGÀY'],
+      ['BÁO CÁO SẢN XUẤT BÊ TÔNG TSG TNT THEO NGÀY (ĐỒNG BỘ MÃ PHIẾU XUẤT)'],
       [`Ngày xuất báo cáo: ${new Date().toLocaleDateString('vi-VN')} ${new Date().toLocaleTimeString('vi-VN')}`],
       [`Bộ lọc: ${selectedDate ? 'Ngày ' + selectedDate : 'Tất cả các ngày'} | Tổng sản lượng: ${totalVolume} m3`],
       [],
       headers,
       ...rows,
       [],
-      ['TỔNG CỘNG', '', '', '', '', '', '', totalVolume, totalDelivered, `${totalProjectDA} m3 (DA) / ${totalProjectDD} m3 (DD)`]
+      ['TỔNG CỘNG', '', '', '', '', '', '', '', '', totalVolume, totalDelivered, `${totalProjectDA} m3 (DA) / ${totalProjectDD} m3 (DD)`]
     ];
 
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet(sheetData);
     ws['!cols'] = [
       { wch: 6 },
+      { wch: 16 },
+      { wch: 26 },
       { wch: 14 },
       { wch: 14 },
       { wch: 38 },
@@ -298,6 +308,7 @@ export const BaoCaoSanXuatView: React.FC = () => {
               <tr className="bg-slate-100/80 border-b border-slate-200 text-slate-600 text-[11px] font-bold uppercase tracking-wider">
                 <th className="py-3 px-3 text-center">STT</th>
                 <th className="py-3 px-3">NGÀY SẢN XUẤT</th>
+                <th className="py-3 px-3">MÃ ĐƠN & MÃ TRÊN PHIẾU</th>
                 <th className="py-3 px-3">MÃ CTRINH - TÊN CÔNG TY</th>
                 <th className="py-3 px-4">TÊN CÔNG TRÌNH</th>
                 <th className="py-3 px-3">HẠNG MỤC</th>
@@ -313,13 +324,14 @@ export const BaoCaoSanXuatView: React.FC = () => {
             <tbody className="divide-y divide-slate-100">
               {filteredOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={12} className="py-8 text-center text-slate-400">
+                  <td colSpan={13} className="py-8 text-center text-slate-400">
                     Không có dữ liệu sản xuất phù hợp với bộ lọc hiện tại.
                   </td>
                 </tr>
               ) : (
                 filteredOrders.map((ord, idx) => {
                   const isPhatSinh = ord.orderType === 'PHAT_SINH';
+                  const orderTrips = trips.filter(t => t.orderId === ord.id || t.orderCode === ord.code);
                   return (
                     <tr key={ord.id} className="hover:bg-slate-50 transition">
                       <td className="py-3 px-3 text-center font-mono text-slate-400">{idx + 1}</td>
@@ -327,6 +339,28 @@ export const BaoCaoSanXuatView: React.FC = () => {
                       {/* Ngày sản xuất */}
                       <td className="py-3 px-3 whitespace-nowrap font-bold text-slate-900">
                         {ord.deliveryDate.split('-').reverse().join('/')}
+                      </td>
+
+                      {/* Mã đơn & Số phiếu xuất (Đồng bộ trực tiếp với phiếu giao nhận & nhật ký) */}
+                      <td className="py-3 px-3 whitespace-nowrap">
+                        <div className="font-mono font-bold text-slate-900 text-xs">
+                          {ord.code}
+                        </div>
+                        <div className="flex flex-wrap gap-1 mt-1 max-w-[210px]">
+                          {orderTrips.length === 0 ? (
+                            <span className="text-[10px] text-slate-400 font-mono italic">Chưa cấp phiếu</span>
+                          ) : (
+                            orderTrips.map(t => (
+                              <span
+                                key={t.id}
+                                className="font-mono font-bold text-[10px] px-1.5 py-0.2 rounded bg-orange-100 text-orange-900 border border-orange-300 shadow-xs"
+                                title={`Số phiếu: ${t.ticketNumber} | Xe: ${t.truckPlate} | KL: ${t.volume}m³ | Giờ: ${t.departureTime}`}
+                              >
+                                {t.ticketNumber}
+                              </span>
+                            ))
+                          )}
+                        </div>
                       </td>
 
                       {/* Mã Ctrinh - Tên công ty */}

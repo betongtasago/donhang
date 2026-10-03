@@ -528,12 +528,36 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const updateTripDetails = (tripId: string, updates: Partial<DispatchTrip>) => {
-    const nextTrips = data.trips.map(t => (t.id === tripId ? { ...t, ...updates } : t));
-    const nextData = { ...data, trips: nextTrips };
+    let nextTrips = data.trips.map(t => (t.id === tripId ? { ...t, ...updates } : t));
+    const targetTrip = nextTrips.find(t => t.id === tripId);
+    let nextOrders = data.orders;
+
+    if (targetTrip) {
+      const orderIdOrCode = targetTrip.orderId || targetTrip.orderCode;
+      // Tính lại lũy kế cộng dồn từng chuyến cho đơn hàng này
+      let runningAcc = 0;
+      nextTrips = nextTrips.map(t => {
+        if (t.orderId === orderIdOrCode || t.orderCode === orderIdOrCode) {
+          runningAcc += Number(t.volume) || 0;
+          return { ...t, accumulatedVolume: runningAcc };
+        }
+        return t;
+      });
+
+      // Cập nhật tổng khối lượng đã cấp vào đơn hàng
+      nextOrders = data.orders.map(o => {
+        if (o.id === orderIdOrCode || o.code === orderIdOrCode) {
+          return { ...o, deliveredVolume: runningAcc };
+        }
+        return o;
+      });
+    }
+
+    const nextData = { ...data, trips: nextTrips, orders: nextOrders };
     setData(nextData);
     broadcastChange('STATE_UPDATE', nextData);
     setSecondsSinceSync(0);
-    addSyncLog(`Đã cập nhật chuyến xe ${tripId}: ${updates.driverName || ''} - ${updates.truckPlate || ''}`, 'info');
+    addSyncLog(`Đã cập nhật chi tiết phiếu ${targetTrip?.ticketNumber || tripId}: ${updates.truckPlate || ''} ${updates.volume ? updates.volume + 'm³' : ''}`, 'info');
 
     fetch(`/api/trips/${tripId}`, {
       method: 'PUT',

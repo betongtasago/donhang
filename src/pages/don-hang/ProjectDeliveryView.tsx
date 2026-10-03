@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ConcreteOrder, DispatchTrip, TripStatus } from '../../types';
 import { useSync } from '../../sync/SyncContext';
+import { EditTripModal } from './EditTripModal';
 import {
   ArrowLeft,
   Truck,
@@ -17,6 +18,7 @@ import {
   TrendingUp,
   FileText,
   AlertCircle,
+  Edit2,
   Edit3,
   Copy
 } from 'lucide-react';
@@ -50,6 +52,10 @@ export const ProjectDeliveryView: React.FC<ProjectDeliveryViewProps> = ({
   const [quickSlump, setQuickSlump] = useState<string>(order.slump || '10+-2');
   const [quickNotes, setQuickNotes] = useState('');
   const [successNotice, setSuccessNotice] = useState('');
+
+  // State chỉnh sửa chi tiết phiếu giao nhận
+  const [editingTrip, setEditingTrip] = useState<DispatchTrip | null>(null);
+  const [isEditTripOpen, setIsEditTripOpen] = useState(false);
 
   const percentCompleted = order.totalVolume > 0
     ? Math.min(100, Math.round((order.deliveredVolume / order.totalVolume) * 100))
@@ -343,8 +349,11 @@ export const ProjectDeliveryView: React.FC<ProjectDeliveryViewProps> = ({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <FileText className="w-4 h-4 text-orange-600" />
-            <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wide">
-              NHẬT KÝ CẤP XE BỒN & LŨY KẾ CỘNG DỒN TỪNG CHUYẾN
+            <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wide flex items-center gap-2">
+              <span>NHẬT KÝ CẤP XE BỒN & LŨY KẾ CỘNG DỒN TỪNG CHUYẾN</span>
+              <span className="text-[11px] font-normal text-slate-500 normal-case">
+                (Bấm vào dòng để sửa chi tiết phiếu)
+              </span>
             </h2>
             <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
               {orderTrips.length} chuyến
@@ -387,12 +396,23 @@ export const ProjectDeliveryView: React.FC<ProjectDeliveryViewProps> = ({
                 orderTrips.map((trip, index) => {
                   const accumulated = trip.accumulatedVolume || (order.deliveredVolume);
                   return (
-                    <tr key={trip.id} className="hover:bg-slate-50 transition">
+                    <tr
+                      key={trip.id}
+                      onClick={() => {
+                        setEditingTrip(trip);
+                        setIsEditTripOpen(true);
+                      }}
+                      className="hover:bg-orange-50/70 transition cursor-pointer group"
+                      title="Bấm vào dòng này để chỉnh sửa chi tiết của phiếu (Số phiếu, số xe, tài xế, khối lượng...)"
+                    >
                       <td className="py-3 px-3 font-bold text-slate-900">
                         Chuyến #{index + 1}
                       </td>
-                      <td className="py-3 px-3 font-mono font-semibold text-slate-700">
-                        {trip.ticketNumber}
+                      <td className="py-3 px-3 font-mono font-bold text-orange-700 bg-orange-50/40">
+                        <div className="flex items-center gap-1">
+                          <span>{trip.ticketNumber}</span>
+                          <Edit2 className="w-2.5 h-2.5 text-orange-400 opacity-0 group-hover:opacity-100 transition" />
+                        </div>
                       </td>
                       <td className="py-3 px-3 font-mono font-bold text-slate-900 text-xs">
                         {trip.truckPlate}
@@ -419,15 +439,29 @@ export const ProjectDeliveryView: React.FC<ProjectDeliveryViewProps> = ({
                       <td className="py-3 px-3 whitespace-nowrap">
                         {getStatusBadge(trip.status)}
                       </td>
-                      <td className="py-3 px-3 text-center whitespace-nowrap">
+                      <td className="py-3 px-3 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-center gap-1.5">
+                          {/* Nút Sửa phiếu */}
+                          <button
+                            onClick={() => {
+                              setEditingTrip(trip);
+                              setIsEditTripOpen(true);
+                            }}
+                            className="px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-[11px] border border-blue-200 flex items-center gap-1 transition cursor-pointer shadow-xs active:scale-95"
+                            title="Chỉnh sửa chi tiết phiếu giao nhận này"
+                          >
+                            <Edit2 className="w-3.5 h-3.5 text-blue-600" />
+                            <span>Sửa phiếu</span>
+                          </button>
+
+                          {/* Nút In phiếu */}
                           <button
                             onClick={() => onOpenPrintModal(order, trip)}
-                            className="px-2.5 py-1 rounded-lg bg-orange-50 hover:bg-orange-100 text-orange-700 font-bold text-[11px] border border-orange-200 flex items-center gap-1 transition cursor-pointer"
+                            className="px-2.5 py-1 rounded-lg bg-orange-50 hover:bg-orange-100 text-orange-700 font-bold text-[11px] border border-orange-200 flex items-center gap-1 transition cursor-pointer shadow-xs active:scale-95"
                             title="In phiếu giao nhận bê tông cho chuyến này (Hình 2)"
                           >
                             <Printer className="w-3.5 h-3.5 text-orange-600" />
-                            In phiếu (Hình 2)
+                            <span>In phiếu (Hình 2)</span>
                           </button>
 
                           <select
@@ -452,6 +486,15 @@ export const ProjectDeliveryView: React.FC<ProjectDeliveryViewProps> = ({
           </table>
         </div>
       </div>
+
+      {/* Modal Chỉnh Sửa Chi Tiết Phiếu Xuất Xe */}
+      <EditTripModal
+        isOpen={isEditTripOpen}
+        onClose={() => setIsEditTripOpen(false)}
+        trip={editingTrip}
+        order={order}
+        onOpenPrintModal={onOpenPrintModal}
+      />
     </div>
   );
 };

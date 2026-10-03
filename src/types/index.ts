@@ -53,6 +53,10 @@ export interface DispatchTrip {
   grade: string;
   distanceKm?: number; // Km 1 chiều của chuyến
   isLargeTrip?: boolean; // >= 6m3 hoặc theo ngưỡng xe
+  sealNumber?: string; // Số niêm chì
+  arrivalTime?: string; // Giờ đến công trường
+  notes?: string; // Ghi chú trên phiếu
+  technicianName?: string; // Kỹ thuật phụ trách
 }
 
 export interface ProjectDistance {
