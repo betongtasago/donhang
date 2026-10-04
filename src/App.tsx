@@ -36,7 +36,8 @@ const VALID_PAGES = [
 
 const getInitialPage = (): string => {
   if (typeof window !== 'undefined') {
-    // 1. Kiểm tra URL hash (ví dụ: #/san-xuat)
+    // 1. Kiểm tra URL hash (ví dụ: #san-xuat). Avoid slash-prefixed hashes because
+    // the preview runtime may interpret them as CSS selectors.
     const rawHash = window.location.hash.replace(/^#\/?/, '').split('?')[0].split('/')[0];
     if (rawHash && VALID_PAGES.includes(rawHash)) {
       return rawHash;
@@ -67,8 +68,8 @@ export const AppContent: React.FC = () => {
   React.useEffect(() => {
     try {
       localStorage.setItem('tsg_current_page', currentPage);
-      if (window.location.hash !== `#/${currentPage}`) {
-        window.location.hash = `#/${currentPage}`;
+      if (window.location.hash !== `#${currentPage}`) {
+        window.location.hash = `#${currentPage}`;
       }
     } catch {
       // Ignore
