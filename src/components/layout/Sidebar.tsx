@@ -6,7 +6,6 @@ import {
   Factory,
   Truck,
   FlaskConical,
-  Fuel,
   Settings,
   ChevronDown,
   ChevronRight,
@@ -59,7 +58,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'quan-ly-lai-xe', label: 'Quản lý lái xe & Km', icon: Users },
     { id: 'cong-no', label: 'Công nợ khách hàng', icon: CreditCard },
     { id: 'thi-nghiem', label: 'Thí nghiệm & QC Lab', icon: FlaskConical },
-    { id: 'xang-dau', label: 'Nhiên liệu & Xăng dầu', icon: Fuel },
   ];
 
   const plantOptions = [

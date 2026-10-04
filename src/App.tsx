@@ -16,7 +16,6 @@ import { CongNoPage } from './pages/cong-no';
 import { SanXuatPage } from './pages/san-xuat';
 import { QuanLyLaiXePage } from './pages/quan-ly-lai-xe';
 import { ThiNghiemPage } from './pages/thi-nghiem';
-import { XangDauPage } from './pages/xang-dau';
 import { CaiDatPage } from './pages/cai-dat';
 import { BangSapTaiPage } from './pages/bang-sap-tai';
 import { DanhSachTaiXePage } from './pages/danh-sach-tai-xe';
@@ -30,7 +29,6 @@ const VALID_PAGES = [
   'danh-sach-tai-xe',
   'quan-ly-lai-xe',
   'thi-nghiem',
-  'xang-dau',
   'cai-dat'
 ];
 
@@ -120,8 +118,6 @@ export const AppContent: React.FC = () => {
         return <QuanLyLaiXePage />;
       case 'thi-nghiem':
         return <ThiNghiemPage />;
-      case 'xang-dau':
-        return <XangDauPage />;
       case 'cai-dat':
         return (
           <CaiDatPage

@@ -17,6 +17,7 @@ import { useSync } from '../../sync/SyncContext';
 import { useAuth } from '../../auth/AuthContext';
 import { Users, UserPlus } from 'lucide-react';
 import { SupabaseSettingsCard } from './SupabaseSettingsCard';
+import { SecurityAuditCard } from './SecurityAuditCard';
 
 interface CaiDatPageProps {
   onOpenSyncModal: () => void;
@@ -87,6 +88,9 @@ export const CaiDatPage: React.FC<CaiDatPageProps> = ({ onOpenSyncModal, onOpenM
           {statusMsg}
         </div>
       )}
+
+      {/* Security Audit Center Section */}
+      <SecurityAuditCard />
 
       {/* Sync Engine Section */}
       <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs space-y-5">
