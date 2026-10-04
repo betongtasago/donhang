@@ -11,16 +11,6 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const requiredDbEnv = ['SQL_HOST', 'SQL_USER', 'SQL_PASSWORD', 'SQL_DB_NAME'];
-const missingDbEnv = requiredDbEnv.filter((key) => !process.env[key]);
-
-if (missingDbEnv.length > 0) {
-  console.warn(
-    `Missing database environment variables: ${missingDbEnv.join(', ')}. ` +
-      'Set them in a .env file before using DB-backed endpoints.'
-  );
-}
-
 async function startServer() {
   const app = express();
   const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
@@ -65,13 +55,6 @@ async function startServer() {
 
   // API Routes for Concrete Operations Database
   app.get('/api/health', async (req, res) => {
-    if (missingDbEnv.length > 0) {
-      return res.status(503).json({
-        status: 'error',
-        message: 'Database is not configured. Set SQL_HOST, SQL_USER, SQL_PASSWORD, and SQL_DB_NAME in .env.'
-      });
-    }
-
     try {
       const result = await db.select().from(orders).limit(1);
       res.json({ status: 'ok', database: 'connected', sampleOrdersCount: result.length });
@@ -440,4 +423,5 @@ async function startServer() {
 
 startServer().catch(err => {
   console.error('Failed to start server:', err);
+  process.exit(1);
 });
