@@ -1,14 +1,18 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import bcrypt from 'bcryptjs';
 import { UserAccount, StoredUserAccount, UserRole } from './types';
 
 const STORAGE_USERS_KEY = 'TSG_TNT_USER_ACCOUNTS_V1';
 const STORAGE_SESSION_KEY = 'TSG_TNT_CURRENT_SESSION_V1';
+const STORAGE_TOKEN_KEY = 'TSG_TNT_AUTH_TOKEN_V1';
+const DEFAULT_ADMIN_USERNAME = import.meta.env.VITE_ADMIN_USERNAME || 'admin';
+const DEFAULT_ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || 'change-me-please-set-env';
 
 const DEFAULT_USERS: StoredUserAccount[] = [
   {
     id: 'usr-admin-01',
-    username: 'admin',
-    passwordHash: 'Tsg2026@',
+    username: DEFAULT_ADMIN_USERNAME,
+    passwordHash: DEFAULT_ADMIN_PASSWORD,
     fullName: 'Quản Trị Viên Hệ Thống (TSG TNT)',
     role: 'ADMIN',
     roleTitle: 'Tổng Quản Trị Hệ Thống',
@@ -54,6 +58,18 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const passwordMatches = (input: string, storedHash: string) => {
+  if (!storedHash) return false;
+  if (storedHash === input) return true;
+  try {
+    return bcrypt.compareSync(input, storedHash);
+  } catch {
+    return false;
+  }
+};
+
+const hashPassword = (value: string) => bcrypt.hashSync(value, 10);
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [storedAccounts, setStoredAccounts] = useState<StoredUserAccount[]>(() => {
     try {
@@ -61,18 +77,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // Guarantee admin exists with requested password Tsg2026@
-          const hasAdmin = parsed.some(u => u.username === 'admin');
+          const hasAdmin = parsed.some((u: StoredUserAccount) =>
+            (u.username || '').toLowerCase() === DEFAULT_ADMIN_USERNAME.toLowerCase()
+          );
           if (!hasAdmin) {
             return [...DEFAULT_USERS, ...parsed];
           }
-          return parsed;
+          return parsed.map((u: StoredUserAccount) => ({
+            ...u,
+            passwordHash: u.passwordHash && !u.passwordHash.startsWith('$2')
+              ? hashPassword(u.passwordHash)
+              : u.passwordHash
+          }));
         }
       }
     } catch (e) {
       console.error(e);
     }
-    return DEFAULT_USERS;
+    return DEFAULT_USERS.map(u => ({
+      ...u,
+      passwordHash: u.passwordHash && !u.passwordHash.startsWith('$2') ? hashPassword(u.passwordHash) : u.passwordHash
+    }));
   });
 
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(() => {
@@ -113,7 +138,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const cleanUser = username.trim().toLowerCase();
 
     try {
-      // Try backend database API first
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -121,6 +145,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       const data = await res.json();
       if (res.ok && data.success && data.user) {
+        if (data.token) {
+          localStorage.setItem(STORAGE_TOKEN_KEY, data.token);
+        }
         setCurrentUser(data.user);
         return { success: true };
       } else if (!res.ok) {
@@ -130,9 +157,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.warn('Backend login fallback to local credentials:', err);
     }
 
-    // Local fallback
     const account = storedAccounts.find(
-      u => u.username.toLowerCase() === cleanUser && u.passwordHash === password
+      u => u.username.toLowerCase() === cleanUser && passwordMatches(password, u.passwordHash)
     );
 
     if (!account) {
@@ -150,6 +176,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = () => {
     setCurrentUser(null);
+    localStorage.removeItem(STORAGE_TOKEN_KEY);
   };
 
   const createMemberAccount = (data: {
@@ -185,7 +212,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const newAccount: StoredUserAccount = {
       id: `usr-${Date.now()}`,
       username: cleanUser,
-      passwordHash: data.password,
+      passwordHash: hashPassword(data.password),
       fullName: data.fullName.trim(),
       role: data.role,
       roleTitle: roleTitles[data.role] || 'Thành viên',
@@ -198,11 +225,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     setStoredAccounts(prev => [newAccount, ...prev]);
 
-    // Asynchronously sync to backend Cloud SQL database
     fetch('/api/users', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${localStorage.getItem(STORAGE_TOKEN_KEY) || ''}`
+      },
+      body: JSON.stringify({
+        ...data,
+        username: cleanUser,
+        password: data.password
+      })
     }).catch(err => console.warn('Could not sync user to backend database:', err));
 
     return { success: true };
@@ -214,7 +247,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     const target = storedAccounts.find(u => u.id === userId);
-    if (target?.username === 'admin') {
+    if (target?.username === DEFAULT_ADMIN_USERNAME.toLowerCase()) {
       return { success: false, error: 'Không thể xoá tài khoản Admin mặc định.' };
     }
 
@@ -226,7 +259,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!currentUser || currentUser.role !== 'ADMIN') return;
     setStoredAccounts(prev =>
       prev.map(u => {
-        if (u.id === userId && u.username !== 'admin') {
+        if (u.id === userId && u.username !== DEFAULT_ADMIN_USERNAME.toLowerCase()) {
           return { ...u, isActive: !u.isActive };
         }
         return u;
@@ -261,3 +294,4 @@ export const useAuth = () => {
   }
   return context;
 };
+

@@ -1,5 +1,8 @@
 import 'dotenv/config';
 import express from 'express';
+import cors from 'cors';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 import { createServer as createViteServer } from 'vite';
 import { db } from './src/db/index';
 import { orders, trips, trucks, users, debts, fuelLogs, labTests } from './src/db/schema';
@@ -8,6 +11,54 @@ import { eq, desc } from 'drizzle-orm';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
+const DEFAULT_ALLOWED_ORIGINS = ['http://localhost:3000', 'http://127.0.0.1:3000'];
+
+type AuthUser = {
+  id: number | string;
+  username: string;
+  role: string;
+};
+
+declare global {
+  namespace Express {
+    interface Request {
+      user?: AuthUser;
+    }
+  }
+}
+
+const signToken = (user: AuthUser) => jwt.sign({
+  id: user.id,
+  username: user.username,
+  role: user.role
+}, JWT_SECRET, { expiresIn: '8h' });
+
+const requireAuth = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+
+  if (!token) {
+    return res.status(401).json({ error: 'Authentication required.' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as AuthUser;
+    req.user = decoded;
+    return next();
+  } catch (err) {
+    console.warn('JWT verification failed:', err);
+    return res.status(401).json({ error: 'Invalid or expired token.' });
+  }
+};
+
+const requireRole = (roles: string[]) => (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (!req.user || !roles.includes(req.user.role)) {
+    return res.status(403).json({ error: 'Forbidden: insufficient permissions.' });
+  }
+  return next();
+};
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -15,7 +66,25 @@ async function startServer() {
   const app = express();
   const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
-  app.use(express.json());
+  const allowedOrigins = (process.env.ALLOWED_ORIGINS || DEFAULT_ALLOWED_ORIGINS.join(','))
+    .split(',')
+    .map(o => o.trim())
+    .filter(Boolean);
+
+  app.use(cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+      callback(new Error('Origin not allowed by CORS'));
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+  }));
+
+  app.use(express.json({ limit: '1mb' }));
 
   // Lightweight SSE relay keeps browser sessions in sync without requiring a
   // third-party integration. Each connected browser receives state updates
@@ -43,7 +112,7 @@ async function startServer() {
     });
   });
 
-  app.post('/api/sync/events', (req, res) => {
+  app.post('/api/sync/events', requireAuth, (req, res) => {
     const message = req.body && typeof req.body === 'object' ? req.body : {};
     latestSyncMessage = message;
     const serialized = JSON.stringify(message);
@@ -64,11 +133,60 @@ async function startServer() {
     }
   });
 
+  app.post('/api/auth/login', async (req, res) => {
+    try {
+      const { username, password } = req.body;
+      const cleanUser = (username || '').trim().toLowerCase();
+
+      const userList = await db.select().from(users).where(eq(users.username, cleanUser));
+      const user = userList[0];
+
+      const legacyMatch = !!user && user.passwordHash === password;
+      const validPassword = !!user && (user.passwordHash.startsWith('$2')
+        ? await bcrypt.compare(password, user.passwordHash)
+        : legacyMatch);
+
+      if (!user || !validPassword) {
+        return res.status(401).json({ success: false, error: 'Tên đăng nhập hoặc mật khẩu không chính xác.' });
+      }
+
+      if (!user.isActive) {
+        return res.status(403).json({ success: false, error: 'Tài khoản này đã bị tạm khoá.' });
+      }
+
+      if (!user.passwordHash.startsWith('$2')) {
+        const hashed = await bcrypt.hash(password, 12);
+        await db.update(users).set({ passwordHash: hashed }).where(eq(users.id, user.id));
+      }
+
+      const token = signToken({ id: user.id, username: user.username, role: user.role });
+
+      res.json({
+        success: true,
+        token,
+        user: {
+          id: String(user.id),
+          username: user.username,
+          fullName: user.fullName,
+          role: user.role,
+          roleTitle: user.roleTitle,
+          plantLocation: user.plantLocation,
+          email: user.email,
+          phone: user.phone,
+          isActive: user.isActive,
+          createdAt: user.createdAt
+        }
+      });
+    } catch (err: any) {
+      console.error('Error during login:', err);
+      res.status(500).json({ success: false, error: 'Lỗi kiểm tra bảo mật máy chủ.' });
+    }
+  });
+
   // 1. Orders API
-  app.get('/api/orders', async (req, res) => {
+  app.get('/api/orders', requireAuth, async (req, res) => {
     try {
       const allOrders = await db.select().from(orders).orderBy(desc(orders.createdAt));
-      // Map to frontend interface
       const formatted = allOrders.map(o => ({
         id: o.id,
         code: o.code,
@@ -98,7 +216,7 @@ async function startServer() {
     }
   });
 
-  app.post('/api/orders', async (req, res) => {
+  app.post('/api/orders', requireAuth, async (req, res) => {
     try {
       const body = req.body;
       const dateCode = new Date().toISOString().slice(2, 10).replace(/-/g, '');
@@ -136,7 +254,7 @@ async function startServer() {
     }
   });
 
-  app.put('/api/orders/:id', async (req, res) => {
+  app.put('/api/orders/:id', requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
       const updates = req.body;
@@ -151,7 +269,7 @@ async function startServer() {
     }
   });
 
-  app.delete('/api/orders/:id', async (req, res) => {
+  app.delete('/api/orders/:id', requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
       await db.delete(orders).where(eq(orders.id, id));
@@ -163,7 +281,7 @@ async function startServer() {
   });
 
   // 2. Trips API
-  app.get('/api/trips', async (req, res) => {
+  app.get('/api/trips', requireAuth, async (req, res) => {
     try {
       const allTrips = await db.select().from(trips).orderBy(desc(trips.createdAt));
       const formatted = allTrips.map(t => ({
@@ -189,7 +307,7 @@ async function startServer() {
     }
   });
 
-  app.post('/api/trips', async (req, res) => {
+  app.post('/api/trips', requireAuth, async (req, res) => {
     try {
       const tripInput = req.body;
       const existingTrips = await db.select().from(trips);
@@ -197,7 +315,6 @@ async function startServer() {
       const dateCode = new Date().toISOString().slice(2, 10).replace(/-/g, '');
       const newTicket = `PKX-${dateCode}-${ticketSeq}`;
 
-      // Find current order to get cumulative total
       const orderList = await db.select().from(orders).where(eq(orders.id, tripInput.orderId));
       const targetOrder = orderList[0];
       const prevDelivered = targetOrder ? targetOrder.deliveredVolume : 0;
@@ -222,7 +339,6 @@ async function startServer() {
 
       await db.insert(trips).values(newTrip);
 
-      // Increment order's delivered volume and truck count
       if (targetOrder) {
         const totalDelivered = targetOrder.deliveredVolume + tripInput.volume;
         await db.update(orders).set({
@@ -233,7 +349,6 @@ async function startServer() {
         }).where(eq(orders.id, targetOrder.id));
       }
 
-      // Update truck status
       await db.update(trucks).set({
         status: 'DANG_CHAY',
         currentOrderCode: tripInput.orderCode
@@ -246,7 +361,7 @@ async function startServer() {
     }
   });
 
-  app.put('/api/trips/:id', async (req, res) => {
+  app.put('/api/trips/:id', requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
       const updates = req.body;
@@ -259,7 +374,7 @@ async function startServer() {
   });
 
   // 3. Trucks API
-  app.get('/api/trucks', async (req, res) => {
+  app.get('/api/trucks', requireAuth, async (req, res) => {
     try {
       const allTrucks = await db.select().from(trucks);
       if (allTrucks.length < 21 || !allTrucks.some(t => t.plateNumber === '51B-33618')) {
@@ -287,7 +402,7 @@ async function startServer() {
     }
   });
 
-  app.put('/api/trucks/:id', async (req, res) => {
+  app.put('/api/trucks/:id', requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
       const updates = req.body;
@@ -300,7 +415,7 @@ async function startServer() {
   });
 
   // 4. Users / Auth API
-  app.get('/api/users', async (req, res) => {
+  app.get('/api/users', requireAuth, async (req, res) => {
     try {
       const allUsers = await db.select().from(users);
       const safe = allUsers.map(u => ({
@@ -322,19 +437,24 @@ async function startServer() {
     }
   });
 
-  app.post('/api/users', async (req, res) => {
+  app.post('/api/users', requireAuth, requireRole(['ADMIN']), async (req, res) => {
     try {
       const { username, password, fullName, role, roleTitle, plantLocation, email, phone } = req.body;
-      const cleanUser = username.trim().toLowerCase();
+      const cleanUser = String(username || '').trim().toLowerCase();
+
+      if (!cleanUser || !password || !fullName) {
+        return res.status(400).json({ error: 'Missing required user information.' });
+      }
 
       const existing = await db.select().from(users).where(eq(users.username, cleanUser));
       if (existing.length > 0) {
         return res.status(400).json({ error: 'Tên đăng nhập này đã tồn tại.' });
       }
 
+      const passwordHash = await bcrypt.hash(password, 12);
       const inserted = await db.insert(users).values({
         username: cleanUser,
-        passwordHash: password,
+        passwordHash,
         fullName: fullName.trim(),
         role: role || 'DISPATCHER',
         roleTitle: roleTitle || 'Điều phối viên',
@@ -363,48 +483,9 @@ async function startServer() {
     }
   });
 
-  app.post('/api/auth/login', async (req, res) => {
-    try {
-      const { username, password } = req.body;
-      const cleanUser = (username || '').trim().toLowerCase();
-
-      const userList = await db.select().from(users).where(eq(users.username, cleanUser));
-      const user = userList[0];
-
-      if (!user || user.passwordHash !== password) {
-        return res.status(401).json({ success: false, error: 'Tên đăng nhập hoặc mật khẩu không chính xác.' });
-      }
-
-      if (!user.isActive) {
-        return res.status(403).json({ success: false, error: 'Tài khoản này đã bị tạm khoá.' });
-      }
-
-      res.json({
-        success: true,
-        user: {
-          id: String(user.id),
-          username: user.username,
-          fullName: user.fullName,
-          role: user.role,
-          roleTitle: user.roleTitle,
-          plantLocation: user.plantLocation,
-          email: user.email,
-          phone: user.phone,
-          isActive: user.isActive,
-          createdAt: user.createdAt
-        }
-      });
-    } catch (err: any) {
-      console.error('Error during login:', err);
-      res.status(500).json({ success: false, error: 'Lỗi kiểm tra bảo mật máy chủ.' });
-    }
-  });
-
   // Mount Vite middleware for development
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
-      // The custom Express server does not expose Vite's WebSocket endpoint in the preview.
-      // Disable HMR here so the injected Vite client cannot retry a socket that can never open.
       server: { middlewareMode: true, host: '0.0.0.0', port: PORT, hmr: false },
       appType: 'spa'
     });
@@ -425,3 +506,5 @@ startServer().catch(err => {
   console.error('Failed to start server:', err);
   process.exit(1);
 });
+
+
