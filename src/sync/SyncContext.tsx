@@ -28,10 +28,9 @@ import {
   ProjectDistance,
   DriverTripRuleConfig
 } from '../types';
-import { syncOrderToSupabase, syncTripToSupabase } from '../lib/supabaseSync';
-
 const STORAGE_KEY = 'TSG_TNT_DISPATCH_STATE_V2';
 const BROADCAST_CHANNEL_NAME = 'tsg_tnt_dispatch_sync_channel';
+const SYNC_CLIENT_ID = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
 interface AppData {
   orders: ConcreteOrder[];
@@ -185,7 +184,7 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
         void fetch('/api/sync/events', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(message)
+          body: JSON.stringify({ ...message, clientId: SYNC_CLIENT_ID })
         }).catch(() => {
           // The local BroadcastChannel still keeps same-browser tabs synced.
         });
@@ -257,6 +256,7 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
       eventSource.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
+          if (message.clientId === SYNC_CLIENT_ID) return;
           if (message.type === 'STATE_UPDATE' && message.payload) {
             setData(message.payload);
             setSyncState(prev => ({
@@ -285,7 +285,8 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
       channelRef.current = channel;
 
       channel.onmessage = (event) => {
-        const { type, payload } = event.data || {};
+        const { type, payload, clientId } = event.data || {};
+        if (clientId === SYNC_CLIENT_ID) return;
         if (type === 'STATE_UPDATE' && payload) {
           setData(payload);
           setSyncState(prev => ({
