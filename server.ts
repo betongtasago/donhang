@@ -366,7 +366,9 @@ async function startServer() {
   // Mount Vite middleware for development
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
-      server: { middlewareMode: true, host: '0.0.0.0', port: PORT },
+      // The custom Express server does not expose Vite's WebSocket endpoint in the preview.
+      // Disable HMR here so the injected Vite client cannot retry a socket that can never open.
+      server: { middlewareMode: true, host: '0.0.0.0', port: PORT, hmr: false },
       appType: 'spa'
     });
     app.use(vite.middlewares);
