@@ -54,7 +54,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'cap-hang', label: '2. Cấp hàng (Điều phối xe)', icon: Truck, badge: trips.length },
     { id: 'tong-quan', label: 'Tổng quan điều hành', icon: LayoutDashboard },
     { id: 'san-xuat', label: 'Sản xuất & Báo cáo', icon: Factory },
-    { id: 'bang-sap-tai', label: 'Bảng sắp tài TSG–TNT', icon: CalendarRange, badge: 'Chuẩn' },
     { id: 'danh-sach-tai-xe', label: 'Đội xe & Tài xế (8m³ & 10m³)', icon: Truck, badge: `${trucks.length}` },
     { id: 'quan-ly-lai-xe', label: 'Quản lý lái xe & Km', icon: Users },
     { id: 'cong-no', label: 'Công nợ khách hàng', icon: CreditCard },

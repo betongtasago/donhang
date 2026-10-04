@@ -23,20 +23,42 @@ export const BaoCaoSanXuatView: React.FC = () => {
 
   // Filter states
   const [selectedDate, setSelectedDate] = useState<string>('');
+  const [dateQuickFilter, setDateQuickFilter] = useState<'ALL' | 'TODAY' | 'YESTERDAY' | 'LAST_3_DAYS' | 'CUSTOM'>('ALL');
   const [filterProjectType, setFilterProjectType] = useState<string>('ALL'); // ALL, DA, DD
   const [filterOrderType, setFilterOrderType] = useState<string>('ALL'); // ALL, CHINH, PHAT_SINH
   const [searchTerm, setSearchTerm] = useState<string>('');
 
   // Extract available dates from orders
   const availableDates = useMemo(() => {
-    const set = new Set(orders.map(o => o.deliveryDate));
+    const set = new Set(orders.map(o => o.deliveryDate).filter(Boolean));
     return Array.from(set).sort().reverse();
   }, [orders]);
+
+  // Quick Date Select handler
+  const handleSelectQuickDate = (mode: 'ALL' | 'TODAY' | 'YESTERDAY' | 'LAST_3_DAYS') => {
+    setDateQuickFilter(mode);
+    if (mode === 'ALL') {
+      setSelectedDate('');
+    } else if (mode === 'TODAY') {
+      setSelectedDate('2026-10-04');
+    } else if (mode === 'YESTERDAY') {
+      setSelectedDate('2026-10-03');
+    } else if (mode === 'LAST_3_DAYS') {
+      setSelectedDate(''); // Will be handled in filter
+    }
+  };
 
   // Filtered orders for production report
   const filteredOrders = useMemo(() => {
     return orders.filter(ord => {
-      const matchDate = !selectedDate || ord.deliveryDate === selectedDate;
+      // Date logic
+      if (dateQuickFilter === 'LAST_3_DAYS') {
+        const last3 = ['2026-10-04', '2026-10-03', '2026-10-02'];
+        if (!last3.includes(ord.deliveryDate)) return false;
+      } else if (selectedDate) {
+        if (ord.deliveryDate !== selectedDate) return false;
+      }
+
       const matchProjectType = filterProjectType === 'ALL' || (ord.projectType || 'DA') === filterProjectType;
       const matchOrderType = filterOrderType === 'ALL' || (ord.orderType || 'CHINH') === filterOrderType;
       const matchSearch =
@@ -48,9 +70,9 @@ export const BaoCaoSanXuatView: React.FC = () => {
         ord.categoryItem.toLowerCase().includes(searchTerm.toLowerCase()) ||
         ord.grade.toLowerCase().includes(searchTerm.toLowerCase());
 
-      return matchDate && matchProjectType && matchOrderType && matchSearch;
+      return matchProjectType && matchOrderType && matchSearch;
     });
-  }, [orders, selectedDate, filterProjectType, filterOrderType, searchTerm]);
+  }, [orders, selectedDate, dateQuickFilter, filterProjectType, filterOrderType, searchTerm]);
 
   // Totals
   const totalVolume = filteredOrders.reduce((sum, o) => sum + o.totalVolume, 0);
@@ -216,6 +238,82 @@ export const BaoCaoSanXuatView: React.FC = () => {
             <div className="text-[11px] text-emerald-600 mt-0.5">
               {filteredOrders.filter(o => o.projectType === 'DD').length} công trình nhà phố, biệt thự
             </div>
+          </div>
+        </div>
+
+        {/* Quick Date Shortcuts Banner (Tìm ngày nhanh) */}
+        <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-orange-50/60 rounded-xl border border-orange-200/70 text-xs">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="font-bold text-orange-950 flex items-center gap-1 text-[11px] uppercase mr-1">
+              <Calendar className="w-3.5 h-3.5 text-orange-600" />
+              Tìm ngày nhanh:
+            </span>
+            <button
+              type="button"
+              onClick={() => handleSelectQuickDate('ALL')}
+              className={`px-2.5 py-1 rounded-lg font-bold text-xs transition cursor-pointer ${
+                dateQuickFilter === 'ALL' && !selectedDate
+                  ? 'bg-orange-600 text-white shadow-xs'
+                  : 'bg-white text-slate-700 hover:bg-orange-100 border border-slate-200'
+              }`}
+            >
+              Tất cả ngày ({orders.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSelectQuickDate('TODAY')}
+              className={`px-2.5 py-1 rounded-lg font-bold text-xs transition cursor-pointer ${
+                dateQuickFilter === 'TODAY'
+                  ? 'bg-orange-600 text-white shadow-xs'
+                  : 'bg-white text-slate-700 hover:bg-orange-100 border border-slate-200'
+              }`}
+            >
+              Hôm nay (04/10)
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSelectQuickDate('YESTERDAY')}
+              className={`px-2.5 py-1 rounded-lg font-bold text-xs transition cursor-pointer ${
+                dateQuickFilter === 'YESTERDAY'
+                  ? 'bg-orange-600 text-white shadow-xs'
+                  : 'bg-white text-slate-700 hover:bg-orange-100 border border-slate-200'
+              }`}
+            >
+              Hôm qua (03/10)
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSelectQuickDate('LAST_3_DAYS')}
+              className={`px-2.5 py-1 rounded-lg font-bold text-xs transition cursor-pointer ${
+                dateQuickFilter === 'LAST_3_DAYS'
+                  ? 'bg-orange-600 text-white shadow-xs'
+                  : 'bg-white text-slate-700 hover:bg-orange-100 border border-slate-200'
+              }`}
+            >
+              3 ngày gần đây
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-slate-500 text-[11px] font-medium">Chọn ngày cụ thể:</span>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => {
+                setSelectedDate(e.target.value);
+                setDateQuickFilter('CUSTOM');
+              }}
+              className="px-2 py-1 text-xs border border-slate-300 rounded-lg bg-white focus:ring-1 focus:ring-orange-500 font-mono"
+            />
+            {selectedDate && (
+              <button
+                type="button"
+                onClick={() => handleSelectQuickDate('ALL')}
+                className="text-xs text-orange-600 hover:underline font-semibold"
+              >
+                Xóa
+              </button>
+            )}
           </div>
         </div>
 

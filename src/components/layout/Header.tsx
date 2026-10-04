@@ -17,7 +17,6 @@ const PAGE_TITLES: Record<string, { group: string; name: string }> = {
   'cap-hang': { group: 'Điều độ', name: 'Cấp hàng - Điều phối (Ảnh 2)' },
   'cong-no': { group: 'Kế toán', name: 'Công nợ' },
   'san-xuat': { group: 'Kỹ thuật', name: 'Sản xuất' },
-  'bang-sap-tai': { group: 'Điều độ', name: 'Bảng sắp tài hằng ngày' },
   'danh-sach-tai-xe': { group: 'Đội xe', name: 'Đội xe & Tài xế (8m³ & 10m³)' },
   'quan-ly-lai-xe': { group: 'Đội xe', name: 'Quản lý lái xe & Km' },
   'thi-nghiem': { group: 'KCS / Lab', name: 'Thí nghiệm & QC Lab' },

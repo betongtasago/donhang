@@ -313,74 +313,7 @@ export const BangSapTaiPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Control Bar: Bộ lọc gọn gàng (Đã bỏ thanh tìm kiếm theo yêu cầu) */}
-      <div className="bg-white rounded-lg px-3 py-1.5 border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-2 text-xs">
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Filter Type (8m3 / 10m3) */}
-          <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-md border border-slate-200 text-[11px]">
-            <span className="text-slate-500 font-semibold px-1.5">Loại xe:</span>
-            <button
-              onClick={() => setFilterType('ALL')}
-              className={`px-2 py-0.5 rounded font-bold cursor-pointer transition ${
-                filterType === 'ALL' ? 'bg-white text-emerald-800 shadow-xs' : 'text-slate-600'
-              }`}
-            >
-              Tất cả ({trucks.length})
-            </button>
-            <button
-              onClick={() => setFilterType('8m3')}
-              className={`px-2 py-0.5 rounded font-bold cursor-pointer transition ${
-                filterType === '8m3' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600'
-              }`}
-            >
-              Xe 8m³ ({trucks.filter(t => t.capacityM3 === 8 || t.truckType.includes('8m³')).length})
-            </button>
-            <button
-              onClick={() => setFilterType('10m3')}
-              className={`px-2 py-0.5 rounded font-bold cursor-pointer transition ${
-                filterType === '10m3' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600'
-              }`}
-            >
-              Xe 10m³ ({trucks.filter(t => t.capacityM3 === 10 || t.truckType.includes('10m³')).length})
-            </button>
-          </div>
-
-          {/* Filter Status (Phép / Sửa chữa) */}
-          <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-md border border-slate-200 text-[11px]">
-            <span className="text-slate-500 font-semibold px-1.5">Lịch xe:</span>
-            <button
-              onClick={() => setFilterStatus('ALL')}
-              className={`px-2 py-0.5 rounded font-bold cursor-pointer transition ${
-                filterStatus === 'ALL' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'
-              }`}
-            >
-              Toàn bộ
-            </button>
-            <button
-              onClick={() => setFilterStatus('SAN_SANG')}
-              className={`px-2 py-0.5 rounded font-bold cursor-pointer transition ${
-                filterStatus === 'SAN_SANG' ? 'bg-white text-emerald-700 shadow-xs' : 'text-slate-600'
-              }`}
-            >
-              Hoạt động
-            </button>
-            <button
-              onClick={() => setFilterStatus('SUA_CHUA')}
-              className={`px-2 py-0.5 rounded font-bold cursor-pointer transition ${
-                filterStatus === 'SUA_CHUA' ? 'bg-amber-600 text-white shadow-xs' : 'text-slate-600'
-              }`}
-            >
-              Sửa chữa
-            </button>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 text-slate-500 font-medium text-[11px]">
-          <span>Tổng số xe hiển thị: <strong className="text-emerald-700 font-black">{filteredList.length}</strong> xe (vừa vặn 1 màn hình)</span>
-        </div>
-      </div>
-
-      {/* Main Table: COMPACT REPLICA TO FIT IN 1 SCREEN */}
+      {/* Main Table: COMPACT REPLICA TO FIT IN 1 SCREEN (Đã bỏ lọc nhanh theo yêu cầu) */}
       <div className="bg-white rounded-lg border border-slate-300 shadow-xs overflow-x-auto">
         <table className="w-full text-center border-collapse text-[11px] select-none">
           <thead>

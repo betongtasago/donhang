@@ -73,8 +73,22 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({
   // Search & Filter states
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [filterDate, setFilterDate] = useState<string>('04/10/2026');
+  const [dateQuickFilter, setDateQuickFilter] = useState<'ALL' | 'TODAY' | 'YESTERDAY' | 'LAST_3_DAYS' | 'CUSTOM'>('TODAY');
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [filterPlant, setFilterPlant] = useState<string>('ALL');
+
+  const handleSelectQuickDate = (mode: 'ALL' | 'TODAY' | 'YESTERDAY' | 'LAST_3_DAYS') => {
+    setDateQuickFilter(mode);
+    if (mode === 'ALL') {
+      setFilterDate('');
+    } else if (mode === 'TODAY') {
+      setFilterDate('04/10/2026');
+    } else if (mode === 'YESTERDAY') {
+      setFilterDate('03/10/2026');
+    } else if (mode === 'LAST_3_DAYS') {
+      setFilterDate('');
+    }
+  };
 
   // Selected orders checkbox set for bulk actions
   const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
@@ -130,11 +144,17 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({
   const filteredOrders = useMemo(() => {
     return orders.filter(order => {
       // Date filter
-      if (filterDate.trim()) {
+      if (dateQuickFilter === 'LAST_3_DAYS') {
         const orderDate = order.deliveryDate
           ? order.deliveryDate.split('-').reverse().join('/')
           : '';
-        if (orderDate && !orderDate.includes(filterDate.trim())) {
+        const match3 = ['04/10/2026', '03/10/2026', '02/10/2026', '2026-10-04', '2026-10-03', '2026-10-02'].some(d => (order.deliveryDate && order.deliveryDate.includes(d)) || (orderDate && orderDate.includes(d)));
+        if (!match3) return false;
+      } else if (filterDate.trim()) {
+        const orderDate = order.deliveryDate
+          ? order.deliveryDate.split('-').reverse().join('/')
+          : '';
+        if (orderDate && !orderDate.includes(filterDate.trim()) && (!order.deliveryDate || !order.deliveryDate.includes(filterDate.trim()))) {
           return false;
         }
       }
@@ -164,7 +184,7 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({
 
       return true;
     });
-  }, [orders, filterDate, filterStatus, filterPlant, searchTerm]);
+  }, [orders, filterDate, dateQuickFilter, filterStatus, filterPlant, searchTerm]);
 
   // Selected order object
   const currentSelectedOrder = useMemo(() => {
@@ -174,6 +194,19 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({
   // Filtered Trips (Dispatches)
   const filteredTrips = useMemo(() => {
     return trips.filter(trip => {
+      // Date filter
+      if (dateQuickFilter === 'LAST_3_DAYS') {
+        const tDate = trip.deliveryDate || '';
+        const match3 = ['04/10/2026', '03/10/2026', '02/10/2026', '2026-10-04', '2026-10-03', '2026-10-02'].some(d => tDate.includes(d));
+        if (!match3) return false;
+      } else if (filterDate.trim()) {
+        const tDate = trip.deliveryDate || '';
+        const norm = tDate.includes('-') ? tDate.split('-').reverse().join('/') : tDate;
+        if (norm && !norm.includes(filterDate.trim()) && !tDate.includes(filterDate.trim())) {
+          return false;
+        }
+      }
+
       // If user selected an order specifically in CAP_HANG view
       if (activeView === 'CAP_HANG' && selectedOrderId && selectedOrderId !== 'ALL') {
         const matched = trip.orderId === selectedOrderId || trip.orderCode === currentSelectedOrder?.code;
@@ -197,7 +230,7 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({
 
       return true;
     });
-  }, [trips, activeView, selectedOrderId, currentSelectedOrder, searchTerm, orders]);
+  }, [trips, filterDate, dateQuickFilter, activeView, selectedOrderId, currentSelectedOrder, searchTerm, orders]);
 
   // Toggle selection
   const handleToggleSelectAllOrders = () => {
@@ -552,6 +585,83 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({
               <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
               <span className="hidden sm:inline">Xuất Excel</span>
             </button>
+          </div>
+        </div>
+
+        {/* Quick Date Shortcuts (Tìm ngày nhanh) */}
+        <div className="bg-white rounded-xl px-3.5 py-2 border border-slate-200/80 shadow-xs flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="font-bold text-slate-700 flex items-center gap-1 text-[11px] uppercase mr-1">
+              <Calendar className="w-3.5 h-3.5 text-blue-600" />
+              Tìm ngày nhanh:
+            </span>
+            <button
+              type="button"
+              onClick={() => handleSelectQuickDate('ALL')}
+              className={`px-2.5 py-1 rounded-lg font-bold text-xs transition cursor-pointer ${
+                dateQuickFilter === 'ALL' && !filterDate
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              Tất cả ngày ({orders.length} đơn)
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSelectQuickDate('TODAY')}
+              className={`px-2.5 py-1 rounded-lg font-bold text-xs transition cursor-pointer ${
+                dateQuickFilter === 'TODAY'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              Hôm nay (04/10)
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSelectQuickDate('YESTERDAY')}
+              className={`px-2.5 py-1 rounded-lg font-bold text-xs transition cursor-pointer ${
+                dateQuickFilter === 'YESTERDAY'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              Hôm qua (03/10)
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSelectQuickDate('LAST_3_DAYS')}
+              className={`px-2.5 py-1 rounded-lg font-bold text-xs transition cursor-pointer ${
+                dateQuickFilter === 'LAST_3_DAYS'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              3 ngày gần đây
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-slate-500 text-[11px] font-medium">Nhập ngày (DD/MM/YYYY):</span>
+            <input
+              type="text"
+              value={filterDate}
+              onChange={(e) => {
+                setFilterDate(e.target.value);
+                setDateQuickFilter('CUSTOM');
+              }}
+              placeholder="04/10/2026"
+              className="w-28 px-2 py-1 bg-slate-50 border border-slate-300 rounded-lg text-xs font-mono"
+            />
+            {filterDate && (
+              <button
+                type="button"
+                onClick={() => handleSelectQuickDate('ALL')}
+                className="text-xs text-blue-600 hover:underline font-semibold"
+              >
+                Xóa
+              </button>
+            )}
           </div>
         </div>
 

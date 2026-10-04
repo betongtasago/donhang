@@ -77,7 +77,7 @@ export const QuanLyLaiXePage: React.FC = () => {
             }`}
           >
             <CalendarRange className="w-4 h-4" />
-            <span>Bảng Sắp Tài TSG-TNT</span>
+            <span>Bảng Theo Dõi Sắp Tài</span>
           </button>
 
           <button
