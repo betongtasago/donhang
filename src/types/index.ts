@@ -29,6 +29,9 @@ export interface ConcreteOrder {
   distanceKm?: number; // Cự ly km từ trạm trộn đến công trường
   notes?: string;
   assignedTrucksCount: number;
+  productionOrder?: string; // Lệnh SX: "Đồng ý" / "Chờ duyệt"
+  scheduledProductionTime?: string; // Giờ KHSX
+  createdAt?: string; // Ngày tạo: "04/10/2026 04:45"
   createdByRole?: string; // 'ACCOUNTANT' | 'ADMIN' | 'DISPATCHER' | etc.
   createdByName?: string;
   updatedAt: string;
@@ -51,12 +54,17 @@ export interface DispatchTrip {
   status: TripStatus;
   slumpTested: string; // e.g. 14.5 cm
   grade: string;
+  concreteName?: string; // Tên bê tông: "M350-7N(10+-2)"
+  unit?: string; // Đơn vị: "m3"
+  plantLocation?: string; // Nhà máy: "Tây Ninh"
+  entryDate?: string; // ngay_nhap: "04/10/2026 16:02"
+  deliveryDate?: string; // Ngày giao bê tông: "04/10/2026"
   distanceKm?: number; // Km 1 chiều của chuyến
   isLargeTrip?: boolean; // >= 6m3 hoặc theo ngưỡng xe
   sealNumber?: string; // Số niêm chì
   arrivalTime?: string; // Giờ đến công trường
   notes?: string; // Ghi chú trên phiếu
-  technicianName?: string; // Kỹ thuật phụ trách
+  technicianName?: string; // Kỹ thuật phụ trách (Nhân viên giao nhận)
 }
 
 export interface ProjectDistance {

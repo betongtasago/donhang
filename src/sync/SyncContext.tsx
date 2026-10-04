@@ -59,6 +59,7 @@ interface SyncContextType extends AppData {
   createTrip: (trip: Omit<DispatchTrip, 'id' | 'ticketNumber'>) => DispatchTrip;
   updateTripStatus: (tripId: string, status: TripStatus) => void;
   updateTripDetails: (tripId: string, updates: Partial<DispatchTrip>) => void;
+  deleteTrip: (id: string) => void;
   // Project Distances
   addProjectDistance: (dist: Omit<ProjectDistance, 'id' | 'roundTripKm'>) => ProjectDistance;
   updateProjectDistance: (id: string, updates: Partial<ProjectDistance>) => void;
@@ -635,6 +636,41 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }).catch(err => console.warn('Could not persist trip details to backend:', err));
   };
 
+  const deleteTrip = (tripId: string) => {
+    const target = data.trips.find(t => t.id === tripId);
+    if (!target) return;
+    const nextTrips = data.trips.filter(t => t.id !== tripId);
+    const orderIdOrCode = target.orderId || target.orderCode;
+
+    // Recalculate delivered volume on order
+    let runningDelivered = 0;
+    nextTrips.forEach(t => {
+      if (t.orderId === orderIdOrCode || t.orderCode === orderIdOrCode) {
+        runningDelivered += Number(t.volume) || 0;
+      }
+    });
+
+    const nextOrders = data.orders.map(o => {
+      if (o.id === orderIdOrCode || o.code === orderIdOrCode) {
+        return {
+          ...o,
+          deliveredVolume: runningDelivered,
+          assignedTrucksCount: Math.max(0, o.assignedTrucksCount - 1),
+          status: (runningDelivered >= o.totalVolume ? 'HOAN_THANH' : (runningDelivered > 0 ? 'DANG_CHAY' : 'CHO_DUYET')) as OrderStatus
+        };
+      }
+      return o;
+    });
+
+    const nextData = { ...data, trips: nextTrips, orders: nextOrders };
+    setData(nextData);
+    broadcastChange('STATE_UPDATE', nextData);
+    setSecondsSinceSync(0);
+    addSyncLog(`Đã xóa chuyến xe ${target.truckPlate} (Phiếu: ${target.ticketNumber})`, 'warning');
+
+    fetch(`/api/trips/${tripId}`, { method: 'DELETE' }).catch(err => console.warn('Could not delete trip on backend:', err));
+  };
+
   const updateTruckStatus = (truckId: string, status: TruckStatus, orderCode?: string) => {
     const nextTrucks = data.trucks.map(trk => {
       if (trk.id === truckId) {
@@ -863,6 +899,7 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
         createTrip,
         updateTripStatus,
         updateTripDetails,
+        deleteTrip,
         updateTruckStatus,
         addTruck,
         updateTruck,

@@ -40,7 +40,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenMembersModal,
   onOpenPrintModal
 }) => {
-  const { orders, trucks, syncState, secondsSinceSync, selectedPlant, setSelectedPlant } = useSync();
+  const { orders, trips, trucks, syncState, secondsSinceSync, selectedPlant, setSelectedPlant } = useSync();
   const { currentUser, logout, isAdmin } = useAuth();
 
   // State: Tab bên trái khi rê chuột vào mới hiện ra
@@ -50,7 +50,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const isVisible = isOpen || isHovered || isPinned;
 
   const navItems = [
-    { id: 'don-hang', label: 'Đơn hàng & Điều phối', icon: ClipboardList, badge: orders.length },
+    { id: 'don-hang', label: '1. Đơn hàng (Kinh doanh)', icon: ClipboardList, badge: orders.length },
+    { id: 'cap-hang', label: '2. Cấp hàng (Điều phối xe)', icon: Truck, badge: trips.length },
     { id: 'tong-quan', label: 'Tổng quan điều hành', icon: LayoutDashboard },
     { id: 'san-xuat', label: 'Sản xuất & Báo cáo', icon: Factory },
     { id: 'bang-sap-tai', label: 'Bảng sắp tài TSG–TNT', icon: CalendarRange, badge: 'Chuẩn' },

@@ -13,7 +13,8 @@ interface HeaderProps {
 
 const PAGE_TITLES: Record<string, { group: string; name: string }> = {
   'tong-quan': { group: 'Báo cáo', name: 'Tổng quan' },
-  'don-hang': { group: 'Kinh doanh', name: 'Đơn hàng' },
+  'don-hang': { group: 'Kinh doanh', name: 'Đơn hàng (Ảnh 1)' },
+  'cap-hang': { group: 'Điều độ', name: 'Cấp hàng - Điều phối (Ảnh 2)' },
   'cong-no': { group: 'Kế toán', name: 'Công nợ' },
   'san-xuat': { group: 'Kỹ thuật', name: 'Sản xuất' },
   'bang-sap-tai': { group: 'Điều độ', name: 'Bảng sắp tài hằng ngày' },
