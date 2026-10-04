@@ -36,13 +36,11 @@ const VALID_PAGES = [
 
 const getInitialPage = (): string => {
   if (typeof window !== 'undefined') {
-    // 1. Kiểm tra URL hash (ví dụ: #san-xuat). Avoid slash-prefixed hashes because
-    // the preview runtime may interpret them as CSS selectors.
-    const rawHash = window.location.hash.replace(/^#\/?/, '').split('?')[0].split('/')[0];
-    if (rawHash && VALID_PAGES.includes(rawHash)) {
-      return rawHash;
+    // Clear legacy slash-prefixed hashes that the preview runtime treats as CSS selectors.
+    if (window.location.hash) {
+      window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
     }
-    // 2. Kiểm tra bộ nhớ localStorage
+
     try {
       const saved = localStorage.getItem('tsg_current_page');
       if (saved && VALID_PAGES.includes(saved)) {
@@ -64,28 +62,14 @@ export const AppContent: React.FC = () => {
   const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
   const [isMembersModalOpen, setIsMembersModalOpen] = useState(false);
 
-  // Đồng bộ trang hiện tại vào URL Hash & localStorage khi người dùng chuyển trang
+  // Persist the selected page without changing the URL hash. Hash navigation is
+  // handled by the preview runtime and slash-prefixed hashes are invalid selectors.
   React.useEffect(() => {
     try {
       localStorage.setItem('tsg_current_page', currentPage);
-      if (window.location.hash !== `#${currentPage}`) {
-        window.location.hash = `#${currentPage}`;
-      }
     } catch {
       // Ignore
     }
-  }, [currentPage]);
-
-  // Lắng nghe sự kiện đổi hash (ví dụ bấm Back/Forward trình duyệt)
-  React.useEffect(() => {
-    const handleHashChange = () => {
-      const rawHash = window.location.hash.replace(/^#\/?/, '').split('?')[0].split('/')[0];
-      if (rawHash && VALID_PAGES.includes(rawHash) && rawHash !== currentPage) {
-        setCurrentPage(rawHash);
-      }
-    };
-    window.addEventListener('hashchange', handleHashChange);
-    return () => window.removeEventListener('hashchange', handleHashChange);
   }, [currentPage]);
 
   // Print Receipt modal state
