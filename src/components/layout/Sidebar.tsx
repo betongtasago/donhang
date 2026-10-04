@@ -261,20 +261,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <Radio className="w-3 h-3 text-slate-500 group-hover:text-orange-400 transition shrink-0" />
           </button>
 
-          {/* Quick Print button */}
-          {onOpenPrintModal && (
-            <button
-              onClick={() => {
-                onOpenPrintModal();
-                if (!isPinned) setIsHovered(false);
-              }}
-              className="w-full flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800/60 transition cursor-pointer"
-            >
-              <Printer className="w-3.5 h-3.5 text-orange-400" />
-              <span>In phiếu giao nhận</span>
-            </button>
-          )}
-
           {/* Member Management button */}
           {onOpenMembersModal && (
             <button

@@ -79,21 +79,21 @@ export const ConcreteDeliveryReceipt: React.FC<ConcreteDeliveryReceiptProps> = (
       style={{ fontFamily: '"Times New Roman", Times, serif' }}
       className="bg-white text-black leading-snug w-full mx-auto max-w-[850px] p-4 text-[12px] print:p-0 print:m-0 print:max-w-none print:w-full print:text-[12px]"
     >
-      {/* 1. Header Box: ĐÃ GIẢM CHIỀU CAO KHUNG TỐI ĐA THEO YÊU CẦU (gọn gàng, chuẩn form in continuous) */}
+      {/* 1. Header Box: Chuẩn mẫu phiếu giao nhận bê tông TSG TNT */}
       <table className="w-full border-collapse border border-black mb-1.5 text-black">
         <tbody>
           <tr>
-            {/* Col 1: TSG-TNT logo gọn gàng thấp */}
-            <td className="w-[22%] border border-black p-0.5 text-center align-middle">
-              <div className="flex flex-col items-center justify-center py-0.5">
-                <TsgLogo className="w-full max-w-[80px] max-h-[32px]" />
+            {/* Col 1: TSG-TNT logo kích thước lớn rõ nét */}
+            <td className="w-[24%] border border-black p-1 text-center align-middle">
+              <div className="flex flex-col items-center justify-center py-1">
+                <TsgLogo className="w-full max-w-[135px] max-h-[62px]" />
               </div>
             </td>
 
-            {/* Col 2: Company Name & Title gọn gàng */}
-            <td className="w-[54%] border border-black p-0 text-center align-middle">
-              <div className="py-0.5 px-1 border-b border-black font-bold text-[11px] uppercase tracking-normal leading-tight">
-                CÔNG TY CỔ PHẦN ĐẦU TƯ TSGTNT
+            {/* Col 2: Company Name & Title */}
+            <td className="w-[52%] border border-black p-0 text-center align-middle">
+              <div className="py-1 px-1 border-b border-black font-bold text-[11px] sm:text-[12px] uppercase tracking-normal leading-tight">
+                CÔNG TY CỔ PHẦN SX KD DV BÊ TÔNG TSG TNT
               </div>
               <div className="py-1 px-1 font-bold text-[14px] uppercase tracking-wide leading-tight">
                 PHIẾU GIAO NHẬN BÊ TÔNG
@@ -102,7 +102,7 @@ export const ConcreteDeliveryReceipt: React.FC<ConcreteDeliveryReceiptProps> = (
 
             {/* Col 3: Right meta (Ký Hiệu, Ngày, Trang, Số phiếu) */}
             <td className="w-[24%] border border-black p-1 text-[10px] align-middle leading-tight">
-              <div className="space-y-0">
+              <div className="space-y-0.5">
                 <div className="flex">
                   <span className="w-13">Ký Hiệu:</span>
                   <span>TSG/26-TN</span>
