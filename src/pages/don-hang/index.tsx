@@ -777,12 +777,18 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({
                 <thead>
                   <tr className="bg-slate-100/90 text-slate-700 font-bold border-b border-slate-200 text-[11px] uppercase tracking-wider">
                     <th className="py-2.5 px-3 w-10 text-center"></th>
-                    <th className="py-2.5 px-3 min-w-[200px]">Khách Hàng & Công Trình</th>
+                    <th className="py-2.5 px-3 min-w-[210px]">
+                      <span>Khách Hàng & Công Trình</span>
+                      <span className="block text-[9px] font-normal text-blue-600 normal-case">(Bấm tên để cấp hàng)</span>
+                    </th>
                     <th className="py-2.5 px-3 min-w-[140px]">Hạng Mục & Bơm</th>
                     <th className="py-2.5 px-3 min-w-[130px]">Mác & Sụt</th>
                     <th className="py-2.5 px-3 min-w-[170px]">Tiến Độ Cấp Hàng</th>
                     <th className="py-2.5 px-3 min-w-[180px]">Xe Bồn Đang Cấp</th>
-                    <th className="py-2.5 px-3 text-center min-w-[90px]">Giờ Giao</th>
+                    <th className="py-2.5 px-3 text-center min-w-[100px]">
+                      <span>Ngày / Giờ Giao</span>
+                      <span className="block text-[9px] font-normal text-blue-600 normal-case">(Bấm để cấp hàng)</span>
+                    </th>
                     <th className="py-2.5 px-3 text-center min-w-[110px]">Trạng Thái</th>
                     <th className="py-2.5 px-3 text-right min-w-[150px]">Thao Tác</th>
                   </tr>
@@ -841,11 +847,21 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({
                               </div>
                             </td>
 
-                            {/* Customer & Project */}
+                            {/* Customer & Project (Bấm vào tên công ty để chuyển sang trang cấp hàng) */}
                             <td className="py-3 px-3">
-                              <div className="font-bold text-slate-900 leading-snug">
-                                {order.customerName}
-                              </div>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedOrderId(order.id);
+                                  handleSwitchView('CAP_HANG');
+                                }}
+                                className="font-bold text-slate-900 hover:text-blue-700 hover:underline leading-snug text-left cursor-pointer transition flex items-center gap-1 group"
+                                title="Bấm vào tên công ty để chuyển sang trang Cấp hàng của đơn này"
+                              >
+                                <span>{order.customerName}</span>
+                                <ExternalLink className="w-3 h-3 text-blue-500 opacity-60 group-hover:opacity-100 transition shrink-0" />
+                              </button>
                               <div className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
                                 <Building2 className="w-3 h-3 text-slate-400 shrink-0" />
                                 <span className="font-medium text-slate-700 truncate max-w-[220px]">
@@ -930,14 +946,31 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({
                               )}
                             </td>
 
-                            {/* Delivery Time */}
+                            {/* Delivery Date & Time (Bấm vào ngày để chuyển sang trang cấp hàng) */}
                             <td className="py-3 px-3 text-center">
-                              <div className="font-mono font-bold text-slate-900">
-                                {order.deliveryTime}
-                              </div>
-                              <div className="text-[10px] text-slate-400 mt-0.5">
-                                {order.scheduledProductionTime ? `KHSX: ${order.scheduledProductionTime}` : ''}
-                              </div>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedOrderId(order.id);
+                                  handleSwitchView('CAP_HANG');
+                                }}
+                                className="group inline-flex flex-col items-center p-1 rounded-lg hover:bg-blue-50 transition cursor-pointer"
+                                title="Bấm vào ngày hoặc giờ giao để chuyển sang trang Cấp hàng của đơn này"
+                              >
+                                <div className="font-mono font-bold text-blue-700 group-hover:underline text-xs flex items-center gap-1">
+                                  <Calendar className="w-3 h-3 text-blue-500" />
+                                  <span>{order.deliveryDate ? order.deliveryDate.split('-').reverse().join('/') : '04/10/2026'}</span>
+                                </div>
+                                <div className="font-mono font-bold text-slate-800 text-[11px] mt-0.5">
+                                  {order.deliveryTime}
+                                </div>
+                                {order.scheduledProductionTime && (
+                                  <div className="text-[10px] text-slate-400">
+                                    KHSX: {order.scheduledProductionTime}
+                                  </div>
+                                )}
+                              </button>
                             </td>
 
                             {/* Status */}

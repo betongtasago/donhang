@@ -417,13 +417,15 @@ export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({
               )}
             </button>
 
-            {/* NÚT IN RA MÁY IN THẬT */}
+            {/* NÚT BẤM IN NHANH - THAY CHO PHÍM CƠ CTRL + P TRÊN MÁY TÍNH */}
             <button
+              type="button"
               onClick={handlePrint}
-              className="px-4 py-2 bg-[#e25822] hover:bg-[#d04d1c] text-white font-black rounded-xl text-xs flex items-center gap-1.5 shadow-md cursor-pointer transition active:scale-95"
+              className="px-5 py-2.5 bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 hover:from-orange-600 hover:to-amber-600 text-white font-black rounded-xl text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-orange-500/30 cursor-pointer transition-all active:scale-95 ring-2 ring-orange-300"
+              title="Bấm nút này để in phiếu trực tiếp ra máy in ngay lập tức — Thay thế hoàn toàn cho phím cơ Ctrl + P trên máy tính"
             >
-              <Printer className="w-4 h-4" />
-              <span>In phiếu (Ctrl+P)</span>
+              <Printer className="w-4 h-4 text-white animate-pulse" />
+              <span className="tracking-wide">IN NHANH (Thay phím Ctrl+P)</span>
             </button>
 
             <button
@@ -722,11 +724,13 @@ export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({
               Đóng
             </button>
             <button
+              type="button"
               onClick={handlePrint}
-              className="px-5 py-1.5 rounded-xl bg-[#e25822] hover:bg-[#d04d1c] font-black text-white flex items-center gap-1.5 shadow-md cursor-pointer transition active:scale-95"
+              className="px-5 py-2 rounded-xl bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 font-black text-white flex items-center gap-2 shadow-md cursor-pointer transition active:scale-95 ring-2 ring-orange-300"
+              title="Bấm nút này để in phiếu trực tiếp ra máy in ngay lập tức (thay thế phím Ctrl + P)"
             >
-              <Printer className="w-4 h-4" />
-              <span>In phiếu (Ctrl+P)</span>
+              <Printer className="w-4 h-4 text-white animate-pulse" />
+              <span>IN NHANH PHIẾU (Thay Ctrl+P)</span>
             </button>
           </div>
         </div>
