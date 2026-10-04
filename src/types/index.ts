@@ -173,7 +173,7 @@ export interface SyncLogEntry {
   id: string;
   timestamp: string;
   message: string;
-  type: 'info' | 'success' | 'warning' | 'network';
+  type: 'info' | 'success' | 'warning' | 'network' | 'error';
 }
 
 export interface SyncState {

@@ -50,6 +50,8 @@ interface SyncContextType extends AppData {
   syncState: SyncState;
   secondsSinceSync: number;
   setSelectedPlant: (plant: string) => void;
+  // Sync log actions
+  addSyncLog: (message: string, type?: 'info' | 'success' | 'warning' | 'network' | 'error') => void;
   // Order actions
   createOrder: (order: Omit<ConcreteOrder, 'id' | 'code' | 'updatedAt' | 'deliveredVolume' | 'assignedTrucksCount'>) => ConcreteOrder;
   updateOrder: (id: string, updates: Partial<ConcreteOrder>) => void;
@@ -155,7 +157,7 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const channelRef = useRef<BroadcastChannel | null>(null);
 
   // Helper to append sync log
-  const addSyncLog = useCallback((message: string, type: 'info' | 'success' | 'warning' | 'network' = 'info') => {
+  const addSyncLog = useCallback((message: string, type: 'info' | 'success' | 'warning' | 'network' | 'error' = 'info') => {
     setSyncState(prev => ({
       ...prev,
       logs: [
@@ -801,6 +803,7 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ...data,
         syncState,
         secondsSinceSync,
+        addSyncLog,
         setSelectedPlant,
         createOrder,
         updateOrder,
