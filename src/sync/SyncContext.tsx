@@ -28,10 +28,9 @@ import {
   ProjectDistance,
   DriverTripRuleConfig
 } from '../types';
-import { syncOrderToSupabase, syncTripToSupabase } from '../lib/supabaseSync';
-
 const STORAGE_KEY = 'TSG_TNT_DISPATCH_STATE_V2';
 const BROADCAST_CHANNEL_NAME = 'tsg_tnt_dispatch_sync_channel';
+const SYNC_CLIENT_ID = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
 interface AppData {
   orders: ConcreteOrder[];
@@ -176,10 +175,18 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const broadcastChange = useCallback((actionType: string, payload: any) => {
     try {
       if (channelRef.current) {
-        channelRef.current.postMessage({
+        const message = {
           type: actionType,
           payload,
           senderTime: Date.now()
+        };
+        channelRef.current.postMessage(message);
+        void fetch('/api/sync/events', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...message, clientId: SYNC_CLIENT_ID })
+        }).catch(() => {
+          // The local BroadcastChannel still keeps same-browser tabs synced.
         });
         setSyncState(prev => ({
           ...prev,
@@ -237,15 +244,49 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loadBackendData();
   }, []);
 
-  // Set up BroadcastChannel for real-time cross-tab sync
+  // Set up server-sent events for real-time sync between separate browser
+  // sessions. BroadcastChannel remains as the fast path for tabs in one browser.
   useEffect(() => {
+    let eventSource: EventSource | null = null;
+    try {
+      eventSource = new EventSource('/api/sync/events');
+      eventSource.onopen = () => {
+        setSyncState(prev => ({ ...prev, status: 'connected' }));
+      };
+      eventSource.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data);
+          if (message.clientId === SYNC_CLIENT_ID) return;
+          if (message.type === 'STATE_UPDATE' && message.payload) {
+            setData(message.payload);
+            setSyncState(prev => ({
+              ...prev,
+              lastSyncTime: new Date().toISOString(),
+              packetsReceived: prev.packetsReceived + 1,
+              activePeers: Math.max(prev.activePeers, 2)
+            }));
+            setSecondsSinceSync(0);
+            addSyncLog('Nhận dữ liệu đồng bộ thời gian thực từ phiên đăng nhập khác', 'network');
+          }
+        } catch (error) {
+          console.warn('Invalid realtime sync event', error);
+        }
+      };
+      eventSource.onerror = () => {
+        setSyncState(prev => ({ ...prev, status: 'offline' }));
+      };
+    } catch (error) {
+      console.warn('Realtime sync unavailable', error);
+    }
+
     let channel: BroadcastChannel | null = null;
     try {
       channel = new BroadcastChannel(BROADCAST_CHANNEL_NAME);
       channelRef.current = channel;
 
       channel.onmessage = (event) => {
-        const { type, payload } = event.data || {};
+        const { type, payload, clientId } = event.data || {};
+        if (clientId === SYNC_CLIENT_ID) return;
         if (type === 'STATE_UPDATE' && payload) {
           setData(payload);
           setSyncState(prev => ({
@@ -269,6 +310,7 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     return () => {
+      eventSource?.close();
       channel?.close();
     };
   }, [addSyncLog]);

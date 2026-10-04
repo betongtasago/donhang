@@ -16,6 +16,42 @@ async function startServer() {
 
   app.use(express.json());
 
+  // Lightweight SSE relay keeps browser sessions in sync without requiring a
+  // third-party integration. Each connected browser receives state updates
+  // published by any other browser session.
+  const syncClients = new Set<import('express').Response>();
+  let latestSyncMessage: Record<string, unknown> | null = null;
+
+  app.get('/api/sync/events', (req, res) => {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders();
+    res.write(`data: ${JSON.stringify({ type: 'CONNECTED' })}\\n\\n`);
+    if (latestSyncMessage) {
+      res.write(`data: ${JSON.stringify(latestSyncMessage)}\\n\\n`);
+    }
+    syncClients.add(res);
+
+    const heartbeat = setInterval(() => {
+      if (!res.writableEnded) res.write(': heartbeat\\n\\n');
+    }, 15000);
+    req.on('close', () => {
+      clearInterval(heartbeat);
+      syncClients.delete(res);
+    });
+  });
+
+  app.post('/api/sync/events', (req, res) => {
+    const message = req.body && typeof req.body === 'object' ? req.body : {};
+    latestSyncMessage = message;
+    const serialized = JSON.stringify(message);
+    for (const client of syncClients) {
+      if (!client.writableEnded) client.write(`data: ${serialized}\\n\\n`);
+    }
+    res.status(202).json({ deliveredTo: syncClients.size });
+  });
+
   // API Routes for Concrete Operations Database
   app.get('/api/health', async (req, res) => {
     try {
