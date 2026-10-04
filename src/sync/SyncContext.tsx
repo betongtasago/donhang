@@ -464,10 +464,19 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }).catch(err => console.warn('Could not delete from backend:', err));
   };
 
-  const createTrip = (tripInput: Omit<DispatchTrip, 'id' | 'ticketNumber'>): DispatchTrip => {
-    const ticketSeq = String(data.trips.length + 101);
-    const dateCode = new Date().toISOString().slice(2, 10).replace(/-/g, '');
-    const newTicket = `PKX-${dateCode}-${ticketSeq}`;
+  const createTrip = (tripInput: Omit<DispatchTrip, 'id' | 'ticketNumber'> & { ticketNumber?: string }): DispatchTrip => {
+    // Quy tắc TSG-TNT: Số phiếu là số 7 chữ số dạng 0160XXX (ví dụ: 0160190)
+    const ticketSeq = String(data.trips.length + 190).padStart(3, '0');
+    const newTicket = tripInput.ticketNumber || `0160${ticketSeq}`;
+
+    // Quy tắc TSG-TNT: Số chì là số ngẫu nhiên 6 chữ số (ví dụ: 849201) và luôn KHÁC số phiếu
+    let newSeal = tripInput.sealNumber;
+    if (!newSeal || newSeal === newTicket) {
+      newSeal = String(Math.floor(100000 + Math.random() * 900000));
+      while (newSeal === newTicket) {
+        newSeal = String(Math.floor(100000 + Math.random() * 900000));
+      }
+    }
 
     // Find current order to calculate cumulative delivered volume
     const targetOrder = data.orders.find(o => o.id === tripInput.orderId || o.code === tripInput.orderCode);
@@ -499,6 +508,7 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
       ...tripInput,
       id: `trip-${Date.now()}`,
       ticketNumber: newTicket,
+      sealNumber: newSeal,
       accumulatedVolume: newAccumulated,
       distanceKm: tripKm,
       isLargeTrip

@@ -64,6 +64,7 @@ export const BaoCaoSanXuatView: React.FC = () => {
       'STT',
       'Mã đơn hàng',
       'Mã trên phiếu (Số phiếu xuất)',
+      'Số niêm chì',
       'Ngày sản xuất',
       'Mã C.Trình',
       'Tên công ty / Khách hàng',
@@ -83,10 +84,12 @@ export const BaoCaoSanXuatView: React.FC = () => {
     const rows = filteredOrders.map((ord, idx) => {
       const orderTrips = trips.filter(t => t.orderId === ord.id || t.orderCode === ord.code);
       const ticketNumbers = orderTrips.map(t => t.ticketNumber).join(', ') || 'Chưa cấp phiếu';
+      const sealNumbers = orderTrips.map(t => t.sealNumber || '---').join(', ') || 'Chưa cấp chì';
       return [
         idx + 1,
         ord.code,
         ticketNumbers,
+        sealNumbers,
         ord.deliveryDate,
         ord.customerCode || '---',
         ord.customerName,
@@ -308,7 +311,7 @@ export const BaoCaoSanXuatView: React.FC = () => {
               <tr className="bg-slate-100/80 border-b border-slate-200 text-slate-600 text-[11px] font-bold uppercase tracking-wider">
                 <th className="py-3 px-3 text-center">STT</th>
                 <th className="py-3 px-3">NGÀY SẢN XUẤT</th>
-                <th className="py-3 px-3">MÃ ĐƠN & MÃ TRÊN PHIẾU</th>
+                <th className="py-3 px-3">MÃ ĐƠN • SỐ PHIẾU • SỐ CHÌ</th>
                 <th className="py-3 px-3">MÃ CTRINH - TÊN CÔNG TY</th>
                 <th className="py-3 px-4">TÊN CÔNG TRÌNH</th>
                 <th className="py-3 px-3">HẠNG MỤC</th>
@@ -341,23 +344,33 @@ export const BaoCaoSanXuatView: React.FC = () => {
                         {ord.deliveryDate.split('-').reverse().join('/')}
                       </td>
 
-                      {/* Mã đơn & Số phiếu xuất (Đồng bộ trực tiếp với phiếu giao nhận & nhật ký) */}
+                      {/* Mã đơn & Số phiếu xuất & Số niêm chì (Đồng bộ trực tiếp với phiếu giao nhận) */}
                       <td className="py-3 px-3 whitespace-nowrap">
                         <div className="font-mono font-bold text-slate-900 text-xs">
                           {ord.code}
                         </div>
-                        <div className="flex flex-wrap gap-1 mt-1 max-w-[210px]">
+                        <div className="flex flex-col gap-1 mt-1 max-w-[240px]">
                           {orderTrips.length === 0 ? (
-                            <span className="text-[10px] text-slate-400 font-mono italic">Chưa cấp phiếu</span>
+                            <span className="text-[10px] text-slate-400 font-mono italic">Chưa xuất xe</span>
                           ) : (
                             orderTrips.map(t => (
-                              <span
+                              <div
                                 key={t.id}
-                                className="font-mono font-bold text-[10px] px-1.5 py-0.2 rounded bg-orange-100 text-orange-900 border border-orange-300 shadow-xs"
-                                title={`Số phiếu: ${t.ticketNumber} | Xe: ${t.truckPlate} | KL: ${t.volume}m³ | Giờ: ${t.departureTime}`}
+                                className="flex items-center gap-1 font-mono text-[10px]"
                               >
-                                {t.ticketNumber}
-                              </span>
+                                <span
+                                  className="font-bold px-1.5 py-0.5 rounded bg-orange-100 text-orange-950 border border-orange-300 shadow-xs"
+                                  title={`Số phiếu xuất kho: ${t.ticketNumber} | Xe: ${t.truckPlate}`}
+                                >
+                                  Phiếu: {t.ticketNumber}
+                                </span>
+                                <span
+                                  className="font-semibold px-1.5 py-0.5 rounded bg-cyan-50 text-cyan-900 border border-cyan-300"
+                                  title={`Số niêm chì: ${t.sealNumber || '---'} (khác số phiếu)`}
+                                >
+                                  Chì: {t.sealNumber || '---'}
+                                </span>
+                              </div>
                             ))
                           )}
                         </div>

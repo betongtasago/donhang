@@ -193,9 +193,8 @@ async function startServer() {
     try {
       const tripInput = req.body;
       const existingTrips = await db.select().from(trips);
-      const ticketSeq = String(existingTrips.length + 101);
-      const dateCode = new Date().toISOString().slice(2, 10).replace(/-/g, '');
-      const newTicket = `PKX-${dateCode}-${ticketSeq}`;
+      const ticketSeq = String(existingTrips.length + 190).padStart(3, '0');
+      const newTicket = tripInput.ticketNumber || `0160${ticketSeq}`;
 
       // Find current order to get cumulative total
       const orderList = await db.select().from(orders).where(eq(orders.id, tripInput.orderId));

@@ -40,10 +40,30 @@ export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({
   // Paper Size: Mặc định giấy in liên tục 210x279 mm
   const [paperSize, setPaperSize] = useState<PaperSizeType>('CONTINUOUS_210_279');
 
-  // Editable Driver Name and Truck Plate
+  // Quy tắc 1: Số phiếu là số 7 chữ số dạng 0160XXX (ví dụ: 0160190)
+  const generateRandomTicketNumber = () => {
+    const randSeq = Math.floor(100 + Math.random() * 900);
+    return `0160${randSeq}`;
+  };
+
+  // Quy tắc 2: Số chì là số ngẫu nhiên 6 chữ số (ví dụ: 849201) và luôn KHÁC số phiếu
+  const generateRandomSealNumber = (exclude?: string) => {
+    let seal = String(Math.floor(100000 + Math.random() * 900000));
+    while (seal === exclude || (exclude && (exclude.includes(seal) || seal.includes(exclude)))) {
+      seal = String(Math.floor(100000 + Math.random() * 900000));
+    }
+    return seal;
+  };
+
+  // Editable Driver Name, Truck Plate, Số Phiếu, Số Chì
   const [driverName, setDriverName] = useState<string>(trip?.driverName || 'Lê Hiền');
   const [truckPlate, setTruckPlate] = useState<string>(trip?.truckPlate || '51M 23071');
-  const [sealNumber, setSealNumber] = useState(trip ? `0160${trip.ticketNumber.slice(-3)}` : '0160131');
+  const [ticketSerial, setTicketSerial] = useState<string>(trip?.ticketNumber || '0160190');
+  const [sealNumber, setSealNumber] = useState<string>(
+    trip?.sealNumber && trip.sealNumber !== trip.ticketNumber
+      ? trip.sealNumber
+      : generateRandomSealNumber(trip?.ticketNumber)
+  );
   const [sampleCode, setSampleCode] = useState(order.grade ? `M35S107` : 'M35S107');
   const [departureTime, setDepartureTime] = useState<string>(trip?.departureTime || '15:20');
   const [isSavedTripSuccess, setIsSavedTripSuccess] = useState(false);
@@ -91,7 +111,7 @@ export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({
   const [customCurrentVolume, setCustomCurrentVolume] = useState<number>(defaultCurrentVol);
   const [customPreviousVolume, setCustomPreviousVolume] = useState<number>(autoPreviousVolume);
 
-  // Sync if trip or order changes
+  // Sync if trip or order changes & Tự động đồng bộ số phiếu / số chì với chuyến và Báo cáo sản xuất
   useEffect(() => {
     if (trip) {
       setDriverName(trip.driverName || 'Lê Hiền');
@@ -99,14 +119,36 @@ export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({
       setDepartureTime(trip.departureTime || '15:20');
       setCustomCurrentVolume(trip.volume || 10);
       setCustomPreviousVolume(autoPreviousVolume);
-      setSealNumber(`0160${trip.ticketNumber.slice(-3)}`);
+
+      let tripTicket = trip.ticketNumber;
+      if (!tripTicket) {
+        tripTicket = generateRandomTicketNumber();
+      }
+      setTicketSerial(tripTicket);
+
+      // Số chì theo quy tắc khác số phiếu
+      let tripSeal = trip.sealNumber;
+      if (!tripSeal || tripSeal === tripTicket) {
+        tripSeal = generateRandomSealNumber(tripTicket);
+      }
+      setSealNumber(tripSeal);
+
+      // Nếu chuyến chưa có hoặc bị trùng, tự động đồng bộ ngay vào SyncContext để Báo cáo sản xuất hiển thị đúng
+      if (!trip.ticketNumber || !trip.sealNumber || trip.sealNumber === trip.ticketNumber) {
+        updateTripDetails(trip.id, {
+          ticketNumber: tripTicket,
+          sealNumber: tripSeal
+        });
+      }
     } else {
       setDriverName('Lê Hiền');
       setTruckPlate('51M 23071');
       setDepartureTime('15:20');
       setCustomCurrentVolume(10);
       setCustomPreviousVolume(46);
-      setSealNumber('0160131');
+      const randTicket = generateRandomTicketNumber();
+      setTicketSerial(randTicket);
+      setSealNumber(generateRandomSealNumber(randTicket));
     }
   }, [trip, autoPreviousVolume]);
 
@@ -131,6 +173,32 @@ export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({
     }
   };
 
+  // Tự động đồng bộ số phiếu & số chì khi tạo mới ngẫu nhiên theo quy tắc
+  const handleGenerateTicket = () => {
+    const nextTicket = generateRandomTicketNumber();
+    setTicketSerial(nextTicket);
+    let nextSeal = sealNumber;
+    if (nextSeal === nextTicket) {
+      nextSeal = generateRandomSealNumber(nextTicket);
+      setSealNumber(nextSeal);
+    }
+    if (trip && updateTripDetails) {
+      updateTripDetails(trip.id, { ticketNumber: nextTicket, sealNumber: nextSeal });
+      setIsSavedTripSuccess(true);
+      setTimeout(() => setIsSavedTripSuccess(false), 2000);
+    }
+  };
+
+  const handleGenerateSeal = () => {
+    const nextSeal = generateRandomSealNumber(ticketSerial);
+    setSealNumber(nextSeal);
+    if (trip && updateTripDetails) {
+      updateTripDetails(trip.id, { sealNumber: nextSeal });
+      setIsSavedTripSuccess(true);
+      setTimeout(() => setIsSavedTripSuccess(false), 2000);
+    }
+  };
+
   // Save changes to trip in database/SyncContext
   const handleSaveTripDetails = () => {
     if (trip && updateTripDetails) {
@@ -138,7 +206,9 @@ export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({
         driverName,
         truckPlate,
         volume: customCurrentVolume,
-        departureTime
+        departureTime,
+        ticketNumber: ticketSerial, // Đồng bộ trực tiếp với Báo cáo sản xuất!
+        sealNumber: sealNumber
       });
       setIsSavedTripSuccess(true);
       setTimeout(() => setIsSavedTripSuccess(false), 2500);
@@ -321,7 +391,7 @@ export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({
                 </span>
               </div>
               <p className="text-[11px] text-slate-400">
-                Đơn hàng: <strong className="text-white">{order.code}</strong> • Số phiếu: <strong className="text-orange-400">{trip?.ticketNumber || sealNumber}</strong>
+                Đơn hàng: <strong className="text-white">{order.code}</strong> • Số phiếu: <strong className="text-orange-400">{ticketSerial}</strong> • Số chì: <strong className="text-cyan-300">{sealNumber}</strong>
               </p>
             </div>
           </div>
@@ -517,12 +587,63 @@ export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({
                 <span className="font-black text-red-600 text-xs">{realAccumulated}</span>
               </div>
 
+              {/* Số phiếu xuất (Quy tắc 0160XXX) */}
+              <div className="flex items-center gap-1 bg-white px-1.5 py-0.5 rounded border border-slate-300">
+                <span className="text-[11px] font-semibold text-slate-700">Số Phiếu:</span>
+                <input
+                  type="text"
+                  value={ticketSerial}
+                  onChange={(e) => setTicketSerial(e.target.value)}
+                  onBlur={() => {
+                    if (trip && updateTripDetails) {
+                      updateTripDetails(trip.id, { ticketNumber: ticketSerial });
+                    }
+                  }}
+                  className="w-20 px-1 py-0.5 border border-orange-300 rounded font-mono font-bold text-orange-700 text-xs text-center"
+                  title="Số phiếu giao nhận bê tông (Quy tắc: 0160XXX)"
+                />
+                <button
+                  type="button"
+                  onClick={handleGenerateTicket}
+                  className="p-0.5 hover:bg-orange-50 text-orange-600 rounded cursor-pointer transition"
+                  title="Tạo số phiếu ngẫu nhiên theo quy tắc 0160XXX (tự động đồng bộ báo cáo)"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {/* Số niêm chì (Quy tắc 6 số khác số phiếu) */}
+              <div className="flex items-center gap-1 bg-white px-1.5 py-0.5 rounded border border-slate-300">
+                <span className="text-[11px] font-semibold text-slate-700">Số Chì:</span>
+                <input
+                  type="text"
+                  value={sealNumber}
+                  onChange={(e) => setSealNumber(e.target.value)}
+                  onBlur={() => {
+                    if (trip && updateTripDetails) {
+                      updateTripDetails(trip.id, { sealNumber });
+                    }
+                  }}
+                  className="w-20 px-1 py-0.5 border border-blue-300 rounded font-mono font-bold text-blue-700 text-xs text-center"
+                  title="Số niêm chì nhựa xe bồn (Quy tắc 6 số, khác số phiếu)"
+                />
+                <button
+                  type="button"
+                  onClick={handleGenerateSeal}
+                  className="p-0.5 hover:bg-blue-50 text-blue-600 rounded cursor-pointer transition"
+                  title="Tạo số niêm chì ngẫu nhiên khác số phiếu (tự động đồng bộ báo cáo)"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
               {/* Lưu vào chuyến */}
               {trip && (
                 <button
                   type="button"
                   onClick={handleSaveTripDetails}
                   className="px-2 py-0.5 rounded bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-[11px] transition flex items-center gap-1 cursor-pointer"
+                  title="Lưu số phiếu, số chì, tài xế, khối lượng vào hệ thống & đồng bộ báo cáo"
                 >
                   <Save className="w-3 h-3" />
                   <span>{isSavedTripSuccess ? 'Đã lưu!' : 'Lưu vào chuyến'}</span>
@@ -565,7 +686,7 @@ export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({
               previousVolume={customPreviousVolume}
               currentVolume={customCurrentVolume}
               accumulatedVolume={realAccumulated}
-              ticketSerial={sealNumber}
+              ticketSerial={ticketSerial}
               sealNumber={sealNumber}
               sampleCode={sampleCode}
               operatorSignature={operatorSignature}

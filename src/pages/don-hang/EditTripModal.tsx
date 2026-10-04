@@ -11,7 +11,8 @@ import {
   Scale,
   Activity,
   Save,
-  Printer
+  Printer,
+  Sparkles
 } from 'lucide-react';
 import { useSync } from '../../sync/SyncContext';
 import { ConcreteOrder, DispatchTrip, TripStatus } from '../../types';
@@ -149,14 +150,28 @@ export const EditTripModal: React.FC<EditTripModalProps> = ({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                  Số Phiếu In Trên Phiếu <span className="text-red-500">*</span>
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[11px] font-bold text-slate-700">
+                    Số Phiếu In Trên Phiếu <span className="text-red-500">*</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const randSeq = Math.floor(100 + Math.random() * 900);
+                      setTicketNumber(`0160${randSeq}`);
+                    }}
+                    className="text-[10px] text-orange-600 font-bold hover:underline flex items-center gap-0.5 cursor-pointer"
+                    title="Tạo số phiếu ngẫu nhiên (Quy tắc 0160XXX)"
+                  >
+                    <Sparkles className="w-3 h-3" />
+                    <span>Tạo số phiếu ngẫu nhiên</span>
+                  </button>
+                </div>
                 <input
                   type="text"
                   value={ticketNumber}
                   onChange={(e) => setTicketNumber(e.target.value)}
-                  placeholder="Ví dụ: PKX-261003-107 hoặc 0160190"
+                  placeholder="Ví dụ: 0160190"
                   className="w-full px-3 py-2 bg-white border border-orange-300 rounded-xl font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500 text-xs shadow-xs"
                 />
                 <span className="text-[10px] text-slate-500 mt-0.5 block">
@@ -165,16 +180,36 @@ export const EditTripModal: React.FC<EditTripModalProps> = ({
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                  Số Niêm Chì (Seal)
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[11px] font-bold text-slate-700">
+                    Số Niêm Chì (Seal)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      let seal = String(Math.floor(100000 + Math.random() * 900000));
+                      while (seal === ticketNumber) {
+                        seal = String(Math.floor(100000 + Math.random() * 900000));
+                      }
+                      setSealNumber(seal);
+                    }}
+                    className="text-[10px] text-blue-600 font-bold hover:underline flex items-center gap-0.5 cursor-pointer"
+                    title="Tạo số niêm chì 6 số ngẫu nhiên khác số phiếu"
+                  >
+                    <Sparkles className="w-3 h-3" />
+                    <span>Tạo số chì ngẫu nhiên</span>
+                  </button>
+                </div>
                 <input
                   type="text"
                   value={sealNumber}
                   onChange={(e) => setSealNumber(e.target.value)}
-                  placeholder="Ví dụ: NC-99812"
+                  placeholder="Ví dụ: 849201"
                   className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-500 text-xs"
                 />
+                <span className="text-[10px] text-slate-500 mt-0.5 block">
+                  Số chì 6 số niêm phong nắp xả xe bồn, hoàn toàn khác số phiếu
+                </span>
               </div>
             </div>
           </div>
