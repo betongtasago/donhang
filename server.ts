@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from 'express';
 import { createServer as createViteServer } from 'vite';
 import { db } from './src/db/index';
@@ -10,9 +11,19 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const requiredDbEnv = ['SQL_HOST', 'SQL_USER', 'SQL_PASSWORD', 'SQL_DB_NAME'];
+const missingDbEnv = requiredDbEnv.filter((key) => !process.env[key]);
+
+if (missingDbEnv.length > 0) {
+  console.warn(
+    `Missing database environment variables: ${missingDbEnv.join(', ')}. ` +
+      'Set them in a .env file before using DB-backed endpoints.'
+  );
+}
+
 async function startServer() {
   const app = express();
-  const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
+  const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
   app.use(express.json());
 
@@ -27,14 +38,14 @@ async function startServer() {
     res.setHeader('Cache-Control', 'no-cache, no-transform');
     res.setHeader('Connection', 'keep-alive');
     res.flushHeaders();
-    res.write(`data: ${JSON.stringify({ type: 'CONNECTED' })}\\n\\n`);
+    res.write(`data: ${JSON.stringify({ type: 'CONNECTED' })}\n\n`);
     if (latestSyncMessage) {
-      res.write(`data: ${JSON.stringify(latestSyncMessage)}\\n\\n`);
+      res.write(`data: ${JSON.stringify(latestSyncMessage)}\n\n`);
     }
     syncClients.add(res);
 
     const heartbeat = setInterval(() => {
-      if (!res.writableEnded) res.write(': heartbeat\\n\\n');
+      if (!res.writableEnded) res.write(': heartbeat\n\n');
     }, 15000);
     req.on('close', () => {
       clearInterval(heartbeat);
@@ -47,13 +58,20 @@ async function startServer() {
     latestSyncMessage = message;
     const serialized = JSON.stringify(message);
     for (const client of syncClients) {
-      if (!client.writableEnded) client.write(`data: ${serialized}\\n\\n`);
+      if (!client.writableEnded) client.write(`data: ${serialized}\n\n`);
     }
     res.status(202).json({ deliveredTo: syncClients.size });
   });
 
   // API Routes for Concrete Operations Database
   app.get('/api/health', async (req, res) => {
+    if (missingDbEnv.length > 0) {
+      return res.status(503).json({
+        status: 'error',
+        message: 'Database is not configured. Set SQL_HOST, SQL_USER, SQL_PASSWORD, and SQL_DB_NAME in .env.'
+      });
+    }
+
     try {
       const result = await db.select().from(orders).limit(1);
       res.json({ status: 'ok', database: 'connected', sampleOrdersCount: result.length });
