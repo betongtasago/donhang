@@ -40,7 +40,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenMembersModal,
   onOpenPrintModal
 }) => {
-  const { orders, trips, trucks, syncState, secondsSinceSync, selectedPlant, setSelectedPlant } = useSync();
+  const { orders, trips, trucks, syncState, secondsSinceSync } = useSync();
   const { currentUser, logout, isAdmin } = useAuth();
 
   // State: Tab bên trái khi rê chuột vào mới hiện ra
@@ -51,17 +51,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const navItems = [
     { id: 'don-hang', label: '1. Đơn hàng & Cấp hàng', icon: ClipboardList, badge: orders.length },
-    { id: 'tong-quan', label: 'Tổng quan điều hành', icon: LayoutDashboard },
+    { id: 'thong-ke-tai-xe', label: 'Dữ liệu chuyến & Km tài xế', icon: Truck },
     { id: 'san-xuat', label: 'Sản xuất & Báo cáo', icon: Factory },
     { id: 'cong-no', label: 'Công nợ khách hàng', icon: CreditCard },
     { id: 'thi-nghiem', label: 'Thí nghiệm & QC Lab', icon: FlaskConical },
-  ];
-
-  const plantOptions = [
-    { id: 'Tây Ninh', label: 'TN - Điều độ Tây Ninh', sub: 'TNT - Production' },
-    { id: 'Bình Dương', label: 'BD - Điều độ Bình Dương', sub: 'TNT - Bến Cát' },
-    { id: 'Long An', label: 'LA - Điều độ Long An', sub: 'TNT - Đức Hoà' },
-    { id: 'TP.HCM', label: 'SG - Điều độ TP.HCM', sub: 'TNT - Củ Chi' },
   ];
 
   return (
@@ -153,32 +146,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
           </div>
 
-          {/* Workspace selector */}
-          <div className="px-3 pt-3 pb-1">
-            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-2 mb-1">
-              TRẠM ĐIỀU ĐỘ SẢN XUẤT
-            </div>
-
-            <div className="relative group">
-              <select
-                value={selectedPlant}
-                onChange={(e) => setSelectedPlant(e.target.value)}
-                className="w-full appearance-none bg-[#1d2432] hover:bg-[#232c3d] text-white text-xs font-semibold rounded-xl p-2 pr-7 border border-slate-700/60 focus:outline-none focus:ring-1 focus:ring-orange-500 transition cursor-pointer"
-              >
-                {plantOptions.map((opt) => (
-                  <option key={opt.id} value={opt.id} className="bg-slate-900 text-white py-1">
-                    {opt.label} ({opt.sub})
-                  </option>
-                ))}
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-slate-400">
-                <ChevronDown className="w-3.5 h-3.5" />
-              </div>
-            </div>
-          </div>
-
           {/* Navigation links */}
-          <nav className="px-3 py-2 space-y-1">
+          <nav className="px-3 py-3 space-y-1">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = currentPage === item.id;

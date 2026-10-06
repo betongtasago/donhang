@@ -22,6 +22,7 @@ import { CaiDatPage } from './pages/cai-dat';
 const VALID_PAGES = [
   'don-hang',
   'tong-quan',
+  'thong-ke-tai-xe',
   'cong-no',
   'san-xuat',
   'quan-ly-lai-xe',
@@ -103,6 +104,7 @@ export const AppContent: React.FC = () => {
           />
         );
       case 'tong-quan':
+      case 'thong-ke-tai-xe':
         return <TongQuanPage />;
       case 'cong-no':
         return <CongNoPage />;

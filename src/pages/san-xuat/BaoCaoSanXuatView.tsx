@@ -12,7 +12,12 @@ import {
   UserCheck,
   FileText,
   Printer,
-  Sparkles
+  Sparkles,
+  ChevronLeft,
+  ChevronRight,
+  CalendarDays,
+  ChevronDown,
+  X
 } from 'lucide-react';
 import { useSync } from '../../sync/SyncContext';
 import { ConcreteOrder } from '../../types';
@@ -22,17 +27,171 @@ export const BaoCaoSanXuatView: React.FC = () => {
   const { orders, trips } = useSync();
 
   // Filter states
-  const [selectedDate, setSelectedDate] = useState<string>('');
-  const [dateQuickFilter, setDateQuickFilter] = useState<'ALL' | 'TODAY' | 'YESTERDAY' | 'LAST_3_DAYS' | 'CUSTOM'>('ALL');
+  const [selectedDate, setSelectedDate] = useState<string>('2026-10-04');
+  const [dateQuickFilter, setDateQuickFilter] = useState<'ALL' | 'TODAY' | 'YESTERDAY' | 'LAST_3_DAYS' | 'RANGE' | 'CUSTOM'>('TODAY');
+  const [rangeFromDate, setRangeFromDate] = useState<string>('2026-10-01');
+  const [rangeToDate, setRangeToDate] = useState<string>('2026-10-06');
+  const [isRangeOpen, setIsRangeOpen] = useState<boolean>(false);
   const [filterProjectType, setFilterProjectType] = useState<string>('ALL'); // ALL, DA, DD
   const [filterOrderType, setFilterOrderType] = useState<string>('ALL'); // ALL, CHINH, PHAT_SINH
   const [searchTerm, setSearchTerm] = useState<string>('');
 
-  // Extract available dates from orders
-  const availableDates = useMemo(() => {
-    const set = new Set(orders.map(o => o.deliveryDate).filter(Boolean));
-    return Array.from(set).sort().reverse();
+  // Bảng Lịch Popover Siêu Nhỏ Gọn
+  const [calendarYear, setCalendarYear] = useState<number>(2026);
+  const [calendarMonth, setCalendarMonth] = useState<number>(9); // 0-indexed: 9 = Tháng 10
+  const [isCalendarOpen, setIsCalendarOpen] = useState<boolean>(false);
+
+  // Chuyển đổi ngày YYYY-MM-DD và DD/MM/YYYY
+  const dateInputVal = useMemo(() => {
+    if (!selectedDate) return '';
+    if (selectedDate.includes('-')) return selectedDate;
+    const parts = selectedDate.split('/');
+    if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    return selectedDate;
+  }, [selectedDate]);
+
+  // Xử lý khi chọn ngày từ input date
+  const handleDateInputChange = (val: string) => {
+    if (!val) {
+      setSelectedDate('');
+      setDateQuickFilter('ALL');
+      return;
+    }
+    setSelectedDate(val);
+    setDateQuickFilter('CUSTOM');
+    const parts = val.split('-');
+    if (parts.length === 3) {
+      setCalendarYear(parseInt(parts[0], 10));
+      setCalendarMonth(parseInt(parts[1], 10) - 1);
+    }
+  };
+
+  // Tiến lùi 1 ngày
+  const handleStepDate = (direction: -1 | 1) => {
+    let curr = new Date(2026, 9, 4);
+    if (selectedDate) {
+      if (selectedDate.includes('-')) {
+        const parts = selectedDate.split('-');
+        if (parts.length === 3) {
+          curr = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+        }
+      } else if (selectedDate.includes('/')) {
+        const parts = selectedDate.split('/');
+        if (parts.length === 3) {
+          curr = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+        }
+      }
+    }
+    curr.setDate(curr.getDate() + direction);
+    const y = curr.getFullYear();
+    const m = curr.getMonth() + 1 < 10 ? `0${curr.getMonth() + 1}` : `${curr.getMonth() + 1}`;
+    const d = curr.getDate() < 10 ? `0${curr.getDate()}` : `${curr.getDate()}`;
+    const nextDate = `${y}-${m}-${d}`;
+    setSelectedDate(nextDate);
+    setDateQuickFilter('CUSTOM');
+    setCalendarYear(y);
+    setCalendarMonth(curr.getMonth());
+  };
+
+  // Tên thứ trong tuần
+  const selectedDateWeekday = useMemo(() => {
+    if (!selectedDate) return '';
+    let dt: Date;
+    if (selectedDate.includes('-')) {
+      const parts = selectedDate.split('-');
+      dt = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+    } else {
+      const parts = selectedDate.split('/');
+      dt = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+    }
+    const days = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+    return days[dt.getDay()];
+  }, [selectedDate]);
+
+  // Đếm đơn theo ngày YYYY-MM-DD
+  const ordersCountByDate = useMemo(() => {
+    const map: Record<string, number> = {};
+    orders.forEach(o => {
+      let d = o.deliveryDate || '';
+      if (d.includes('/')) {
+        const parts = d.split('/');
+        d = `${parts[2]}-${parts[1]}-${parts[0]}`;
+      }
+      if (d) {
+        map[d] = (map[d] || 0) + 1;
+      }
+    });
+    return map;
   }, [orders]);
+
+  // Lưới ngày lịch popover
+  const calendarDays = useMemo(() => {
+    const firstDay = new Date(calendarYear, calendarMonth, 1);
+    const dayOfWeek = (firstDay.getDay() + 6) % 7;
+    const daysInMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate();
+
+    const days: Array<{
+      day: number;
+      dateIso: string;
+      dateDmy: string;
+      isCurrentMonth: boolean;
+      ordersCount: number;
+      isToday: boolean;
+      isSelected: boolean;
+    }> = [];
+
+    for (let i = 0; i < dayOfWeek; i++) {
+      days.push({
+        day: 0,
+        dateIso: '',
+        dateDmy: '',
+        isCurrentMonth: false,
+        ordersCount: 0,
+        isToday: false,
+        isSelected: false
+      });
+    }
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dayStr = d < 10 ? `0${d}` : `${d}`;
+      const monthStr = calendarMonth + 1 < 10 ? `0${calendarMonth + 1}` : `${calendarMonth + 1}`;
+      const dateIso = `${calendarYear}-${monthStr}-${dayStr}`;
+      const dateDmy = `${dayStr}/${monthStr}/${calendarYear}`;
+      const count = ordersCountByDate[dateIso] || 0;
+      const isToday = dateIso === '2026-10-04';
+      const isSelected = selectedDate === dateIso;
+
+      days.push({
+        day: d,
+        dateIso,
+        dateDmy,
+        isCurrentMonth: true,
+        ordersCount: count,
+        isToday,
+        isSelected
+      });
+    }
+
+    return days;
+  }, [calendarYear, calendarMonth, ordersCountByDate, selectedDate]);
+
+  const handlePrevMonth = () => {
+    if (calendarMonth === 0) {
+      setCalendarMonth(11);
+      setCalendarYear(calendarYear - 1);
+    } else {
+      setCalendarMonth(calendarMonth - 1);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (calendarMonth === 11) {
+      setCalendarMonth(0);
+      setCalendarYear(calendarYear + 1);
+    } else {
+      setCalendarMonth(calendarMonth + 1);
+    }
+  };
 
   // Quick Date Select handler
   const handleSelectQuickDate = (mode: 'ALL' | 'TODAY' | 'YESTERDAY' | 'LAST_3_DAYS') => {
@@ -44,19 +203,34 @@ export const BaoCaoSanXuatView: React.FC = () => {
     } else if (mode === 'YESTERDAY') {
       setSelectedDate('2026-10-03');
     } else if (mode === 'LAST_3_DAYS') {
-      setSelectedDate(''); // Will be handled in filter
+      setSelectedDate('');
     }
   };
 
   // Filtered orders for production report
   const filteredOrders = useMemo(() => {
     return orders.filter(ord => {
+      // Normalize order date to YYYY-MM-DD
+      let oDate = ord.deliveryDate || '';
+      if (oDate.includes('/')) {
+        const parts = oDate.split('/');
+        oDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+      }
+
       // Date logic
-      if (dateQuickFilter === 'LAST_3_DAYS') {
+      if (dateQuickFilter === 'RANGE') {
+        if (!oDate) return false;
+        if (oDate < rangeFromDate || oDate > rangeToDate) return false;
+      } else if (dateQuickFilter === 'LAST_3_DAYS') {
         const last3 = ['2026-10-04', '2026-10-03', '2026-10-02'];
-        if (!last3.includes(ord.deliveryDate)) return false;
+        if (!last3.includes(oDate)) return false;
       } else if (selectedDate) {
-        if (ord.deliveryDate !== selectedDate) return false;
+        let sDate = selectedDate;
+        if (sDate.includes('/')) {
+          const parts = sDate.split('/');
+          sDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+        }
+        if (oDate !== sDate) return false;
       }
 
       const matchProjectType = filterProjectType === 'ALL' || (ord.projectType || 'DA') === filterProjectType;
@@ -72,7 +246,7 @@ export const BaoCaoSanXuatView: React.FC = () => {
 
       return matchProjectType && matchOrderType && matchSearch;
     });
-  }, [orders, selectedDate, dateQuickFilter, filterProjectType, filterOrderType, searchTerm]);
+  }, [orders, selectedDate, dateQuickFilter, rangeFromDate, rangeToDate, filterProjectType, filterOrderType, searchTerm]);
 
   // Totals
   const totalVolume = filteredOrders.reduce((sum, o) => sum + o.totalVolume, 0);
@@ -241,152 +415,361 @@ export const BaoCaoSanXuatView: React.FC = () => {
           </div>
         </div>
 
-        {/* Quick Date Shortcuts Banner (Tìm ngày nhanh) */}
-        <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-orange-50/60 rounded-xl border border-orange-200/70 text-xs">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="font-bold text-orange-950 flex items-center gap-1 text-[11px] uppercase mr-1">
-              <Calendar className="w-3.5 h-3.5 text-orange-600" />
-              Tìm ngày nhanh:
-            </span>
-            <button
-              type="button"
-              onClick={() => handleSelectQuickDate('ALL')}
-              className={`px-2.5 py-1 rounded-lg font-bold text-xs transition cursor-pointer ${
-                dateQuickFilter === 'ALL' && !selectedDate
-                  ? 'bg-orange-600 text-white shadow-xs'
-                  : 'bg-white text-slate-700 hover:bg-orange-100 border border-slate-200'
-              }`}
-            >
-              Tất cả ngày ({orders.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => handleSelectQuickDate('TODAY')}
-              className={`px-2.5 py-1 rounded-lg font-bold text-xs transition cursor-pointer ${
-                dateQuickFilter === 'TODAY'
-                  ? 'bg-orange-600 text-white shadow-xs'
-                  : 'bg-white text-slate-700 hover:bg-orange-100 border border-slate-200'
-              }`}
-            >
-              Hôm nay (04/10)
-            </button>
-            <button
-              type="button"
-              onClick={() => handleSelectQuickDate('YESTERDAY')}
-              className={`px-2.5 py-1 rounded-lg font-bold text-xs transition cursor-pointer ${
-                dateQuickFilter === 'YESTERDAY'
-                  ? 'bg-orange-600 text-white shadow-xs'
-                  : 'bg-white text-slate-700 hover:bg-orange-100 border border-slate-200'
-              }`}
-            >
-              Hôm qua (03/10)
-            </button>
-            <button
-              type="button"
-              onClick={() => handleSelectQuickDate('LAST_3_DAYS')}
-              className={`px-2.5 py-1 rounded-lg font-bold text-xs transition cursor-pointer ${
-                dateQuickFilter === 'LAST_3_DAYS'
-                  ? 'bg-orange-600 text-white shadow-xs'
-                  : 'bg-white text-slate-700 hover:bg-orange-100 border border-slate-200'
-              }`}
-            >
-              3 ngày gần đây
-            </button>
+        {/* ============================================================= */}
+        {/* THANH TÌM KIẾM & LỌC NGÀY SIÊU NHỎ GỌN (BCSX ULTRA-COMPACT TOOLBAR) */}
+        {/* ============================================================= */}
+        <div className="bg-white rounded-xl p-2.5 sm:p-3 border border-slate-200/90 shadow-xs space-y-2 relative">
+          {/* Row 1: Unified Controls Bar */}
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+            {/* Left: Compact Date Stepper, Calendar Popover Trigger, Quick Date Pills */}
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+              {/* Stepper Navigator */}
+              <div className="flex items-center bg-slate-50 border border-slate-200 rounded-lg p-0.5 shadow-2xs">
+                <button
+                  type="button"
+                  onClick={() => handleStepDate(-1)}
+                  className="p-1 rounded hover:bg-white hover:text-orange-600 text-slate-600 transition cursor-pointer active:scale-95"
+                  title="Lùi 1 ngày"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                </button>
+
+                <input
+                  type="date"
+                  value={dateInputVal}
+                  onChange={(e) => handleDateInputChange(e.target.value)}
+                  className="font-mono font-bold text-xs text-orange-950 bg-transparent border-none outline-none px-1 cursor-pointer"
+                />
+
+                <button
+                  type="button"
+                  onClick={() => handleStepDate(1)}
+                  className="p-1 rounded hover:bg-white hover:text-orange-600 text-slate-600 transition cursor-pointer active:scale-95"
+                  title="Tiến 1 ngày"
+                >
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {/* Day of week tag */}
+              {selectedDateWeekday && (
+                <span className="hidden sm:inline-block px-2 py-1 rounded-md bg-orange-50 text-orange-900 font-bold text-[11px] border border-orange-200/70">
+                  {selectedDateWeekday}
+                </span>
+              )}
+
+              {/* Calendar Popover Trigger Button */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setIsCalendarOpen(!isCalendarOpen)}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold text-xs transition cursor-pointer border ${
+                    isCalendarOpen
+                      ? 'bg-orange-600 text-white border-orange-700 shadow-xs ring-2 ring-orange-200'
+                      : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                  }`}
+                  title="Mở bảng lịch chọn ngày sản xuất nhỏ gọn"
+                >
+                  <CalendarDays className="w-3.5 h-3.5 text-orange-600 group-hover:text-white" />
+                  <span>Lịch</span>
+                  <ChevronDown className={`w-3 h-3 transition-transform ${isCalendarOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {/* Compact Popover Calendar Dropdown */}
+                {isCalendarOpen && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-30"
+                      onClick={() => setIsCalendarOpen(false)}
+                    />
+                    <div className="absolute top-full left-0 mt-2 z-40 w-72 sm:w-80 bg-white rounded-2xl shadow-2xl border border-slate-200 p-3.5 animate-in fade-in zoom-in-95">
+                      {/* Calendar Month Header */}
+                      <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-100">
+                        <div className="flex items-center gap-1 font-bold text-slate-800">
+                          <button
+                            type="button"
+                            onClick={handlePrevMonth}
+                            className="p-1 rounded-md hover:bg-slate-100 text-slate-600 cursor-pointer"
+                            title="Tháng trước"
+                          >
+                            <ChevronLeft className="w-4 h-4" />
+                          </button>
+                          <span className="px-1 font-mono font-black text-xs text-orange-950">
+                            Tháng {calendarMonth + 1} / {calendarYear}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={handleNextMonth}
+                            className="p-1 rounded-md hover:bg-slate-100 text-slate-600 cursor-pointer"
+                            title="Tháng sau"
+                          >
+                            <ChevronRight className="w-4 h-4" />
+                          </button>
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCalendarYear(2026);
+                              setCalendarMonth(9);
+                              setSelectedDate('2026-10-04');
+                              setDateQuickFilter('TODAY');
+                              setIsCalendarOpen(false);
+                            }}
+                            className="text-[10px] font-bold px-2 py-0.5 rounded bg-orange-50 text-orange-700 hover:bg-orange-100 cursor-pointer"
+                          >
+                            Hôm nay
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setIsCalendarOpen(false)}
+                            className="p-1 rounded-md hover:bg-slate-100 text-slate-400 hover:text-slate-700 cursor-pointer"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Days of week header */}
+                      <div className="grid grid-cols-7 gap-1 text-center font-bold text-[10px] text-slate-400 mb-1">
+                        <div>T2</div>
+                        <div>T3</div>
+                        <div>T4</div>
+                        <div>T5</div>
+                        <div>T6</div>
+                        <div className="text-blue-600">T7</div>
+                        <div className="text-red-500">CN</div>
+                      </div>
+
+                      {/* Days Grid - Ultra compact */}
+                      <div className="grid grid-cols-7 gap-1 text-xs">
+                        {calendarDays.map((cd, idx) => {
+                          if (!cd.isCurrentMonth) {
+                            return <div key={`empty-${idx}`} className="w-8 h-8 sm:w-9 sm:h-9" />;
+                          }
+
+                          return (
+                            <button
+                              key={cd.dateIso}
+                              type="button"
+                              onClick={() => {
+                                setSelectedDate(cd.dateIso);
+                                setDateQuickFilter('CUSTOM');
+                                setIsCalendarOpen(false);
+                              }}
+                              className={`w-8 h-8 sm:w-9 sm:h-9 mx-auto rounded-lg flex flex-col items-center justify-center transition cursor-pointer relative ${
+                                cd.isSelected
+                                  ? 'bg-orange-600 text-white font-black shadow-xs ring-2 ring-orange-300'
+                                  : cd.isToday
+                                  ? 'bg-orange-50 text-orange-950 font-bold border border-orange-400'
+                                  : cd.ordersCount > 0
+                                  ? 'bg-emerald-50 text-emerald-950 font-bold hover:bg-emerald-100'
+                                  : 'hover:bg-slate-100 text-slate-700'
+                              }`}
+                              title={`${cd.dateDmy}: ${cd.ordersCount} đơn sản xuất`}
+                            >
+                              <span className="text-[11px] font-mono leading-none">{cd.day}</span>
+                              {cd.ordersCount > 0 && (
+                                <span
+                                  className={`w-1.5 h-1.5 rounded-full mt-0.5 ${
+                                    cd.isSelected ? 'bg-white' : 'bg-emerald-500'
+                                  }`}
+                                />
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Popover Footer */}
+                      <div className="flex items-center justify-between pt-2.5 mt-2 border-t border-slate-100 text-[10px] text-slate-500">
+                        <div className="flex items-center gap-2">
+                          <span className="flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                            <span>Có đơn</span>
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-orange-600"></span>
+                            <span>Đang chọn</span>
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedDate('');
+                            setDateQuickFilter('ALL');
+                            setIsCalendarOpen(false);
+                          }}
+                          className="font-bold text-orange-600 hover:underline cursor-pointer"
+                        >
+                          Tất cả các ngày
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Compact Quick Date Pills */}
+              <div className="flex items-center gap-1 overflow-x-auto py-0.5">
+                <button
+                  type="button"
+                  onClick={() => handleSelectQuickDate('ALL')}
+                  className={`px-2 py-1 rounded-md text-[11px] font-bold transition cursor-pointer shrink-0 ${
+                    dateQuickFilter === 'ALL' || (!selectedDate && dateQuickFilter === 'CUSTOM')
+                      ? 'bg-orange-600 text-white shadow-2xs'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                  }`}
+                >
+                  Tất cả ({orders.length})
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSelectQuickDate('TODAY')}
+                  className={`px-2 py-1 rounded-md text-[11px] font-bold transition cursor-pointer shrink-0 ${
+                    selectedDate === '2026-10-04'
+                      ? 'bg-orange-600 text-white shadow-2xs'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                  }`}
+                >
+                  Hôm nay
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSelectQuickDate('YESTERDAY')}
+                  className={`px-2 py-1 rounded-md text-[11px] font-bold transition cursor-pointer shrink-0 ${
+                    selectedDate === '2026-10-03'
+                      ? 'bg-orange-600 text-white shadow-2xs'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                  }`}
+                >
+                  Hôm qua
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setIsRangeOpen(!isRangeOpen)}
+                  className={`px-2 py-1 rounded-md text-[11px] font-bold transition cursor-pointer shrink-0 ${
+                    isRangeOpen || dateQuickFilter === 'RANGE'
+                      ? 'bg-amber-500 text-white shadow-2xs'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                  }`}
+                >
+                  Khoảng ngày
+                </button>
+              </div>
+            </div>
+
+            {/* Right: Integrated Search Box, Project Type, Order Type & Counter */}
+            <div className="flex flex-wrap items-center gap-2 flex-1 justify-end min-w-[260px]">
+              {/* Search Input */}
+              <div className="relative min-w-[180px] flex-1 max-w-xs">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Khách hàng, công trình, mã, mác..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-8 pr-7 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:bg-white focus:outline-none focus:ring-1 focus:ring-orange-500 transition"
+                />
+                {searchTerm && (
+                  <button
+                    onClick={() => setSearchTerm('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+
+              {/* Project Type Filter */}
+              <select
+                value={filterProjectType}
+                onChange={(e) => setFilterProjectType(e.target.value)}
+                className="px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 focus:bg-white focus:outline-none cursor-pointer"
+              >
+                <option value="ALL">Loại: Tất cả</option>
+                <option value="DA">Dự án (DA)</option>
+                <option value="DD">Dân dụng (DD)</option>
+              </select>
+
+              {/* Order Type Filter */}
+              <select
+                value={filterOrderType}
+                onChange={(e) => setFilterOrderType(e.target.value)}
+                className="px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 focus:bg-white focus:outline-none cursor-pointer"
+              >
+                <option value="ALL">Đơn: Tất cả</option>
+                <option value="CHINH">Đơn chính</option>
+                <option value="PHAT_SINH">Phát sinh</option>
+              </select>
+
+              {/* Counter and Reset */}
+              <div className="flex items-center gap-1 px-2 py-1 bg-orange-50 text-orange-900 font-bold text-[11px] rounded-lg shrink-0">
+                <span>{filteredOrders.length}</span>
+                <span className="font-normal text-orange-700">đơn</span>
+                {(selectedDate || searchTerm || filterProjectType !== 'ALL' || filterOrderType !== 'ALL') && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedDate('');
+                      setSearchTerm('');
+                      setFilterProjectType('ALL');
+                      setFilterOrderType('ALL');
+                      setDateQuickFilter('ALL');
+                    }}
+                    className="ml-1 text-slate-400 hover:text-red-600 cursor-pointer"
+                    title="Xóa bộ lọc"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-slate-500 text-[11px] font-medium">Chọn ngày cụ thể:</span>
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => {
-                setSelectedDate(e.target.value);
-                setDateQuickFilter('CUSTOM');
-              }}
-              className="px-2 py-1 text-xs border border-slate-300 rounded-lg bg-white focus:ring-1 focus:ring-orange-500 font-mono"
-            />
-            {selectedDate && (
+          {/* Collapsible Range Picker (nếu bật Khoảng ngày) - Siêu gọn 1 dòng */}
+          {isRangeOpen && (
+            <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center gap-2 text-xs animate-in fade-in">
+              <span className="font-bold text-amber-900 text-[11px]">Từ ngày:</span>
+              <input
+                type="date"
+                value={rangeFromDate}
+                onChange={(e) => setRangeFromDate(e.target.value)}
+                className="px-2 py-0.5 bg-amber-50/50 border border-amber-300 rounded font-mono font-bold text-xs"
+              />
+              <span className="font-bold text-amber-900 text-[11px]">Đến ngày:</span>
+              <input
+                type="date"
+                value={rangeToDate}
+                onChange={(e) => setRangeToDate(e.target.value)}
+                className="px-2 py-0.5 bg-amber-50/50 border border-amber-300 rounded font-mono font-bold text-xs"
+              />
               <button
                 type="button"
-                onClick={() => handleSelectQuickDate('ALL')}
-                className="text-xs text-orange-600 hover:underline font-semibold"
+                onClick={() => {
+                  setDateQuickFilter('RANGE');
+                  setSelectedDate('');
+                }}
+                className="px-2.5 py-0.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded text-xs cursor-pointer shadow-2xs"
               >
-                Xóa
+                Lọc khoảng ngày
               </button>
-            )}
-          </div>
-        </div>
-
-        {/* Filters */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
-          {/* Date filter */}
-          <div className="space-y-1">
-            <label className="text-[11px] font-bold text-slate-600 uppercase flex items-center gap-1">
-              <Calendar className="w-3.5 h-3.5 text-orange-600" />
-              Ngày sản xuất
-            </label>
-            <select
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500 cursor-pointer"
-            >
-              <option value="">-- Tất cả các ngày --</option>
-              {availableDates.map(d => (
-                <option key={d} value={d}>
-                  {d.split('-').reverse().join('/')} ({orders.filter(o => o.deliveryDate === d).length} đơn)
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Project Type filter */}
-          <div className="space-y-1">
-            <label className="text-[11px] font-bold text-slate-600 uppercase flex items-center gap-1">
-              <Building className="w-3.5 h-3.5 text-blue-600" />
-              Loại công trình (DA / DD)
-            </label>
-            <select
-              value={filterProjectType}
-              onChange={(e) => setFilterProjectType(e.target.value)}
-              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500 cursor-pointer"
-            >
-              <option value="ALL">Tất cả (Dự án & Dân dụng)</option>
-              <option value="DA">Dự án (DA)</option>
-              <option value="DD">Dân dụng (DD)</option>
-            </select>
-          </div>
-
-          {/* Order Type filter */}
-          <div className="space-y-1">
-            <label className="text-[11px] font-bold text-slate-600 uppercase flex items-center gap-1">
-              <FileText className="w-3.5 h-3.5 text-orange-600" />
-              Phân loại đơn hàng
-            </label>
-            <select
-              value={filterOrderType}
-              onChange={(e) => setFilterOrderType(e.target.value)}
-              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500 cursor-pointer"
-            >
-              <option value="ALL">Tất cả (Đơn chính & Phát sinh)</option>
-              <option value="CHINH">Đơn hàng chính (Kế toán)</option>
-              <option value="PHAT_SINH">Đơn hàng phát sinh</option>
-            </select>
-          </div>
-
-          {/* Search keyword */}
-          <div className="space-y-1">
-            <label className="text-[11px] font-bold text-slate-600 uppercase flex items-center gap-1">
-              <Search className="w-3.5 h-3.5 text-slate-400" />
-              Tìm kiếm nhanh
-            </label>
-            <input
-              type="text"
-              placeholder="Khách hàng, công trình, kỹ thuật..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500"
-            />
-          </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsRangeOpen(false);
+                  setDateQuickFilter('ALL');
+                }}
+                className="text-slate-400 hover:text-slate-600 text-xs cursor-pointer"
+              >
+                Đóng
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

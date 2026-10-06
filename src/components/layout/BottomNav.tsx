@@ -49,9 +49,9 @@ export const BottomNav: React.FC<BottomNavProps> = ({
       icon: Factory
     },
     {
-      id: 'tong-quan',
-      label: 'Tổng quan',
-      icon: LayoutDashboard
+      id: 'thong-ke-tai-xe',
+      label: 'Chuyến & Km',
+      icon: Truck
     },
     {
       id: 'cong-no',

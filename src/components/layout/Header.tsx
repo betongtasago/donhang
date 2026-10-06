@@ -12,7 +12,8 @@ interface HeaderProps {
 }
 
 const PAGE_TITLES: Record<string, { group: string; name: string }> = {
-  'tong-quan': { group: 'Báo cáo', name: 'Tổng quan' },
+  'tong-quan': { group: 'Đội xe & Vận tải', name: 'Thống kê Chuyến & Km Tài Xế Theo Tháng (Dương Lịch)' },
+  'thong-ke-tai-xe': { group: 'Đội xe & Vận tải', name: 'Thống kê Chuyến & Km Tài Xế Theo Tháng (Dương Lịch)' },
   'don-hang': { group: 'Điều độ & Kinh doanh', name: 'Đơn hàng & Cấp hàng' },
   'cong-no': { group: 'Kế toán', name: 'Công nợ' },
   'san-xuat': { group: 'Kỹ thuật', name: 'Sản xuất' },
