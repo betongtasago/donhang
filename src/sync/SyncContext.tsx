@@ -193,6 +193,7 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const hydratedFromSupabaseRef = useRef(false);
   const firstCloudSyncRef = useRef(false);
   const lastRemoteUpdatedAtRef = useRef<Record<string, string>>({});
+  const [supabaseConfigVersion, setSupabaseConfigVersion] = useState(0);
 
   // Helper to append sync log
   const addSyncLog = useCallback((message: string, type: 'info' | 'success' | 'warning' | 'network' | 'error' = 'info') => {
@@ -285,6 +286,12 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setSyncState(prev => ({ ...prev, unsyncedChanges: getRetryQueueSize(), lastSyncTime: now }));
     setSecondsSinceSync(0);
   };
+
+  useEffect(() => {
+    const handleConfigChange = () => setSupabaseConfigVersion(version => version + 1);
+    window.addEventListener('tsg:supabase-config-changed', handleConfigChange);
+    return () => window.removeEventListener('tsg:supabase-config-changed', handleConfigChange);
+  }, []);
 
   // Save data to localStorage when changed
   useEffect(() => {
@@ -420,7 +427,7 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     });
     return () => { void client.removeChannel(channel); };
-  }, [addSyncLog, mergeRemoteRecord]);
+  }, [addSyncLog, mergeRemoteRecord, supabaseConfigVersion]);
 
   // Timer for seconds since sync
   useEffect(() => {
