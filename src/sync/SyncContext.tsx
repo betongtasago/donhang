@@ -101,8 +101,23 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
             ? parsed.trucks
             : INITIAL_TRUCKS;
 
+          // Đảm bảo có cả đơn hàng phát sinh
+          const validOrders = Array.isArray(parsed.orders) && parsed.orders.some((o: any) => o.orderType === 'PHAT_SINH')
+            ? parsed.orders
+            : [
+                ...parsed.orders,
+                ...INITIAL_ORDERS.filter(o => o.orderType === 'PHAT_SINH')
+              ];
+
+          // Đảm bảo nạp đủ các chuyến xe nhiều ngày (1, 2, 3, 4...)
+          const validTrips = Array.isArray(parsed.trips) && parsed.trips.length >= 15
+            ? parsed.trips
+            : INITIAL_TRIPS;
+
           return {
             ...parsed,
+            orders: validOrders,
+            trips: validTrips,
             trucks: validTrucks,
             projectDistances: parsed.projectDistances && parsed.projectDistances.length > 0
               ? parsed.projectDistances

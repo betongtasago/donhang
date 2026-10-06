@@ -27,6 +27,7 @@ import { DispatchTrip, FleetTruck, ConcreteOrder } from '../../types';
 import * as XLSX from 'xlsx';
 import { BangSapTaiPage } from '../bang-sap-tai';
 import { CompanyProjectKmView } from './CompanyProjectKmView';
+import { DriverTripExportModal } from './DriverTripExportModal';
 
 interface DriverMonthlySummary {
   driverName: string;
@@ -77,6 +78,9 @@ export const TongQuanPage: React.FC = () => {
   // Modal xem chi tiết chuyến của một tài xế
   const [selectedDriverDetail, setSelectedDriverDetail] = useState<DriverMonthlySummary | null>(null);
   const [driverModalTab, setDriverModalTab] = useState<'trips' | 'projects'>('trips');
+
+  // Modal xuất Excel tùy chọn ngày (1, 2, 3... nhiều ngày)
+  const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
 
   // Helper tính Km cho chuyến xe
   const getTripDistanceKm = (trip: DispatchTrip, order?: ConcreteOrder): number => {
@@ -433,14 +437,26 @@ export const TongQuanPage: React.FC = () => {
 
           {/* Export Excel button khi ở tab đếm chuyến */}
           {activeSubTab === 'chuyen_km' && (
-            <button
-              type="button"
-              onClick={handleExportExcel}
-              className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer"
-            >
-              <FileSpreadsheet className="w-4 h-4" />
-              <span>Xuất Excel Tài Xế</span>
-            </button>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setIsExportModalOpen(true)}
+                className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer"
+                title="Xuất file Excel theo 1, 2, 3... nhiều ngày tùy chọn"
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                <span>Xuất Excel Theo Ngày (1, 2, 3...)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleExportExcel}
+                className="flex items-center gap-1 px-3 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-bold text-xs rounded-xl transition cursor-pointer"
+                title="Xuất nhanh cả tháng hiện tại"
+              >
+                <span>Cả Tháng</span>
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -660,8 +676,20 @@ export const TongQuanPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="text-slate-500 font-semibold text-xs">
-              Tổng cộng: <strong>{driverMonthlyData.length}</strong> tài xế ({monthlyMetrics.activeDriversCount} có chuyến trong tháng)
+            <div className="flex items-center gap-3">
+              <div className="text-slate-500 font-semibold text-xs">
+                Tổng cộng: <strong>{driverMonthlyData.length}</strong> tài xế ({monthlyMetrics.activeDriversCount} có chuyến trong tháng)
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsExportModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs shadow-2xs transition cursor-pointer"
+                title="Xuất file Excel theo 1, 2, 3... nhiều ngày tùy chọn"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5" />
+                <span>Xuất Excel Theo Ngày (1, 2, 3...)</span>
+              </button>
             </div>
           </div>
 
@@ -1024,6 +1052,20 @@ export const TongQuanPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* 4. Modal Xuất Excel Tùy Chọn 1, 2, 3... Nhiều Ngày */}
+      <DriverTripExportModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        selectedMonth={selectedMonth}
+        selectedYear={selectedYear}
+        trips={trips}
+        orders={orders}
+        trucks={trucks}
+        projectDistances={projectDistances}
+        getTripDistanceKm={getTripDistanceKm}
+        getTripGregorianDate={getTripGregorianDate}
+      />
     </div>
   );
 };

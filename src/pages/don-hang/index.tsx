@@ -70,6 +70,21 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({
   const [calendarMonth, setCalendarMonth] = useState<number>(9); // 0-indexed: 9 = Tháng 10
   const [isCalendarOpen, setIsCalendarOpen] = useState<boolean>(false); // Mở/đóng bảng lịch popover siêu nhỏ gọn
 
+  // 2 Tab riêng biệt: Đơn hàng chính ('CHINH') và Đơn hàng phát sinh ('PHAT_SINH')
+  const [activeOrderTypeTab, setActiveOrderTypeTab] = useState<'CHINH' | 'PHAT_SINH'>(() => {
+    try {
+      const saved = localStorage.getItem('tsg_don_hang_type_tab');
+      if (saved === 'CHINH' || saved === 'PHAT_SINH') return saved;
+    } catch {}
+    return 'CHINH';
+  });
+
+  React.useEffect(() => {
+    try {
+      localStorage.setItem('tsg_don_hang_type_tab', activeOrderTypeTab);
+    } catch {}
+  }, [activeOrderTypeTab]);
+
   // Chuyển đổi định dạng ngày DD/MM/YYYY sang YYYY-MM-DD cho input native
   const dateInputVal = useMemo(() => {
     if (!filterDate) return '';
@@ -275,7 +290,7 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({
   }, [orders, trips]);
 
   // Filtered Orders for Main List (Đồng bộ theo Bộ Lọc & Bảng Lịch Chọn Ngày)
-  const filteredOrders = useMemo(() => {
+  const baseFilteredOrders = useMemo(() => {
     return orders.filter(order => {
       // 1. Date Filter Logic
       const oDateIso = order.deliveryDate || ''; // YYYY-MM-DD
@@ -331,6 +346,25 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({
       return true;
     });
   }, [orders, dateFilterMode, filterDate, rangeFromDate, rangeToDate, calendarMonth, calendarYear, filterStatus, filterPlant, searchTerm]);
+
+  // Đếm số lượng đơn chính và đơn phát sinh cho 2 tab
+  const mainOrdersCount = useMemo(() => {
+    return baseFilteredOrders.filter(o => o.orderType !== 'PHAT_SINH').length;
+  }, [baseFilteredOrders]);
+
+  const extraOrdersCount = useMemo(() => {
+    return baseFilteredOrders.filter(o => o.orderType === 'PHAT_SINH').length;
+  }, [baseFilteredOrders]);
+
+  // Danh sách đơn hàng hiển thị tương ứng với Tab đang chọn
+  const filteredOrders = useMemo(() => {
+    return baseFilteredOrders.filter(order => {
+      if (activeOrderTypeTab === 'PHAT_SINH') {
+        return order.orderType === 'PHAT_SINH';
+      }
+      return order.orderType !== 'PHAT_SINH';
+    });
+  }, [baseFilteredOrders, activeOrderTypeTab]);
 
   // Triplist for the currently selected order in dedicated dispatch view
   const currentOrderTrips = useMemo(() => {
@@ -901,59 +935,124 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({
         <div className="space-y-3">
           {/* MAIN TOOLBAR: Tạo đơn chính & Đơn phát sinh cho điều phối */}
           <div className="px-4 sm:px-6 max-w-[1700px] mx-auto space-y-2.5">
-            <div className="bg-white rounded-xl p-3 border border-slate-200/80 shadow-xs flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center font-bold">
+            {/* MAIN TOOLBAR: 2 Tab Riêng Biệt: Đơn Hàng Chính & Đơn Hàng Phát Sinh */}
+            <div className="bg-white rounded-2xl p-3 border border-slate-200/90 shadow-xs flex flex-wrap items-center justify-between gap-3">
+              {/* 2 Tab Riêng Biệt */}
+              <div className="flex items-center gap-2 p-1.5 bg-slate-100/90 rounded-2xl border border-slate-200 shadow-2xs">
+                <button
+                  type="button"
+                  onClick={() => setActiveOrderTypeTab('CHINH')}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-black transition cursor-pointer active:scale-95 ${
+                    activeOrderTypeTab === 'CHINH'
+                      ? 'bg-blue-600 text-white shadow-md'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-white'
+                  }`}
+                >
                   <FileText className="w-4 h-4" />
-                </div>
-                <div>
-                  <h2 className="text-sm font-bold text-slate-900">Danh Sách Đơn Hàng & Điều Phối Cấp Bê Tông</h2>
-                  <p className="text-[11px] text-slate-500">
-                    Nhấp vào <strong>Tên Công Ty</strong> hoặc <strong>Ngày Giao</strong> để mở giao diện cấp hàng của đơn đó
-                  </p>
-                </div>
+                  <span>1. Đơn Hàng Chính</span>
+                  <span
+                    className={`px-2 py-0.5 rounded-md text-[10px] font-mono font-bold ${
+                      activeOrderTypeTab === 'CHINH' ? 'bg-blue-800 text-white' : 'bg-slate-200 text-slate-700'
+                    }`}
+                  >
+                    {mainOrdersCount} đơn
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveOrderTypeTab('PHAT_SINH')}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-black transition cursor-pointer active:scale-95 ${
+                    activeOrderTypeTab === 'PHAT_SINH'
+                      ? 'bg-amber-600 text-white shadow-md'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-white'
+                  }`}
+                >
+                  <Zap className="w-4 h-4 text-amber-200" />
+                  <span>2. Đơn Hàng Phát Sinh</span>
+                  <span
+                    className={`px-2 py-0.5 rounded-md text-[10px] font-mono font-bold ${
+                      activeOrderTypeTab === 'PHAT_SINH' ? 'bg-amber-800 text-white' : 'bg-slate-200 text-slate-700'
+                    }`}
+                  >
+                    {extraOrdersCount} đơn
+                  </span>
+                </button>
               </div>
 
-              {/* Action Buttons: Hỗ trợ tạo đơn chính và đơn phát sinh */}
+              {/* Action Buttons: Tùy theo tab đang chọn */}
               <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCreateOrderType('CHINH');
-                    setCopyFromOrder(null);
-                    setIsCreateOpen(true);
-                  }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-xs shadow-xs transition cursor-pointer"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Tạo Đơn Hàng Mới</span>
-                </button>
-
-                {/* Nút Tạo Đơn Phát Sinh (Khi điều phối cần xuất xe mà chưa có đơn chính) */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCreateOrderType('PHAT_SINH');
-                    setCopyFromOrder(null);
-                    setIsCreateOpen(true);
-                  }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-bold text-xs shadow-xs transition cursor-pointer"
-                  title="Nếu chưa có đơn hàng chính, điều phối có thể bấm vào đây để tạo Đơn hàng phát sinh ngay lập tức"
-                >
-                  <Zap className="w-3.5 h-3.5" />
-                  <span>+ Tạo Đơn Hàng Phát Sinh</span>
-                </button>
+                {activeOrderTypeTab === 'CHINH' ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCreateOrderType('CHINH');
+                      setCopyFromOrder(null);
+                      setIsCreateOpen(true);
+                    }}
+                    className="flex items-center gap-1.5 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs shadow-xs transition cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>+ Tạo Đơn Hàng Chính</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCreateOrderType('PHAT_SINH');
+                      setCopyFromOrder(null);
+                      setIsCreateOpen(true);
+                    }}
+                    className="flex items-center gap-1.5 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-xs shadow-xs transition cursor-pointer"
+                    title="Tạo đơn hàng phát sinh ngay lập tức để cấp xe xuất bến"
+                  >
+                    <Zap className="w-4 h-4" />
+                    <span>+ Tạo Đơn Hàng Phát Sinh</span>
+                  </button>
+                )}
 
                 <button
                   type="button"
                   onClick={handleExportExcel}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-lg font-bold text-xs transition cursor-pointer"
+                  className="flex items-center gap-1.5 px-3.5 py-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl font-bold text-xs transition cursor-pointer"
                   title="Xuất file Excel báo cáo"
                 >
-                  <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
                   <span className="hidden sm:inline">Xuất Excel</span>
                 </button>
               </div>
+            </div>
+
+            {/* Contextual Banner Explaining Current Tab */}
+            <div className={`rounded-xl px-3.5 py-2 border text-xs flex flex-wrap items-center justify-between gap-2 ${
+              activeOrderTypeTab === 'CHINH'
+                ? 'bg-blue-50/70 border-blue-200/80 text-blue-900'
+                : 'bg-amber-50/80 border-amber-200 text-amber-950'
+            }`}>
+              <div className="flex items-center gap-2">
+                {activeOrderTypeTab === 'CHINH' ? (
+                  <>
+                    <FileText className="w-4 h-4 text-blue-600 shrink-0" />
+                    <span>
+                      <strong>Tab 1. Đơn Hàng Chính ({mainOrdersCount} đơn):</strong> Đơn đặt hàng chính thức theo hợp đồng & KHSX Kế toán duyệt.
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <Zap className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>
+                      <strong>Tab 2. Đơn Hàng Phát Sinh ({extraOrdersCount} đơn):</strong> Đơn phát sinh, đổ bù m³ hiện trường do Điều phối lập để cấp xe ngay.
+                    </span>
+                  </>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveOrderTypeTab(activeOrderTypeTab === 'CHINH' ? 'PHAT_SINH' : 'CHINH')}
+                className="text-[11px] font-bold underline shrink-0 hover:opacity-80 cursor-pointer"
+              >
+                Chuyển sang {activeOrderTypeTab === 'CHINH' ? 'Đơn Phát Sinh' : 'Đơn Chính'}
+              </button>
             </div>
 
             {/* ============================================================= */}
@@ -1320,6 +1419,20 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({
             <div className="bg-white rounded-xl border border-slate-200/80 shadow-xs overflow-hidden">
               <div className="px-4 py-2.5 bg-slate-50/60 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs">
                 <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1.5 font-black text-slate-800 uppercase tracking-tight">
+                    {activeOrderTypeTab === 'CHINH' ? (
+                      <>
+                        <span className="w-2 h-2 rounded-full bg-blue-600 inline-block"></span>
+                        <span className="text-blue-950">Bảng Đơn Hàng Chính ({filteredOrders.length})</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="w-2 h-2 rounded-full bg-amber-500 inline-block"></span>
+                        <span className="text-amber-950">Bảng Đơn Hàng Phát Sinh ({filteredOrders.length})</span>
+                      </>
+                    )}
+                  </div>
+                  <div className="h-3.5 w-px bg-slate-300 hidden sm:block" />
                   <label className="flex items-center gap-2 cursor-pointer font-medium text-slate-700">
                     <input
                       type="checkbox"
@@ -1371,19 +1484,38 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({
                 <div className="sm:hidden divide-y divide-slate-100 bg-slate-50/50 p-2.5 space-y-2.5">
                   {filteredOrders.length === 0 ? (
                     <div className="py-10 text-center text-slate-500 space-y-3 bg-white rounded-xl p-4 border border-slate-200">
-                      <p className="text-sm font-semibold">Không tìm thấy đơn hàng nào phù hợp.</p>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setCreateOrderType('PHAT_SINH');
-                          setCopyFromOrder(null);
-                          setIsCreateOpen(true);
-                        }}
-                        className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-xs inline-flex items-center gap-1.5 shadow-xs transition cursor-pointer"
-                      >
-                        <Zap className="w-4 h-4" />
-                        <span>Tạo Đơn Phát Sinh Cấp Xe Ngay</span>
-                      </button>
+                      <p className="text-sm font-semibold">
+                        {activeOrderTypeTab === 'CHINH'
+                          ? 'Không tìm thấy đơn hàng chính nào phù hợp.'
+                          : 'Không tìm thấy đơn hàng phát sinh nào phù hợp.'}
+                      </p>
+                      {activeOrderTypeTab === 'CHINH' ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCreateOrderType('CHINH');
+                            setCopyFromOrder(null);
+                            setIsCreateOpen(true);
+                          }}
+                          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs inline-flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+                        >
+                          <Plus className="w-4 h-4" />
+                          <span>Tạo Đơn Hàng Chính Mới</span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCreateOrderType('PHAT_SINH');
+                            setCopyFromOrder(null);
+                            setIsCreateOpen(true);
+                          }}
+                          className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-xs inline-flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+                        >
+                          <Zap className="w-4 h-4" />
+                          <span>Tạo Đơn Phát Sinh Cấp Xe Ngay</span>
+                        </button>
+                      )}
                     </div>
                   ) : (
                     filteredOrders.map(order => {
@@ -1594,22 +1726,43 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({
                     {filteredOrders.length === 0 ? (
                       <tr>
                         <td colSpan={9} className="py-12 text-center text-slate-500 space-y-3">
-                          <p className="text-sm font-semibold">Không tìm thấy đơn hàng nào phù hợp với bộ lọc.</p>
-                          <p className="text-xs text-slate-400">
-                            Nếu chưa có đơn hàng, điều phối có thể tạo đơn hàng phát sinh ngay để xuất xe:
+                          <p className="text-sm font-semibold">
+                            {activeOrderTypeTab === 'CHINH'
+                              ? 'Không tìm thấy đơn hàng chính nào phù hợp với bộ lọc.'
+                              : 'Không tìm thấy đơn hàng phát sinh nào phù hợp với bộ lọc.'}
                           </p>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setCreateOrderType('PHAT_SINH');
-                              setCopyFromOrder(null);
-                              setIsCreateOpen(true);
-                            }}
-                            className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-xs inline-flex items-center gap-1.5 shadow-xs transition cursor-pointer"
-                          >
-                            <Zap className="w-4 h-4" />
-                            <span>Tạo Đơn Hàng Phát Sinh Để Cấp Xe Ngay</span>
-                          </button>
+                          <p className="text-xs text-slate-400">
+                            {activeOrderTypeTab === 'CHINH'
+                              ? 'Bạn có thể bấm vào nút bên dưới để tạo đơn hàng chính mới:'
+                              : 'Điều phối có thể tạo đơn hàng phát sinh ngay để cấp xe xuất bến:'}
+                          </p>
+                          {activeOrderTypeTab === 'CHINH' ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCreateOrderType('CHINH');
+                                setCopyFromOrder(null);
+                                setIsCreateOpen(true);
+                              }}
+                              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs inline-flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+                            >
+                              <Plus className="w-4 h-4" />
+                              <span>+ Tạo Đơn Hàng Chính Mới</span>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCreateOrderType('PHAT_SINH');
+                                setCopyFromOrder(null);
+                                setIsCreateOpen(true);
+                              }}
+                              className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-xs inline-flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+                            >
+                              <Zap className="w-4 h-4" />
+                              <span>+ Tạo Đơn Hàng Phát Sinh Để Cấp Xe Ngay</span>
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ) : (
