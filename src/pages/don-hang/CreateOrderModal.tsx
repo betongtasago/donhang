@@ -259,22 +259,22 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full border border-slate-200 overflow-hidden flex flex-col max-h-[92vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-2 sm:p-4 animate-in fade-in duration-150">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full border border-slate-200 overflow-hidden flex flex-col max-h-[96vh] sm:max-h-[92vh]">
         {/* Header */}
-        <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between shrink-0">
+        <div className="bg-slate-900 text-white px-4 sm:px-6 py-3.5 sm:py-4 flex items-center justify-between shrink-0">
           <div>
             <div className="flex items-center gap-2">
-              <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider ${
+              <span className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider ${
                 orderType === 'CHINH' ? 'bg-blue-500 text-white' : 'bg-orange-500 text-white'
               }`}>
                 {orderType === 'CHINH' ? 'ĐƠN HÀNG CHÍNH' : 'ĐƠN HÀNG PHÁT SINH'}
               </span>
-              <h2 className="text-base font-bold flex items-center gap-2">
+              <h2 className="text-sm sm:text-base font-bold flex items-center gap-2">
                 {orderType === 'CHINH' ? 'Tạo Đơn Hàng Chính Mới' : 'Tạo Đơn Hàng Phát Sinh (Điều phối)'}
               </h2>
             </div>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-[11px] sm:text-xs text-slate-400 mt-0.5">
               {orderType === 'CHINH'
                 ? 'Đơn hàng chính do Kế toán tạo (Admin có toàn quyền chỉnh sửa/duyệt)'
                 : 'Đơn phát sinh do tài khoản người dùng/điều phối tạo, có thể sao chép nhanh từ đơn chính'}
@@ -286,7 +286,7 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-4 text-xs">
+        <form onSubmit={handleSubmit} className="p-3.5 sm:p-6 overflow-y-auto space-y-4 text-xs">
           {/* Order Type Selector */}
           <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
             <div className="flex items-center justify-between">

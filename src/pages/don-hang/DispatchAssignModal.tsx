@@ -82,10 +82,10 @@ export const DispatchAssignModal: React.FC<DispatchAssignModalProps> = ({ order,
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full border border-slate-200 overflow-hidden flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 sm:p-4 animate-in fade-in duration-150">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full border border-slate-200 overflow-hidden flex flex-col max-h-[94vh]">
         {/* Header */}
-        <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">
+        <div className="bg-slate-900 text-white px-5 sm:px-6 py-3.5 sm:py-4 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-xl bg-orange-600">
               <Truck className="w-5 h-5 text-white" />
@@ -101,7 +101,7 @@ export const DispatchAssignModal: React.FC<DispatchAssignModalProps> = ({ order,
         </div>
 
         {/* Content */}
-        <form onSubmit={handleDispatch} className="p-6 space-y-4 text-xs">
+        <form onSubmit={handleDispatch} className="p-4 sm:p-6 overflow-y-auto space-y-4 text-xs">
           <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
             <div className="font-semibold text-slate-800 text-xs truncate">{order.customerName}</div>
             <div className="text-[11px] text-slate-500 mt-0.5 truncate">{order.projectTitle} - {order.categoryItem}</div>

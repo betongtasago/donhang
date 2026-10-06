@@ -25,7 +25,7 @@ const GRADE_LIST = [
 ];
 
 const R_ADDITIVES = ['Không', 'R3', 'R7', 'R14', 'R28'];
-const WATERPROOF_LIST = ['Không', 'B6', 'B8', 'B10', 'B12'];
+const WATERPROOF_LIST = ['Không', 'B6', 'B8', 'B10', 'B12', 'B14', 'W6', 'W8', 'W10', 'W12'];
 
 export const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, isOpen, onClose }) => {
   const { updateOrder, orders, projectDistances } = useSync();
@@ -406,9 +406,12 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, isOpen, o
               </div>
 
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-800">Phụ gia chống thấm</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-bold text-slate-800">Phụ gia chống thấm</label>
+                  <span className="font-bold text-cyan-700 text-xs">{waterproof}</span>
+                </div>
                 <div className="flex flex-wrap gap-1">
-                  {['Không', 'B6', 'B8', 'B10', 'B12'].map((w) => (
+                  {WATERPROOF_LIST.map((w) => (
                     <button
                       key={w}
                       type="button"
@@ -420,6 +423,15 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, isOpen, o
                       {w === 'Không' ? 'K.Thấm' : w}
                     </button>
                   ))}
+                </div>
+                <div className="pt-1 flex items-center gap-1.5">
+                  <input
+                    type="text"
+                    placeholder="Hoặc nhập loại chống thấm khác (VD: B14, Sika...)"
+                    value={!WATERPROOF_LIST.includes(waterproof) ? waterproof : ''}
+                    onChange={(e) => setWaterproof(e.target.value)}
+                    className="w-full px-2 py-1 text-xs border border-cyan-300 rounded-lg bg-white placeholder-slate-400"
+                  />
                 </div>
               </div>
             </div>

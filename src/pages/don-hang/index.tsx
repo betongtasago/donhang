@@ -29,7 +29,9 @@ import {
   Building2,
   X,
   Zap,
-  Phone
+  Phone,
+  LayoutGrid,
+  List
 } from 'lucide-react';
 import { useSync } from '../../sync/SyncContext';
 import { ConcreteOrder, DispatchTrip, OrderType, OrderStatus } from '../../types';
@@ -126,6 +128,9 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({
     }
     return '';
   }, [filterDate]);
+
+  // Mobile View Mode: 'CARDS' (thẻ di động mượt mà) hoặc 'TABLE' (bảng đầy đủ)
+  const [orderMobileViewMode, setOrderMobileViewMode] = useState<'CARDS' | 'TABLE'>('CARDS');
 
   // Selected orders checkbox set for bulk actions
   const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
@@ -709,8 +714,89 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({
                 </button>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs">
+              <div>
+                {/* 1. Mobile Cards View for Trips (Dành riêng cho màn hình điện thoại) */}
+                <div className="sm:hidden divide-y divide-slate-100 bg-white">
+                  {currentOrderTrips.map((tr, trIdx) => (
+                    <div key={`m-trip-${tr.id}`} className="p-3.5 space-y-2 bg-white hover:bg-slate-50 transition">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs font-bold text-slate-400">#{trIdx + 1}</span>
+                          <span className="font-mono font-black text-slate-900 text-sm flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
+                            {tr.truckPlate}
+                          </span>
+                        </div>
+                        <div className="font-mono font-black text-blue-700 text-sm">
+                          {tr.volume} m³ <span className="text-[10px] text-slate-400 font-normal">({tr.accumulatedVolume || tr.volume} m³)</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between text-xs text-slate-600">
+                        <div>
+                          <span className="font-bold text-slate-800">{tr.driverName}</span>
+                          {tr.driverPhone && (
+                            <a
+                              href={`tel:${tr.driverPhone}`}
+                              className="ml-2 font-mono text-blue-600 font-bold inline-flex items-center gap-1 text-[11px]"
+                            >
+                              <Phone className="w-3 h-3" />
+                              <span>{tr.driverPhone}</span>
+                            </a>
+                          )}
+                        </div>
+                        <div className="font-mono text-slate-600 font-bold text-xs">
+                          Xuất: {tr.departureTime}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between text-[11px] pt-1.5 border-t border-slate-100">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                            Số: {tr.ticketNumber || '0160190'}
+                          </span>
+                          <span className="font-mono text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                            Chì: {tr.sealNumber || '849201'}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
+                          {onOpenPrintModal && (
+                            <button
+                              type="button"
+                              onClick={() => onOpenPrintModal(currentViewOrder, tr)}
+                              className="px-2.5 py-1 bg-gradient-to-r from-orange-500 to-amber-600 text-white font-bold rounded-lg text-xs flex items-center gap-1 shadow-xs cursor-pointer active:scale-95"
+                            >
+                              <Printer className="w-3 h-3" />
+                              <span>In</span>
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingTrip(tr);
+                              setIsEditTripOpen(true);
+                            }}
+                            className="p-1.5 rounded-lg bg-blue-50 text-blue-700 cursor-pointer"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => handleDeleteTripItem(tr, e)}
+                            className="p-1.5 rounded-lg bg-slate-100 text-red-600 cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* 2. Desktop Table View */}
+                <div className="hidden sm:block overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs">
                   <thead>
                     <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200 text-[11px] uppercase tracking-wider">
                       <th className="py-2.5 px-3 text-center w-12">STT</th>
@@ -803,7 +889,8 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({
                   </tbody>
                 </table>
               </div>
-            )}
+            </div>
+          )}
           </div>
         </div>
       ) : (
@@ -1419,9 +1506,9 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({
               </div>
             </div>
 
-            {/* Main Orders Table */}
+            {/* Main Orders Table & Mobile Cards */}
             <div className="bg-white rounded-xl border border-slate-200/80 shadow-xs overflow-hidden">
-              <div className="px-4 py-2.5 bg-slate-50/60 border-b border-slate-200 flex items-center justify-between text-xs">
+              <div className="px-4 py-2.5 bg-slate-50/60 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs">
                 <div className="flex items-center gap-3">
                   <label className="flex items-center gap-2 cursor-pointer font-medium text-slate-700">
                     <input
@@ -1434,12 +1521,244 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({
                   </label>
                 </div>
 
-                <div className="text-slate-500 text-[11px]">
-                  * Bấm vào <strong>Tên Công Ty</strong> hoặc <strong>Ngày Giao</strong> để mở giao diện cấp hàng riêng của đơn đó
+                <div className="flex items-center gap-2">
+                  <div className="hidden lg:block text-slate-500 text-[11px]">
+                    * Bấm vào <strong>Tên Công Ty</strong> hoặc <strong>Ngày Giao</strong> để mở giao diện cấp hàng
+                  </div>
+
+                  {/* Mode switcher for mobile: Card view vs Table view */}
+                  <div className="flex items-center p-0.5 rounded-lg bg-slate-200/80 text-[11px] font-bold">
+                    <button
+                      type="button"
+                      onClick={() => setOrderMobileViewMode('CARDS')}
+                      className={`flex items-center gap-1 px-2.5 py-1 rounded-md transition cursor-pointer ${
+                        orderMobileViewMode === 'CARDS'
+                          ? 'bg-white text-blue-700 shadow-2xs font-black'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <LayoutGrid className="w-3.5 h-3.5" />
+                      <span>Thẻ di động</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setOrderMobileViewMode('TABLE')}
+                      className={`flex items-center gap-1 px-2.5 py-1 rounded-md transition cursor-pointer ${
+                        orderMobileViewMode === 'TABLE'
+                          ? 'bg-white text-blue-700 shadow-2xs font-black'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <List className="w-3.5 h-3.5" />
+                      <span>Bảng chi tiết</span>
+                    </button>
+                  </div>
                 </div>
               </div>
 
-              <div className="overflow-x-auto">
+              {/* 1. Mobile Cards View (Khi chọn chế độ Thẻ di động trên màn hình nhỏ) */}
+              {orderMobileViewMode === 'CARDS' && (
+                <div className="sm:hidden divide-y divide-slate-100 bg-slate-50/50 p-2.5 space-y-2.5">
+                  {filteredOrders.length === 0 ? (
+                    <div className="py-10 text-center text-slate-500 space-y-3 bg-white rounded-xl p-4 border border-slate-200">
+                      <p className="text-sm font-semibold">Không tìm thấy đơn hàng nào phù hợp.</p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCreateOrderType('PHAT_SINH');
+                          setCopyFromOrder(null);
+                          setIsCreateOpen(true);
+                        }}
+                        className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-xs inline-flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+                      >
+                        <Zap className="w-4 h-4" />
+                        <span>Tạo Đơn Phát Sinh Cấp Xe Ngay</span>
+                      </button>
+                    </div>
+                  ) : (
+                    filteredOrders.map(order => {
+                      const isSelected = selectedOrderIds.has(order.id);
+                      const orderTrips = trips.filter(
+                        t => t.orderId === order.id || t.orderCode === order.code
+                      );
+                      const percent = Math.min(
+                        100,
+                        Math.round((order.deliveredVolume / order.totalVolume) * 100)
+                      );
+                      const remaining = Math.max(0, order.totalVolume - order.deliveredVolume);
+
+                      return (
+                        <div
+                          key={`m-card-${order.id}`}
+                          className={`bg-white rounded-2xl p-3.5 border transition space-y-2.5 shadow-xs ${
+                            isSelected ? 'border-blue-500 ring-2 ring-blue-100 bg-blue-50/20' : 'border-slate-200/90'
+                          }`}
+                        >
+                          {/* Card Header */}
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-1.5">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => handleToggleSelectOrder(order.id)}
+                                className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 mr-1"
+                              />
+                              <span className="font-mono font-black text-blue-700 text-xs bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                                {order.code}
+                              </span>
+                              <span className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
+                                order.orderType === 'PHAT_SINH' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-700'
+                              }`}>
+                                {order.orderType === 'PHAT_SINH' ? 'Phát sinh' : 'Chính'}
+                              </span>
+                            </div>
+
+                            {/* Status */}
+                            {getStatusBadge(order.status)}
+                          </div>
+
+                          {/* Customer Name & Project (Clickable to jump to dispatch) */}
+                          <div className="pt-0.5">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedOrderForDispatchId(order.id)}
+                              className="text-left group w-full cursor-pointer"
+                            >
+                              <div className="font-black text-slate-900 text-sm leading-snug group-hover:text-blue-600 transition flex items-center justify-between">
+                                <span className="line-clamp-1">{order.customerName}</span>
+                                <span className="text-[10px] text-blue-600 font-bold underline shrink-0 ml-1">
+                                  Cấp hàng ➔
+                                </span>
+                              </div>
+                              <p className="text-xs font-semibold text-slate-600 mt-0.5 line-clamp-1">
+                                {order.projectTitle}
+                              </p>
+                            </button>
+                            <div className="flex items-center gap-2 text-[11px] text-slate-500 mt-1">
+                              <span>Hạng mục: <strong className="text-slate-800">{order.categoryItem}</strong></span>
+                              <span>·</span>
+                              <span>{order.pumpType || 'Xả máng'}</span>
+                            </div>
+                          </div>
+
+                          {/* Technical specs pill card */}
+                          <div className="grid grid-cols-2 gap-2 p-2 bg-slate-50 rounded-xl border border-slate-200/70 text-xs">
+                            <div>
+                              <span className="text-[9px] text-slate-400 font-bold uppercase block">Mác bê tông:</span>
+                              <span className="font-mono font-black text-blue-900 text-sm">{order.grade}</span>
+                              <span className="text-slate-500 text-[10px] ml-1">({order.slump})</span>
+                            </div>
+                            <div>
+                              <span className="text-[9px] text-slate-400 font-bold uppercase block">Phụ gia & C.Thấm:</span>
+                              <span className="font-bold text-slate-800 text-xs truncate block">
+                                {order.additive || 'R7'} {order.waterproof ? `+ ${order.waterproof}` : ''}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Progress bar */}
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-slate-500 font-medium">Tiến độ cấp:</span>
+                              <span className="font-mono font-bold text-slate-900">
+                                <strong className="text-blue-700">{order.deliveredVolume}</strong> / {order.totalVolume} m³ ({percent}%)
+                              </span>
+                            </div>
+                            <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-all duration-300 ${percent >= 100 ? 'bg-emerald-500' : 'bg-blue-600'}`}
+                                style={{ width: `${percent}%` }}
+                              />
+                            </div>
+                            <div className="flex items-center justify-between text-[10px] text-slate-400">
+                              <span>Còn lại: <strong>{remaining} m³</strong></span>
+                              <span>Đã xuất: <strong>{orderTrips.length} chuyến xe</strong></span>
+                            </div>
+                          </div>
+
+                          {/* Date and time */}
+                          <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedOrderForDispatchId(order.id)}
+                              className="flex items-center gap-1.5 text-slate-700 hover:text-blue-600 cursor-pointer font-mono font-bold text-xs"
+                            >
+                              <Clock className="w-3.5 h-3.5 text-blue-600" />
+                              <span>{order.deliveryDate ? order.deliveryDate.split('-').reverse().join('/') : '04/10/2026'} - {order.deliveryTime}</span>
+                            </button>
+                            <span className="text-[10px] text-slate-500 font-medium bg-slate-100 px-2 py-0.5 rounded">
+                              {order.plantLocation || 'Tây Ninh'}
+                            </span>
+                          </div>
+
+                          {/* Touch action buttons */}
+                          <div className="grid grid-cols-2 gap-2 pt-1">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedOrderForDispatchId(order.id)}
+                              className="py-2.5 px-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-xs transition active:scale-95 cursor-pointer"
+                            >
+                              <Truck className="w-4 h-4" />
+                              <span>Cấp Hàng ({orderTrips.length})</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleOpenAssignForOrder(order)}
+                              className="py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-xs transition active:scale-95 cursor-pointer"
+                            >
+                              <Plus className="w-4 h-4" />
+                              <span>Xuất Xe Mới</span>
+                            </button>
+                          </div>
+
+                          {/* Secondary actions: Sửa, In phiếu, Xóa */}
+                          <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-xs">
+                            <div className="flex items-center gap-1.5">
+                              {onOpenPrintModal && orderTrips.length > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => onOpenPrintModal(order, orderTrips[0])}
+                                  className="px-2.5 py-1 bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200 rounded-lg font-bold text-[11px] flex items-center gap-1 cursor-pointer"
+                                >
+                                  <Printer className="w-3 h-3" />
+                                  <span>In phiếu</span>
+                                </button>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setOrderToEdit(order);
+                                  setIsEditOrderOpen(true);
+                                }}
+                                className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-bold text-[11px] flex items-center gap-1 cursor-pointer"
+                              >
+                                <Edit2 className="w-3 h-3" />
+                                <span>Sửa</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={(e) => handleDeleteOrderItem(order, e)}
+                                className="p-1 rounded bg-slate-100 hover:bg-red-50 text-slate-400 hover:text-red-600 cursor-pointer"
+                                title="Xóa đơn hàng"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              )}
+
+              {/* 2. Desktop & Full Table View */}
+              <div className={orderMobileViewMode === 'CARDS' ? 'hidden sm:block overflow-x-auto' : 'overflow-x-auto'}>
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
                     <tr className="bg-slate-100/90 text-slate-700 font-bold border-b border-slate-200 text-[11px] uppercase tracking-wider">

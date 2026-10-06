@@ -7,6 +7,7 @@ import { PrintReceiptModal } from './components/print/PrintReceiptModal';
 import { SyncModal } from './sync/SyncModal';
 import { Sidebar } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
+import { BottomNav } from './components/layout/BottomNav';
 import { ConcreteOrder, DispatchTrip } from './types';
 
 // Distinct folder pages
@@ -160,10 +161,21 @@ export const AppContent: React.FC = () => {
           onOpenPrintModal={() => handleOpenPrintModal()}
         />
 
-        <main className="flex-1 overflow-y-auto bg-[#f8fafc]">
+        <main className="flex-1 overflow-y-auto bg-[#f8fafc] pb-20 md:pb-0">
           {renderCurrentPage()}
         </main>
       </div>
+
+      {/* Mobile Bottom Navigation Bar */}
+      <BottomNav
+        currentPage={currentPage}
+        onSelectPage={(page) => {
+          setCurrentPage(page);
+          setIsSidebarOpen(false);
+        }}
+        onOpenSyncModal={() => setIsSyncModalOpen(true)}
+        onOpenMembersModal={() => setIsMembersModalOpen(true)}
+      />
 
       {/* Global Sync Modal Drawer */}
       <SyncModal
