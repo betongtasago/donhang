@@ -51,7 +51,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const navItems = [
     { id: 'don-hang', label: '1. Đơn hàng & Cấp hàng', icon: ClipboardList, badge: orders.length },
-    { id: 'thong-ke-tai-xe', label: 'Dữ liệu chuyến & Km tài xế', icon: Truck },
+    { id: 'thong-ke-tai-xe', label: 'Dữ liệu chuyến & Bảng tài, Km', icon: Truck },
     { id: 'san-xuat', label: 'Sản xuất & Báo cáo', icon: Factory },
     { id: 'cong-no', label: 'Công nợ khách hàng', icon: CreditCard },
     { id: 'thi-nghiem', label: 'Thí nghiệm & QC Lab', icon: FlaskConical },
