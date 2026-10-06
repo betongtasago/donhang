@@ -22,6 +22,7 @@ export const SupabaseSettingsCard: React.FC = () => {
     labTests,
     fuelLogs,
     projectDistances,
+    productionReports,
     driverTripConfig,
     syncState,
     addSyncLog
@@ -62,6 +63,7 @@ export const SupabaseSettingsCard: React.FC = () => {
       labTests,
       fuelLogs,
       projectDistances,
+      productionReports,
       driverTripConfig
     });
     setIsPushing(false);

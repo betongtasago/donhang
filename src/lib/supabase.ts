@@ -42,7 +42,7 @@ export const getSupabaseClient = (): SupabaseClient | null => {
 
 export const testSupabaseConnection = async (url: string, anonKey: string): Promise<{ success: boolean; message: string }> => {
   if (!url || !anonKey) {
-    return { success: false, message: 'Vui lòng nhập đầy đủ Supabase Project URL và Public Anon Key.' };
+    return { success: false, message: 'Thiếu biến môi trường Supabase trên deployment.' };
   }
 
   if (!url.startsWith('https://')) {
@@ -68,7 +68,7 @@ export const testSupabaseConnection = async (url: string, anonKey: string): Prom
 export const SUPABASE_SCHEMA_SQL = `-- Schema Supabase đã được provision tự động cho dự án donhang.
 -- Các bảng hiện có: orders, trips, trucks, project_distances, debts, fuel_logs,
 -- lab_tests, plants, driver_trip_config và production_reports.
--- Không cần chạy lại SQL này; hãy lưu Project URL và Anon/Public Key trong ứng dụng.
+-- Schema đã được provision tự động; ứng dụng nhận cấu hình qua biến môi trường deployment.
 CREATE TABLE IF NOT EXISTS orders (
   id TEXT PRIMARY KEY,
   code TEXT UNIQUE NOT NULL,

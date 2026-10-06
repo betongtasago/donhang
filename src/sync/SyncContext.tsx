@@ -28,11 +28,12 @@ import {
   ProjectDistance,
   DriverTripRuleConfig
 } from '../types';
-import { enqueueRecordSync, flushSyncRetryQueue, fromRealtimeRecord, getRetryQueueSize, loadAllFromSupabase } from '../lib/supabaseSync';
+import { enqueueRecordSync, flushSyncRetryQueue, fromRealtimeRecord, getRetryQueueSize, loadAllFromSupabase, syncAllToSupabase } from '../lib/supabaseSync';
 import { getSupabaseClient } from '../lib/supabase';
 const STORAGE_KEY = 'TSG_TNT_DISPATCH_STATE_V2';
 const BROADCAST_CHANNEL_NAME = 'tsg_tnt_dispatch_sync_channel';
 const SYNC_CLIENT_ID = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+const recordKey = (table: string, record: any) => table === 'production_reports' ? record?.report_key : record?.id;
 
 interface AppData {
   orders: ConcreteOrder[];
@@ -224,13 +225,6 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
           senderTime: Date.now()
         };
         channelRef.current.postMessage(message);
-        void fetch('/api/sync/events', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...message, clientId: SYNC_CLIENT_ID })
-        }).catch(() => {
-          // The local BroadcastChannel still keeps same-browser tabs synced.
-        });
         setSyncState(prev => ({
           ...prev,
           packetsSent: prev.packetsSent + 1
@@ -250,8 +244,8 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (change.table === 'driver_trip_config') return { ...prev, driverTripConfig: change.record };
       const collection = change.table === 'fuel_logs' ? 'fuelLogs' : change.table === 'lab_tests' ? 'labTests' : change.table === 'project_distances' ? 'projectDistances' : change.table === 'production_reports' ? 'productionReports' : change.table as keyof AppData;
       const current = (prev[collection] as any[]) || [];
-      const next = change.deleted ? current.filter(item => item.id !== change.id) : current.some(item => item.id === change.id)
-        ? current.map(item => item.id === change.id ? { ...item, ...change.record } : item)
+      const next = change.deleted ? current.filter(item => recordKey(change.table, item) !== change.id) : current.some(item => recordKey(change.table, item) === change.id)
+        ? current.map(item => recordKey(change.table, item) === change.id ? { ...item, ...change.record } : item)
         : [change.record, ...current];
       return { ...prev, [collection]: next };
     });
@@ -265,11 +259,12 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const collections: Array<[any, any[], any[]]> = [
       ['orders', previous.orders, next.orders], ['trips', previous.trips, next.trips], ['trucks', previous.trucks, next.trucks],
       ['plants', previous.plants, next.plants], ['debts', previous.debts, next.debts], ['fuel_logs', previous.fuelLogs, next.fuelLogs],
-      ['lab_tests', previous.labTests, next.labTests], ['project_distances', previous.projectDistances, next.projectDistances]
+      ['lab_tests', previous.labTests, next.labTests], ['project_distances', previous.projectDistances, next.projectDistances],
+      ['production_reports', previous.productionReports, next.productionReports]
     ];
     for (const [table, before, after] of collections) {
-      const beforeById = new Map(before.map(item => [item.id, item]));
-      const afterById = new Map(after.map(item => [item.id, item]));
+      const beforeById = new Map(before.map(item => [recordKey(table, item), item]));
+      const afterById = new Map(after.map(item => [recordKey(table, item), item]));
       const ids = new Set([...beforeById.keys(), ...afterById.keys()]);
       for (const id of ids) {
         const oldRecord = beforeById.get(id);
@@ -326,14 +321,21 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
             trucks: cloud.trucks.length ? cloud.trucks : prev.trucks,
             plants: cloud.plants.length ? cloud.plants : prev.plants,
             debts: cloud.debts.length ? cloud.debts : prev.debts,
-            labTests: cloud.labTests.length ? cloud.labTests : prev.labTests,
-            fuelLogs: cloud.fuelLogs.length ? cloud.fuelLogs : prev.fuelLogs,
-            projectDistances: cloud.projectDistances.length ? cloud.projectDistances : prev.projectDistances
+              labTests: cloud.labTests.length ? cloud.labTests : prev.labTests,
+              fuelLogs: cloud.fuelLogs.length ? cloud.fuelLogs : prev.fuelLogs,
+              projectDistances: cloud.projectDistances.length ? cloud.projectDistances : prev.projectDistances,
+              productionReports: cloud.productionReports.length ? cloud.productionReports : prev.productionReports
             };
           });
           addSyncLog(`Đã nạp dữ liệu đơn hàng, cấp hàng, bảng tài, km công trình và báo cáo từ Supabase`, 'success');
         } else {
-          addSyncLog('Supabase chưa có dữ liệu; bắt đầu khởi tạo từ dữ liệu hiện có trên thiết bị', 'network');
+          const seeded = await syncAllToSupabase({ ...data, productionReports: [] });
+          addSyncLog(
+            seeded.success
+              ? `Supabase chưa có dữ liệu; đã tự khởi tạo ${seeded.count} bản ghi từ cache thiết bị`
+              : `Supabase chưa có dữ liệu; chưa thể khởi tạo tự động: ${seeded.error || 'lỗi không xác định'}`,
+            seeded.success ? 'success' : 'warning'
+          );
         }
       } catch (err) {
         console.warn('Supabase load warning, running on cached data:', err);
@@ -359,33 +361,8 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => window.clearInterval(timer);
   }, [addSyncLog, isHydrated]);
 
-  // Set up server-sent events for real-time sync between separate browser
-  // sessions. BroadcastChannel remains as the fast path for tabs in one browser.
+  // BroadcastChannel đồng bộ nhanh giữa các tab cùng trình duyệt.
   useEffect(() => {
-    let eventSource: EventSource | null = null;
-    try {
-      eventSource = new EventSource('/api/sync/events');
-      eventSource.onopen = () => {
-        setSyncState(prev => ({ ...prev, status: 'connected' }));
-      };
-      eventSource.onmessage = (event) => {
-        try {
-          const message = JSON.parse(event.data);
-          if (message.clientId === SYNC_CLIENT_ID) return;
-          if (message.type === 'RECORD_UPDATE' && message.payload && message.payload.clientId !== SYNC_CLIENT_ID) {
-            mergeRemoteRecord(message.payload);
-          }
-        } catch (error) {
-          console.warn('Invalid realtime sync event', error);
-        }
-      };
-      eventSource.onerror = () => {
-        setSyncState(prev => ({ ...prev, status: 'offline' }));
-      };
-    } catch (error) {
-      console.warn('Realtime sync unavailable', error);
-    }
-
     let channel: BroadcastChannel | null = null;
     try {
       channel = new BroadcastChannel(BROADCAST_CHANNEL_NAME);
@@ -410,10 +387,9 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     return () => {
-      eventSource?.close();
       channel?.close();
     };
-  }, [addSyncLog, mergeRemoteRecord]);
+    }, [addSyncLog, mergeRemoteRecord]);
 
   // Supabase Realtime là kênh chính cho các phiên đăng nhập độc lập.
   useEffect(() => {
@@ -426,7 +402,7 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const row = payload.eventType === 'DELETE' ? payload.old : payload.new;
         if (!row || row.client_id === SYNC_CLIENT_ID) return;
         const record = payload.eventType === 'DELETE' ? undefined : fromRealtimeRecord(table, row);
-        mergeRemoteRecord({ table, id: row.id || 'default', record, deleted: payload.eventType === 'DELETE', updatedAt: row.updated_at || row.generated_at });
+        mergeRemoteRecord({ table, id: row.id || row.report_key || 'default', record, deleted: payload.eventType === 'DELETE', updatedAt: row.updated_at || row.generated_at });
       });
     }
     channel.subscribe((status: string) => {
@@ -468,51 +444,27 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [addSyncLog]);
 
-  // Periodic automatic sync and realistic truck & plant simulation
+  // Periodic automatic retry. Dữ liệu nghiệp vụ chỉ thay đổi từ thao tác người dùng
+  // hoặc payload Supabase Realtime, không tự mô phỏng trong nền.
   useEffect(() => {
     if (!syncState.isAutoSync) return;
 
-    const interval = setInterval(() => {
+    const interval = setInterval(async () => {
       setSyncState(prev => ({ ...prev, status: 'syncing' }));
-      
-      // Simulate minor progress or plant updates
-      setData(prevData => {
-        // Occasionally progress a truck or batch
-        const updatedPlants = prevData.plants.map(p => {
-          if (p.status === 'DANG_TRON') {
-            const nextProgress = ((p.batchProgress || 0) + 15);
-            return {
-              ...p,
-              batchProgress: nextProgress > 100 ? 15 : nextProgress,
-              todayOutputM3: nextProgress > 100 ? p.todayOutputM3 + 10 : p.todayOutputM3
-            };
-          }
-          return p;
-        });
-
-        return {
-          ...prevData,
-          plants: updatedPlants
-        };
-      });
-
-      setTimeout(() => {
-        const now = new Date();
-        setSyncState(prev => ({
-          ...prev,
-          status: 'connected',
-          lastSyncTime: now.toISOString(),
-          packetsSent: prev.packetsSent + 1,
-          packetsReceived: prev.packetsReceived + 1,
-          unsyncedChanges: 0
-        }));
-        setSecondsSinceSync(0);
-      }, 600);
+      const result = await flushSyncRetryQueue();
+      setSyncState(prev => ({
+        ...prev,
+        status: result.pending ? 'syncing' : 'connected',
+        lastSyncTime: new Date().toISOString(),
+        unsyncedChanges: result.pending
+      }));
+      if (result.succeeded) addSyncLog(`Đã retry thành công ${result.succeeded} bản ghi Supabase`, 'success');
+      setSecondsSinceSync(0);
 
     }, syncState.autoSyncIntervalSec * 1000);
 
     return () => clearInterval(interval);
-  }, [syncState.isAutoSync, syncState.autoSyncIntervalSec]);
+  }, [addSyncLog, syncState.isAutoSync, syncState.autoSyncIntervalSec]);
 
   // Actions
   const setSelectedPlant = (plant: string) => {
@@ -886,24 +838,13 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const syncNow = async () => {
     setSyncState(prev => ({ ...prev, status: 'syncing' }));
-    addSyncLog('Bắt đầu đồng bộ thủ công tới máy chủ điều phối trung tâm...', 'network');
-    
-    // Simulate network handshake
-    await new Promise(resolve => setTimeout(resolve, 800));
-
-    const now = new Date();
-    setSyncState(prev => ({
-      ...prev,
-      status: 'connected',
-      lastSyncTime: now.toISOString(),
-      packetsSent: prev.packetsSent + 2,
-      packetsReceived: prev.packetsReceived + 2,
-      unsyncedChanges: 0
-    }));
+    addSyncLog('Bắt đầu đồng bộ thật tới Supabase...', 'network');
+    const result = await syncAllToSupabase({ ...data, productionReports: data.productionReports || [] });
+    const retryResult = await flushSyncRetryQueue();
+    const now = new Date().toISOString();
+    setSyncState(prev => ({ ...prev, status: result.success && retryResult.pending === 0 ? 'connected' : 'offline', lastSyncTime: now, packetsSent: prev.packetsSent + result.count, packetsReceived: prev.packetsReceived + result.count, unsyncedChanges: retryResult.pending }));
     setSecondsSinceSync(0);
-    void flushSyncRetryQueue();
-    setSyncState(prev => ({ ...prev, unsyncedChanges: getRetryQueueSize() }));
-    addSyncLog('Đồng bộ hoàn tất thành công! Mọi dữ liệu đã khớp hoàn toàn.', 'success');
+    addSyncLog(result.success ? `Đồng bộ hoàn tất: ${result.count} bản ghi đã ghi lên Supabase.` : `Đồng bộ thất bại: ${result.error || 'lỗi không xác định'}`, result.success ? 'success' : 'error');
   };
 
   const toggleAutoSync = () => {

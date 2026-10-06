@@ -20,6 +20,7 @@ export interface SupabaseAppState {
   labTests: LabTestSample[];
   fuelLogs: FuelLog[];
   projectDistances: ProjectDistance[];
+  productionReports: any[];
   driverTripConfig: DriverTripRuleConfig;
 }
 
@@ -140,6 +141,8 @@ export interface RecordSyncChange {
 const RETRY_QUEUE_KEY = 'tsg_supabase_retry_queue_v1';
 let flushingQueue = false;
 
+const primaryKeyForTable = (table: SyncTable) => table === 'production_reports' ? 'report_key' : 'id';
+
 const toRow = (table: SyncTable, record: any, clientId: string, updatedAt: string) => {
   let row: any;
   switch (table) {
@@ -191,7 +194,7 @@ const syncOneRecord = async (change: RecordSyncChange) => {
   const client = getSupabaseClient();
   if (!client) throw new Error('Chưa cấu hình Supabase');
   if (change.deleted) {
-    const { error } = await client.from(change.table).delete().eq('id', change.id);
+    const { error } = await client.from(change.table).delete().eq(primaryKeyForTable(change.table), change.id);
     if (error) throw error;
     return;
   }
@@ -238,16 +241,17 @@ const getPersistentClientId = () => {
 export async function loadAllFromSupabase(): Promise<SupabaseAppState | null> {
   const client = getSupabaseClient();
   if (!client) return null;
-  const names = ['orders', 'trips', 'trucks', 'plants', 'debts', 'fuel_logs', 'lab_tests', 'project_distances', 'driver_trip_config'] as const;
+  const names = ['orders', 'trips', 'trucks', 'plants', 'debts', 'fuel_logs', 'lab_tests', 'project_distances', 'driver_trip_config', 'production_reports'] as const;
   const results = await Promise.all(names.map(name => client.from(name).select('*')));
   const failed = results.find(result => result.error);
   if (failed?.error) throw failed.error;
-  const [orders, trips, trucks, plants, debts, fuelLogs, labTests, projectDistances, config] = results.map(r => r.data || []);
-  if (!orders.length && !trips.length && !trucks.length && !projectDistances.length) return null;
+  const [orders, trips, trucks, plants, debts, fuelLogs, labTests, projectDistances, config, productionReports] = results.map(r => r.data || []);
+  if (!orders.length && !trips.length && !trucks.length && !projectDistances.length && !productionReports.length) return null;
   const c: any = config[0] || {};
   return {
     orders: orders.map(rowToOrder), trips: trips.map(rowToTrip), trucks: trucks.map(rowToTruck), plants: plants.map(rowToPlant),
     debts: debts.map(rowToDebt), fuelLogs: fuelLogs.map(rowToFuel), labTests: labTests.map(rowToLab), projectDistances: projectDistances.map(rowToProject),
+    productionReports,
     driverTripConfig: { largeTripThresholdM3: Number(c.large_trip_threshold_m3 ?? 6), capacity8m3ThresholdM3: Number(c.capacity8m3_threshold_m3 ?? 5),
       capacity10m3ThresholdM3: Number(c.capacity10m3_threshold_m3 ?? 6), capacity12m3ThresholdM3: Number(c.capacity12m3_threshold_m3 ?? 7) }
   };
@@ -258,17 +262,12 @@ export async function syncAllToSupabase(state: SupabaseAppState): Promise<{ succ
   if (!client) return { success: false, count: 0, error: 'Chưa cấu hình Supabase' };
   try {
     const metadata = (row: any) => ({ ...row, client_id: getPersistentClientId(), updated_at: new Date().toISOString() });
-    const upsertAndRemoveStale = async (table: string, rows: any[]) => {
+    // Full sync chỉ upsert; không được xóa các dòng không có trong cache của
+    // trình duyệt hiện tại vì đó có thể là dữ liệu mới do người dùng khác tạo.
+    // Các thao tác xóa được truyền riêng qua retry queue với deleted=true.
+    const upsertRows = async (table: string, rows: any[]) => {
       if (rows.length) {
         const { error } = await client.from(table).upsert(rows);
-        if (error) throw error;
-      }
-      const { data: existing, error: readError } = await client.from(table).select('id');
-      if (readError) throw readError;
-      const ids = new Set(rows.map(row => row.id));
-      const staleIds = (existing || []).map((row: any) => row.id).filter((id: string) => !ids.has(id));
-      if (staleIds.length) {
-        const { error } = await client.from(table).delete().in('id', staleIds);
         if (error) throw error;
       }
     };
@@ -279,7 +278,7 @@ export async function syncAllToSupabase(state: SupabaseAppState): Promise<{ succ
     ];
     let count = 0;
     for (const [table, rows] of batches) {
-      await upsertAndRemoveStale(table, rows);
+      await upsertRows(table, rows);
       count += rows.length;
     }
     const { error: configError } = await client.from('driver_trip_config').upsert({ id: 'default', large_trip_threshold_m3: state.driverTripConfig.largeTripThresholdM3,
@@ -294,7 +293,7 @@ export async function syncAllToSupabase(state: SupabaseAppState): Promise<{ succ
         order_code: order.code, total_volume: order.totalVolume, delivered_volume: order.deliveredVolume, trip_count: orderTrips.length,
         total_distance_km: totalDistance, payload: { order, trips: orderTrips }, generated_at: new Date().toISOString(), updated_at: new Date().toISOString(), client_id: getPersistentClientId() };
     });
-    await upsertAndRemoveStale('production_reports', reportRows);
+    await upsertRows('production_reports', reportRows);
     count += reportRows.length;
     return { success: true, count };
   } catch (error: any) {

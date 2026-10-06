@@ -41,46 +41,8 @@ export const SecurityAuditCard: React.FC = () => {
         const data = await res.json();
         setAuditData(data);
       } else {
-        // Fallback simulation if server doesn't respond
-        setAuditData({
-          timestamp: new Date().toISOString(),
-          status: 'PASSED',
-          securityGrade: 'A+',
-          checks: [
-            {
-              name: 'Mã hóa kết nối (HTTPS / Transport Security)',
-              status: 'SECURE',
-              detail: 'Kênh truyền dữ liệu được bảo vệ qua kết nối bảo mật'
-            },
-            {
-              name: 'Tiêu chuẩn OWASP Security Headers',
-              status: 'SECURE',
-              detail: 'Đã áp dụng X-Frame-Options, X-Content-Type-Options, Referrer-Policy'
-            },
-            {
-              name: 'Chống tấn công SQL Injection',
-              status: 'SECURE',
-              detail: 'Cơ sở dữ liệu Cloud SQL PostgreSQL sử dụng ORM Drizzle Parameterized an toàn'
-            },
-            {
-              name: 'Chống tấn công Brute-force & DoS',
-              status: 'SECURE',
-              detail: 'Bộ kiểm soát tần suất Rate Limiting bảo vệ cổng đăng nhập xác thực'
-            },
-            {
-              name: 'Bảo mật mật khẩu & Tài khoản',
-              status: 'SECURE',
-              detail: 'Mật khẩu được băm bảo mật SHA-256 HMAC muối, không lộ dữ liệu thô'
-            },
-            {
-              name: 'Đồng bộ liên tục & Bảo toàn phiên làm việc',
-              status: 'SECURE',
-              detail: 'Kênh truyền Server-Sent Events (SSE) đồng bộ tức thời giữa các phiên trình duyệt'
-            }
-          ],
-          activeSessions: 1,
-          systemVersion: Date.now()
-        });
+        setAuditData(null);
+        setError(`Endpoint kiểm tra bảo mật không khả dụng (HTTP ${res.status}). Chưa thể kết luận mức độ an toàn.`);
       }
     } catch (err: any) {
       setError('Không thể kết nối máy chủ kiểm tra an ninh.');
@@ -106,7 +68,7 @@ export const SecurityAuditCard: React.FC = () => {
                 Trung Tâm Kiểm Tra An Ninh & Bảo Mật Hệ Thống
               </h2>
               <span className="px-2 py-0.5 rounded-full text-[11px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
-                TIÊU CHUẨN A+
+                KIỂM TRA TRỰC TIẾP
               </span>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
@@ -150,7 +112,7 @@ export const SecurityAuditCard: React.FC = () => {
           </div>
           <div>
             <div className="text-[11px] text-slate-500 font-semibold uppercase">Bảo mật mật khẩu</div>
-            <div className="text-sm font-black text-slate-900">SHA-256 HMAC Salt</div>
+            <div className="text-sm font-black text-slate-900">Theo cấu hình thực tế</div>
           </div>
         </div>
 
@@ -160,7 +122,7 @@ export const SecurityAuditCard: React.FC = () => {
           </div>
           <div>
             <div className="text-[11px] text-slate-500 font-semibold uppercase">Đồng bộ đa phiên</div>
-            <div className="text-sm font-black text-slate-900">SSE Live Stream</div>
+            <div className="text-sm font-black text-slate-900">Supabase Realtime</div>
           </div>
         </div>
       </div>
