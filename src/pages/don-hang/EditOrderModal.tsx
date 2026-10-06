@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { X, Save, Edit3, AlertCircle, FileText, CheckCircle2, UserCheck, Navigation, Truck } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { X, Save, Edit3, AlertCircle, FileText, CheckCircle2, UserCheck, Navigation, Truck, Search, Droplets, ShieldCheck } from 'lucide-react';
 import { useSync } from '../../sync/SyncContext';
 import { useAuth } from '../../auth/AuthContext';
 import { ConcreteOrder, OrderStatus, OrderType, ProjectType } from '../../types';
@@ -10,8 +10,25 @@ interface EditOrderModalProps {
   onClose: () => void;
 }
 
+const GRADE_LIST = [
+  'M100',
+  'M150',
+  'M200',
+  'M250',
+  'M300',
+  'M350',
+  'M400',
+  'M450',
+  'M500',
+  'M550',
+  'M600'
+];
+
+const R_ADDITIVES = ['Không', 'R3', 'R7', 'R14', 'R28'];
+const WATERPROOF_LIST = ['Không', 'B6', 'B8', 'B10', 'B12'];
+
 export const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, isOpen, onClose }) => {
-  const { updateOrder, projectDistances } = useSync();
+  const { updateOrder, orders, projectDistances } = useSync();
   const { currentUser, isAdmin } = useAuth();
 
   const [orderType, setOrderType] = useState<OrderType>('CHINH');
@@ -27,14 +44,90 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, isOpen, o
   const [status, setStatus] = useState<OrderStatus>('DA_DUYET');
   const [grade, setGrade] = useState('');
   const [slump, setSlump] = useState('');
-  const [additive, setAdditive] = useState('');
+  const [additiveR, setAdditiveR] = useState('R7');
+  const [waterproof, setWaterproof] = useState('Không');
   const [pumpType, setPumpType] = useState('');
   const [contactPerson, setContactPerson] = useState('');
   const [contactPhone, setContactPhone] = useState('');
   const [technicianName, setTechnicianName] = useState('');
-  const [distanceKm, setDistanceKm] = useState<number>(15);
   const [notes, setNotes] = useState('');
   const [plantLocation, setPlantLocation] = useState('Tây Ninh');
+
+  // Danh sách công ty / khách hàng có sẵn để lọc chọn nhanh
+  const uniqueCompanies = useMemo(() => {
+    const map = new Map<string, string>();
+    orders.forEach(o => {
+      if (o.customerName?.trim()) {
+        map.set(o.customerName.trim(), o.customerCode || '');
+      }
+    });
+    projectDistances.forEach(p => {
+      if (p.customerName?.trim()) {
+        map.set(p.customerName.trim(), p.customerCode || '');
+      }
+    });
+    return Array.from(map.entries()).map(([name, code]) => ({ name, code })).sort((a, b) => a.name.localeCompare(b.name));
+  }, [orders, projectDistances]);
+
+  // Danh sách công trình có sẵn
+  const availableProjects = useMemo(() => {
+    const list: Array<{ title: string; customerName: string; customerCode?: string; plant?: string }> = [];
+    const seen = new Set<string>();
+    const filterCust = customerName.trim().toLowerCase();
+
+    orders.forEach(o => {
+      if (o.projectTitle?.trim() && !seen.has(o.projectTitle.trim())) {
+        if (!filterCust || o.customerName.toLowerCase().includes(filterCust)) {
+          seen.add(o.projectTitle.trim());
+          list.push({
+            title: o.projectTitle.trim(),
+            customerName: o.customerName,
+            customerCode: o.customerCode,
+            plant: o.plantLocation
+          });
+        }
+      }
+    });
+
+    projectDistances.forEach(p => {
+      if (p.projectTitle?.trim() && !seen.has(p.projectTitle.trim())) {
+        if (!filterCust || p.customerName.toLowerCase().includes(filterCust)) {
+          seen.add(p.projectTitle.trim());
+          list.push({
+            title: p.projectTitle.trim(),
+            customerName: p.customerName,
+            customerCode: p.customerCode
+          });
+        }
+      }
+    });
+
+    return list.sort((a, b) => a.title.localeCompare(b.title));
+  }, [orders, projectDistances, customerName]);
+
+  const handleQuickSelectCompany = (compName: string) => {
+    if (!compName) return;
+    setCustomerName(compName);
+    const found = uniqueCompanies.find(c => c.name === compName);
+    if (found?.code) setCustomerCode(found.code);
+
+    const matchedPrjs = availableProjects.filter(p => p.customerName.toLowerCase() === compName.toLowerCase());
+    if (matchedPrjs.length > 0 && !matchedPrjs.some(p => p.title.toLowerCase() === projectTitle.toLowerCase())) {
+      setProjectTitle(matchedPrjs[0].title);
+      if (matchedPrjs[0].plant) setPlantLocation(matchedPrjs[0].plant);
+    }
+  };
+
+  const handleQuickSelectProject = (prjTitle: string) => {
+    if (!prjTitle) return;
+    setProjectTitle(prjTitle);
+    const found = availableProjects.find(p => p.title === prjTitle);
+    if (found) {
+      if (found.customerName) setCustomerName(found.customerName);
+      if (found.customerCode) setCustomerCode(found.customerCode);
+      if (found.plant) setPlantLocation(found.plant);
+    }
+  };
 
   useEffect(() => {
     if (order) {
@@ -51,12 +144,18 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, isOpen, o
       setStatus(order.status);
       setGrade(order.grade);
       setSlump(order.slump);
-      setAdditive(order.additive);
+
+      if (order.additive?.includes('R3')) setAdditiveR('R3');
+      else if (order.additive?.includes('R7')) setAdditiveR('R7');
+      else if (order.additive?.includes('R14')) setAdditiveR('R14');
+      else if (order.additive?.includes('R28')) setAdditiveR('R28');
+      else setAdditiveR(order.additive || 'R7');
+
+      setWaterproof(order.waterproof || 'Không');
       setPumpType(order.pumpType);
       setContactPerson(order.contactPerson);
       setContactPhone(order.contactPhone);
       setTechnicianName(order.technicianName || 'Nguyễn Văn Nam');
-      setDistanceKm(order.distanceKm || 15);
       setNotes(order.notes || '');
       setPlantLocation(order.plantLocation || 'Tây Ninh');
     }
@@ -66,6 +165,11 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, isOpen, o
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
+
+    const fullAdditiveText = [
+      additiveR && additiveR !== 'Không' ? additiveR : '',
+      waterproof && waterproof !== 'Không' ? `Chống thấm ${waterproof}` : ''
+    ].filter(Boolean).join(' + ') || 'Không';
 
     updateOrder(order.id, {
       orderType,
@@ -81,12 +185,12 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, isOpen, o
       status,
       grade,
       slump,
-      additive,
+      additive: fullAdditiveText,
+      waterproof: waterproof !== 'Không' ? waterproof : undefined,
       pumpType,
       contactPerson,
       contactPhone,
       technicianName,
-      distanceKm: Number(distanceKm) || 15,
       plantLocation,
       notes
     });
@@ -150,6 +254,52 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, isOpen, o
             </div>
           </div>
 
+          {/* Mục lọc chọn nhanh Công ty & Công trình */}
+          <div className="bg-blue-50/70 p-3 rounded-xl border border-blue-200 space-y-2">
+            <div className="flex items-center gap-1.5 font-bold text-blue-950 text-xs">
+              <Search className="w-3.5 h-3.5 text-blue-600" />
+              <span>LỌC CHỌN NHANH CÔNG TY & CÔNG TRÌNH:</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div className="space-y-1">
+                <label className="font-semibold text-blue-900 text-[10px]">
+                  Chọn nhanh Công ty:
+                </label>
+                <select
+                  value={customerName}
+                  onChange={(e) => handleQuickSelectCompany(e.target.value)}
+                  className="w-full px-2 py-1.5 bg-white border border-blue-300 rounded-lg text-xs font-bold text-slate-800 cursor-pointer"
+                >
+                  <option value="">-- Chọn công ty trong hệ thống --</option>
+                  {uniqueCompanies.map((c, idx) => (
+                    <option key={`edit-comp-${idx}`} value={c.name}>
+                      {c.name} {c.code ? `(${c.code})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-semibold text-blue-900 text-[10px]">
+                  Chọn nhanh Công trình:
+                </label>
+                <select
+                  value={projectTitle}
+                  onChange={(e) => handleQuickSelectProject(e.target.value)}
+                  className="w-full px-2 py-1.5 bg-white border border-blue-300 rounded-lg text-xs font-bold text-slate-800 cursor-pointer"
+                >
+                  <option value="">-- Chọn công trình tương ứng --</option>
+                  {availableProjects.map((p, idx) => (
+                    <option key={`edit-prj-${idx}`} value={p.title}>
+                      {p.title} ({p.customerName})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
           {/* Customer & Project */}
           <div className="space-y-3 p-3.5 bg-slate-50 rounded-xl border border-slate-200">
             <div className="font-bold text-slate-800 text-xs border-b border-slate-200 pb-1 flex items-center justify-between">
@@ -194,7 +344,7 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, isOpen, o
                 </select>
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-1 col-span-2">
                 <label className="text-[11px] font-semibold text-slate-600">Hạng mục đổ *</label>
                 <input
                   type="text"
@@ -202,17 +352,6 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, isOpen, o
                   value={categoryItem}
                   onChange={(e) => setCategoryItem(e.target.value)}
                   className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg font-bold text-xs text-orange-600"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[11px] font-semibold text-slate-600">Cự ly vận chuyển (km)</label>
-                <input
-                  type="number"
-                  step="0.5"
-                  value={distanceKm}
-                  onChange={(e) => setDistanceKm(Number(e.target.value))}
-                  className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg font-mono font-bold text-xs"
                 />
               </div>
             </div>
@@ -224,18 +363,68 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, isOpen, o
               Thông số Bê Tông & Khối Lượng Cấp
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {/* Mác M100 - M600 */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-bold text-slate-800">Mác bê tông (M100 - M600) *</label>
+                <span className="font-mono font-bold text-orange-600 text-xs">{grade}</span>
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {['M100', 'M150', 'M200', 'M250', 'M300', 'M350', 'M400', 'M450', 'M500', 'M550', 'M600'].map((g) => (
+                  <button
+                    key={g}
+                    type="button"
+                    onClick={() => setGrade(g)}
+                    className={`px-2 py-0.5 rounded text-[11px] font-mono font-bold border transition cursor-pointer ${
+                      grade === g ? 'bg-orange-600 text-white border-orange-700' : 'bg-white text-slate-700 border-slate-200'
+                    }`}
+                  >
+                    {g}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* R Additive & Waterproof */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
               <div className="space-y-1">
-                <label className="text-[11px] font-semibold text-slate-700">Mác bê tông *</label>
-                <input
-                  type="text"
-                  required
-                  value={grade}
-                  onChange={(e) => setGrade(e.target.value)}
-                  className="w-full px-2.5 py-1.5 bg-white border border-amber-300 rounded-lg font-mono font-black text-xs text-orange-600"
-                />
+                <label className="text-[11px] font-bold text-slate-800">Phụ gia đông kết (R)</label>
+                <div className="flex flex-wrap gap-1">
+                  {['Không', 'R3', 'R7', 'R14', 'R28'].map((r) => (
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() => setAdditiveR(r)}
+                      className={`px-2 py-0.5 rounded text-[11px] font-bold border transition cursor-pointer ${
+                        additiveR === r ? 'bg-amber-600 text-white border-amber-700' : 'bg-white text-slate-700 border-slate-200'
+                      }`}
+                    >
+                      {r}
+                    </button>
+                  ))}
+                </div>
               </div>
 
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-slate-800">Phụ gia chống thấm</label>
+                <div className="flex flex-wrap gap-1">
+                  {['Không', 'B6', 'B8', 'B10', 'B12'].map((w) => (
+                    <button
+                      key={w}
+                      type="button"
+                      onClick={() => setWaterproof(w)}
+                      className={`px-2 py-0.5 rounded text-[11px] font-bold border transition cursor-pointer ${
+                        waterproof === w ? 'bg-cyan-600 text-white border-cyan-700' : 'bg-white text-slate-700 border-slate-200'
+                      }`}
+                    >
+                      {w === 'Không' ? 'K.Thấm' : w}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 pt-1">
               <div className="space-y-1">
                 <label className="text-[11px] font-semibold text-slate-700">Độ sụt *</label>
                 <input
@@ -244,16 +433,6 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, isOpen, o
                   value={slump}
                   onChange={(e) => setSlump(e.target.value)}
                   className="w-full px-2.5 py-1.5 bg-white border border-amber-300 rounded-lg font-bold text-xs"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[11px] font-semibold text-slate-700">Phụ gia</label>
-                <input
-                  type="text"
-                  value={additive}
-                  onChange={(e) => setAdditive(e.target.value)}
-                  className="w-full px-2.5 py-1.5 bg-white border border-amber-300 rounded-lg text-xs"
                 />
               </div>
 

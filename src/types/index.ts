@@ -19,9 +19,10 @@ export interface ConcreteOrder {
   deliveryTime: string; // "18:00"
   deliveryDate: string; // "2026-09-30"
   status: OrderStatus;
-  grade: string; // M200, M250, M300, M350, M400, M500
+  grade: string; // M100, M150, M200, M250, M300, M350, M400, M450, M500, M550, M600
   slump: string; // 12±2, 14±2, 16±2
-  additive: string; // R3, R7, R14, Chống thấm B6, Chống thấm B8, Không
+  additive: string; // Phụ gia đông kết: R3, R7, R14, R28, Không
+  waterproof?: string; // Phụ gia chống thấm: B6, B8, B10, B12, Không
   pumpType: string; // Bơm cần 37m, Bơm cần 43m, Bơm tĩnh, Xả máng trực tiếp
   contactPerson: string;
   contactPhone: string;
