@@ -369,9 +369,20 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({
   // Triplist for the currently selected order in dedicated dispatch view
   const currentOrderTrips = useMemo(() => {
     if (!currentViewOrder) return [];
-    return trips
+    const sorted = trips
       .filter(t => t.orderId === currentViewOrder.id || t.orderCode === currentViewOrder.code)
       .sort((a, b) => (a.departureTime || '').localeCompare(b.departureTime || ''));
+
+    let runningAccumulated = 0;
+    return sorted.map(t => {
+      runningAccumulated += (t.volume || 0);
+      return {
+        ...t,
+        accumulatedVolume: (t.accumulatedVolume !== undefined && t.accumulatedVolume > 0)
+          ? t.accumulatedVolume
+          : Number(runningAccumulated.toFixed(2))
+      };
+    });
   }, [trips, currentViewOrder]);
 
   // Toggle selection

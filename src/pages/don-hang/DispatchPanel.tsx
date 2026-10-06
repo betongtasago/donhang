@@ -76,14 +76,12 @@ export const DispatchPanel: React.FC<DispatchPanelProps> = ({ order, onOpenDispa
                   <div className="flex items-center gap-2">
                     <span className="font-bold text-slate-900 text-xs">{trip.truckPlate}</span>
                     <span className="text-[11px] font-semibold text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded border border-orange-200">
-                      {trip.volume} m³
+                      {trip.volume} m³ (Cộng dồn: {trip.accumulatedVolume || trip.volume} m³)
                     </span>
                     <span className="text-[11px] text-slate-400 font-mono">[{trip.ticketNumber}]</span>
                   </div>
                   <div className="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5">
                     <span>TX: <strong>{trip.driverName}</strong></span>
-                    <span>•</span>
-                    <span>Độ sụt: {trip.slumpTested}</span>
                     <span>•</span>
                     <span>Xuất: {trip.departureTime}</span>
                   </div>

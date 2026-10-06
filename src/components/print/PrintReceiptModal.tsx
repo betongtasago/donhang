@@ -84,58 +84,83 @@ export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Compute all trips for this order to calculate REAL cumulative volume
+  // Exact same sorting as in DANH SÁCH CÁC CHUYẾN XE BỒN ĐÃ CẤP CHO ĐƠN HÀNG
   const orderTrips = useMemo(() => {
     return trips
       .filter(t => t.orderId === order.id || t.orderCode === order.code)
       .sort((a, b) => (a.departureTime || '').localeCompare(b.departureTime || ''));
   }, [trips, order.id, order.code]);
 
-  // Find index of current trip
+  // Find index of current trip in orderTrips
   const tripIdx = useMemo(() => {
-    if (!trip) return orderTrips.length > 0 ? 0 : 0;
+    if (!trip) return orderTrips.length > 0 ? (orderTrips.length - 1) : -1;
     const found = orderTrips.findIndex(t => t.id === trip.id || t.ticketNumber === trip.ticketNumber);
-    return found >= 0 ? found : 0;
+    return found >= 0 ? found : (orderTrips.length > 0 ? orderTrips.length - 1 : -1);
   }, [orderTrips, trip]);
 
+  // Target trip object
+  const targetTrip = useMemo(() => {
+    if (trip) return trip;
+    if (tripIdx >= 0 && orderTrips[tripIdx]) return orderTrips[tripIdx];
+    return null;
+  }, [trip, tripIdx, orderTrips]);
+
+  // Volume of current trip
+  const defaultCurrentVol = targetTrip ? targetTrip.volume : 10;
+
   // Real cumulative previous volume (sum of all trips before this one)
+  // Must exactly match the running accumulated volume in DANH SÁCH CÁC CHUYẾN XE BỒN ĐÃ CẤP CHO ĐƠN HÀNG
   const autoPreviousVolume = useMemo(() => {
-    if (orderTrips.length === 0) return 46;
+    // If target trip has accumulatedVolume explicitly set:
+    if (targetTrip?.accumulatedVolume !== undefined && targetTrip.accumulatedVolume > 0) {
+      return Math.max(0, Number((targetTrip.accumulatedVolume - defaultCurrentVol).toFixed(2)));
+    }
+    // Otherwise calculate from trips prior to tripIdx
+    if (tripIdx <= 0 || orderTrips.length === 0) return 0;
     let sum = 0;
     for (let i = 0; i < tripIdx; i++) {
-      sum += orderTrips[i].volume;
+      sum += (orderTrips[i].volume || 0);
     }
-    return sum > 0 ? sum : 46;
-  }, [orderTrips, tripIdx]);
+    return Number(sum.toFixed(2));
+  }, [targetTrip, defaultCurrentVol, tripIdx, orderTrips]);
 
-  const defaultCurrentVol = trip ? trip.volume : 10;
   const [customCurrentVolume, setCustomCurrentVolume] = useState<number>(defaultCurrentVol);
   const [customPreviousVolume, setCustomPreviousVolume] = useState<number>(autoPreviousVolume);
 
   // Sync if trip or order changes & Tự động đồng bộ số phiếu / số chì với chuyến và Báo cáo sản xuất
   useEffect(() => {
-    if (trip) {
-      setDriverName(trip.driverName || 'Lê Hiền');
-      setTruckPlate(trip.truckPlate || '51M 23071');
-      setDepartureTime(trip.departureTime || '15:20');
-      setCustomCurrentVolume(trip.volume || 10);
-      setCustomPreviousVolume(autoPreviousVolume);
+    if (targetTrip) {
+      setDriverName(targetTrip.driverName || 'Lê Hiền');
+      setTruckPlate(targetTrip.truckPlate || '51M 23071');
+      setDepartureTime(targetTrip.departureTime || '15:20');
 
-      let tripTicket = trip.ticketNumber;
+      const tripVol = targetTrip.volume || 10;
+      setCustomCurrentVolume(tripVol);
+
+      let prevVol = 0;
+      if (targetTrip.accumulatedVolume !== undefined && targetTrip.accumulatedVolume > 0) {
+        prevVol = Math.max(0, Number((targetTrip.accumulatedVolume - tripVol).toFixed(2)));
+      } else {
+        prevVol = autoPreviousVolume;
+      }
+      setCustomPreviousVolume(prevVol);
+
+      let tripTicket = targetTrip.ticketNumber;
       if (!tripTicket) {
         tripTicket = generateRandomTicketNumber();
       }
       setTicketSerial(tripTicket);
 
       // Số chì theo quy tắc khác số phiếu
-      let tripSeal = trip.sealNumber;
+      let tripSeal = targetTrip.sealNumber;
       if (!tripSeal || tripSeal === tripTicket) {
         tripSeal = generateRandomSealNumber(tripTicket);
       }
       setSealNumber(tripSeal);
 
       // Nếu chuyến chưa có hoặc bị trùng, tự động đồng bộ ngay vào SyncContext để Báo cáo sản xuất hiển thị đúng
-      if (!trip.ticketNumber || !trip.sealNumber || trip.sealNumber === trip.ticketNumber) {
-        updateTripDetails(trip.id, {
+      if (!targetTrip.ticketNumber || !targetTrip.sealNumber || targetTrip.sealNumber === targetTrip.ticketNumber) {
+        updateTripDetails(targetTrip.id, {
           ticketNumber: tripTicket,
           sealNumber: tripSeal
         });
@@ -144,13 +169,13 @@ export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({
       setDriverName('Lê Hiền');
       setTruckPlate('51M 23071');
       setDepartureTime('15:20');
-      setCustomCurrentVolume(10);
-      setCustomPreviousVolume(46);
+      setCustomCurrentVolume(order.deliveredVolume > 0 ? order.deliveredVolume : 10);
+      setCustomPreviousVolume(0);
       const randTicket = generateRandomTicketNumber();
       setTicketSerial(randTicket);
       setSealNumber(generateRandomSealNumber(randTicket));
     }
-  }, [trip, autoPreviousVolume]);
+  }, [targetTrip, autoPreviousVolume, order.deliveredVolume]);
 
   // Tự động đồng bộ biển số xe khi chọn hoặc sửa tên tài xế theo danh sách mặc định
   const handleDriverChange = (name: string) => {
@@ -201,11 +226,13 @@ export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({
 
   // Save changes to trip in database/SyncContext
   const handleSaveTripDetails = () => {
-    if (trip && updateTripDetails) {
-      updateTripDetails(trip.id, {
+    const tripToSave = targetTrip || trip;
+    if (tripToSave && updateTripDetails) {
+      updateTripDetails(tripToSave.id, {
         driverName,
         truckPlate,
         volume: customCurrentVolume,
+        accumulatedVolume: realAccumulated, // Đồng bộ trực tiếp với danh sách chuyến xe bồn!
         departureTime,
         ticketNumber: ticketSerial, // Đồng bộ trực tiếp với Báo cáo sản xuất!
         sealNumber: sealNumber
@@ -575,18 +602,32 @@ export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({
                 />
               </div>
 
-              {/* Lượng xuất & Cộng dồn */}
-              <div className="flex items-center gap-1 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                <span className="text-[11px] text-amber-900 font-semibold">Lượng xuất:</span>
+              {/* Lượng xuất & Cộng dồn khớp 100% danh sách chuyến */}
+              <div className="flex items-center gap-1 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 text-xs">
+                <span className="text-[11px] text-slate-600 font-semibold" title="Khối lượng lũy kế đã cấp trước chuyến này">Trước:</span>
+                <input
+                  type="number"
+                  step="0.5"
+                  value={customPreviousVolume}
+                  onChange={(e) => setCustomPreviousVolume(parseFloat(e.target.value) || 0)}
+                  className="w-11 px-1 py-0.5 bg-white border border-slate-300 rounded text-center font-bold text-slate-800 text-xs"
+                  title="Lũy kế trước chuyến xe này (m³)"
+                />
+                <span className="text-slate-400 font-bold">+</span>
+                <span className="text-[11px] text-amber-900 font-semibold">Xuất:</span>
                 <input
                   type="number"
                   step="0.5"
                   value={customCurrentVolume}
                   onChange={(e) => setCustomCurrentVolume(parseFloat(e.target.value) || 0)}
-                  className="w-12 px-1 py-0.5 bg-white border border-amber-300 rounded text-center font-bold text-orange-600 text-xs"
+                  className="w-11 px-1 py-0.5 bg-white border border-amber-300 rounded text-center font-bold text-orange-600 text-xs"
+                  title="Khối lượng chuyến xe này (m³)"
                 />
-                <span className="text-[11px] text-amber-900 font-semibold ml-1">Cộng dồn:</span>
-                <span className="font-black text-red-600 text-xs">{realAccumulated}</span>
+                <span className="text-slate-400 font-bold">=</span>
+                <span className="text-[11px] text-red-700 font-black">Cộng dồn:</span>
+                <span className="font-black text-red-600 text-xs bg-white px-1.5 py-0.5 rounded border border-red-200">
+                  {realAccumulated} m³
+                </span>
               </div>
 
               {/* Số phiếu xuất (Quy tắc 0160XXX) */}
