@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { ConcreteOrder, DispatchTrip } from '../../types';
-import { ConcreteDeliveryReceipt, PaperSizeType } from './ConcreteDeliveryReceipt';
+import { ConcreteDeliveryReceipt, PaperSizeType, computeSampleCode } from './ConcreteDeliveryReceipt';
 import {
   Printer,
   X,
@@ -64,7 +64,11 @@ export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({
       ? trip.sealNumber
       : generateRandomSealNumber(trip?.ticketNumber)
   );
-  const [sampleCode, setSampleCode] = useState(order.grade ? `M35S107` : 'M35S107');
+  // Quy tắc mã mác tự động ví dụ M350 độ sụt 10 phụ gia R7 hiển thị M35S1007
+  const [sampleCode, setSampleCode] = useState<string>(() =>
+    computeSampleCode(trip?.grade || order.grade, order.slump, order.additive)
+  );
+  const [receiptNotes, setReceiptNotes] = useState<string>(trip?.notes || '');
   const [departureTime, setDepartureTime] = useState<string>(trip?.departureTime || '15:20');
   const [isSavedTripSuccess, setIsSavedTripSuccess] = useState(false);
 
@@ -73,6 +77,22 @@ export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({
     return localStorage.getItem('tsg_operator_signature') || null;
   });
   const [isDrawSignatureModalOpen, setIsDrawSignatureModalOpen] = useState(false);
+
+  // USER REQUIREMENT: Bấm phím ESC là thoát / đóng tab in phiếu trên máy tính
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isDrawSignatureModalOpen) {
+          setIsDrawSignatureModalOpen(false);
+        } else {
+          onClose();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose, isDrawSignatureModalOpen]);
 
   // CHỤP HÌNH PHIẾU NHANH
   const [isCapturing, setIsCapturing] = useState(false);
@@ -147,6 +167,10 @@ export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({
         : 0;
       setCustomPreviousVolume(prevVol);
 
+      // Mã mác tự động theo quy tắc (ví dụ M35S1007)
+      setSampleCode(computeSampleCode(targetTrip.grade || order.grade, order.slump, order.additive));
+      setReceiptNotes(targetTrip.notes || '');
+
       let tripTicket = targetTrip.ticketNumber;
       if (!tripTicket) {
         tripTicket = generateRandomTicketNumber();
@@ -173,11 +197,13 @@ export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({
       setDepartureTime('15:20');
       setCustomCurrentVolume(order.deliveredVolume > 0 ? order.deliveredVolume : 10);
       setCustomPreviousVolume(0);
+      setSampleCode(computeSampleCode(order.grade, order.slump, order.additive));
+      setReceiptNotes('');
       const randTicket = generateRandomTicketNumber();
       setTicketSerial(randTicket);
       setSealNumber(generateRandomSealNumber(randTicket));
     }
-  }, [targetTrip, tripIdx, orderTripsWithAccumulation, order.deliveredVolume]);
+  }, [targetTrip, tripIdx, orderTripsWithAccumulation, order.deliveredVolume, order.grade, order.slump, order.additive]);
 
   // Tự động đồng bộ biển số xe khi chọn hoặc sửa tên tài xế theo danh sách mặc định
   const handleDriverChange = (name: string) => {
@@ -237,7 +263,8 @@ export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({
         accumulatedVolume: realAccumulated, // Đồng bộ trực tiếp với danh sách chuyến xe bồn!
         departureTime,
         ticketNumber: ticketSerial, // Đồng bộ trực tiếp với Báo cáo sản xuất!
-        sealNumber: sealNumber
+        sealNumber: sealNumber,
+        notes: receiptNotes.trim()
       });
       setIsSavedTripSuccess(true);
       setTimeout(() => setIsSavedTripSuccess(false), 2500);
@@ -682,6 +709,31 @@ export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({
                 </button>
               </div>
 
+              {/* Mã Mác (Quy tắc tự động ví dụ M35S1007) */}
+              <div className="flex items-center gap-1 bg-white px-1.5 py-0.5 rounded border border-slate-300">
+                <span className="text-[11px] font-semibold text-slate-700">Mã Mác:</span>
+                <input
+                  type="text"
+                  value={sampleCode}
+                  onChange={(e) => setSampleCode(e.target.value)}
+                  className="w-24 px-1 py-0.5 border border-purple-300 rounded font-mono font-bold text-purple-700 text-xs text-center"
+                  title="Mã mác (Quy tắc: Mác bê tông + Độ sụt S + Tuổi R, ví dụ: M35S1007)"
+                />
+              </div>
+
+              {/* Ghi chú trên phiếu (Chỉ hiển thị khi có nhập nội dung) */}
+              <div className="flex items-center gap-1 bg-white px-1.5 py-0.5 rounded border border-slate-300">
+                <span className="text-[11px] font-semibold text-slate-700">Ghi chú:</span>
+                <input
+                  type="text"
+                  value={receiptNotes}
+                  onChange={(e) => setReceiptNotes(e.target.value)}
+                  placeholder="Để trống nếu không có..."
+                  className="w-28 sm:w-44 px-1.5 py-0.5 border border-slate-200 rounded text-xs"
+                  title="Chỉ hiển thị trên phiếu khi có nhập nội dung"
+                />
+              </div>
+
               {/* Lưu vào chuyến */}
               {trip && (
                 <button
@@ -734,6 +786,7 @@ export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({
               ticketSerial={ticketSerial}
               sealNumber={sealNumber}
               sampleCode={sampleCode}
+              notes={receiptNotes}
               operatorSignature={operatorSignature}
               paperSize={paperSize}
             />

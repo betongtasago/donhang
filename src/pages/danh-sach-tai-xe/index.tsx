@@ -359,7 +359,6 @@ export const DanhSachTaiXePage: React.FC = () => {
                 <th className="py-3 px-3 text-center w-12">STT</th>
                 <th className="py-3 px-3 w-16">MÃ XE</th>
                 <th className="py-3 px-4 min-w-[180px]">HỌ TÊN TÀI XẾ</th>
-                <th className="py-3 px-3 min-w-[130px]">SỐ ĐIỆN THOẠI</th>
                 <th className="py-3 px-3 min-w-[130px]">BIỂN SỐ XE</th>
                 <th className="py-3 px-3 min-w-[140px]">LOẠI XE BỒN</th>
                 <th className="py-3 px-3 text-center">DUNG TÍCH</th>
@@ -373,7 +372,7 @@ export const DanhSachTaiXePage: React.FC = () => {
             <tbody className="divide-y divide-slate-100">
               {filteredTrucks.length === 0 ? (
                 <tr>
-                  <td colSpan={12} className="py-8 text-center text-slate-400">
+                  <td colSpan={11} className="py-8 text-center text-slate-400">
                     Không tìm thấy xe bồn hoặc tài xế phù hợp với bộ lọc hiện tại.
                   </td>
                 </tr>
@@ -401,11 +400,6 @@ export const DanhSachTaiXePage: React.FC = () => {
                           </div>
                           <span>{truck.driverName}</span>
                         </div>
-                      </td>
-
-                      {/* SĐT */}
-                      <td className="py-3 px-3 font-mono text-slate-600">
-                        {truck.driverPhone}
                       </td>
 
                       {/* Biển số xe */}

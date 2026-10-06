@@ -386,7 +386,7 @@ export const DriverTripSummaryView: React.FC = () => {
                   </h3>
                 </div>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Loại xe: {selectedTruck.truckType} • Số điện thoại: {selectedTruck.driverPhone}
+                  Loại xe: {selectedTruck.truckType}
                 </p>
               </div>
               <button

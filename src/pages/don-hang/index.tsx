@@ -787,15 +787,6 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({
                       <div className="flex items-center justify-between text-xs text-slate-600">
                         <div>
                           <span className="font-bold text-slate-800">{tr.driverName}</span>
-                          {tr.driverPhone && (
-                            <a
-                              href={`tel:${tr.driverPhone}`}
-                              className="ml-2 font-mono text-blue-600 font-bold inline-flex items-center gap-1 text-[11px]"
-                            >
-                              <Phone className="w-3 h-3" />
-                              <span>{tr.driverPhone}</span>
-                            </a>
-                          )}
                         </div>
                         <div className="font-mono text-slate-600 font-bold text-xs">
                           Xuất: {tr.departureTime}
@@ -853,7 +844,7 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({
                     <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200 text-[11px] uppercase tracking-wider">
                       <th className="py-2.5 px-3 text-center w-12">STT</th>
                       <th className="py-2.5 px-3 min-w-[120px]">Số Xe</th>
-                      <th className="py-2.5 px-3 min-w-[160px]">Tài Xế & SĐT</th>
+                      <th className="py-2.5 px-3 min-w-[140px]">Tài Xế</th>
                       <th className="py-2.5 px-3 text-center min-w-[100px]">Giờ Xuất</th>
                       <th className="py-2.5 px-3 text-right min-w-[110px]">Lượng Xuất</th>
                       <th className="py-2.5 px-3 text-right min-w-[110px]">Cộng Dồn</th>
@@ -876,12 +867,6 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({
                         </td>
                         <td className="py-3 px-3">
                           <div className="font-bold text-slate-800">{tr.driverName}</div>
-                          {tr.driverPhone && (
-                            <div className="text-[11px] text-slate-400 flex items-center gap-1 font-mono">
-                              <Phone className="w-2.5 h-2.5" />
-                              <span>{tr.driverPhone}</span>
-                            </div>
-                          )}
                         </td>
                         <td className="py-3 px-3 text-center font-mono font-bold text-slate-900">
                           {tr.departureTime}

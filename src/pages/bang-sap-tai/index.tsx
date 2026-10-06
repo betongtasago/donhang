@@ -406,7 +406,6 @@ export const BangSapTaiPage: React.FC = () => {
                   {/* TÊN TÀI XẾ */}
                   <td className="py-0.5 px-2 text-left font-bold text-slate-900 border-r border-slate-200 whitespace-nowrap leading-tight">
                     <span>{truck.driverName}</span>
-                    <span className="text-[9px] font-normal text-slate-400 ml-1.5">({truck.driverPhone})</span>
                   </td>
 
                   {/* SỐ XE (Biển số) */}

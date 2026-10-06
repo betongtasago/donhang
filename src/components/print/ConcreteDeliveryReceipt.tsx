@@ -4,6 +4,57 @@ import { TsgLogo } from '../common/TsgLogo';
 
 export type PaperSizeType = 'A4' | 'A5' | 'CONTINUOUS_210_279';
 
+// Quy tắc mã mác theo chuẩn TSG: Ví dụ đơn M350 độ sụt 10 phụ gia R7 hiển thị M35S1007
+export function computeSampleCode(gradeStr?: string, slumpStr?: string, additiveStr?: string): string {
+  // 1. Mác: M350 -> M35, M250 -> M25, M300 -> M30, M150 -> M15, M200 -> M20, M400 -> M40
+  let gradeCode = 'M35';
+  const gradeMatch = (gradeStr || '').match(/[Mm]\s*(\d+)/);
+  if (gradeMatch) {
+    const num = parseInt(gradeMatch[1], 10);
+    if (num >= 100) {
+      gradeCode = `M${Math.floor(num / 10)}`;
+    } else {
+      gradeCode = `M${num}`;
+    }
+  } else if (gradeStr) {
+    const bMatch = gradeStr.match(/[A-Za-z]+(\d+)/);
+    if (bMatch) {
+      gradeCode = gradeStr.slice(0, 3).toUpperCase();
+    }
+  }
+
+  // 2. Độ sụt: 10, 10+-2, 12, 14 -> S10, S12, S14
+  let slumpCode = 'S10';
+  const slumpMatch = (slumpStr || '').match(/(\d+)/);
+  if (slumpMatch) {
+    const val = parseInt(slumpMatch[1], 10);
+    slumpCode = `S${val < 10 ? '0' + val : val}`;
+  }
+
+  // 3. Phụ gia đông kết / Ngày tuổi: R7 -> 07, R3 -> 03, R14 -> 14, R28 -> 28
+  let additiveCode = '07';
+  const combined = `${additiveStr || ''} ${gradeStr || ''}`.toUpperCase();
+  if (combined.includes('R3') || combined.includes('3N')) {
+    additiveCode = '03';
+  } else if (combined.includes('R7') || combined.includes('7N')) {
+    additiveCode = '07';
+  } else if (combined.includes('R14') || combined.includes('14N')) {
+    additiveCode = '14';
+  } else if (combined.includes('R28') || combined.includes('28N')) {
+    additiveCode = '28';
+  } else {
+    const rMatch = combined.match(/R\s*(\d+)/) || combined.match(/(\d+)\s*N/);
+    if (rMatch) {
+      const days = parseInt(rMatch[1], 10);
+      additiveCode = days < 10 ? `0${days}` : `${days}`;
+    } else if (additiveStr === 'Không' || additiveStr === 'None') {
+      additiveCode = '28';
+    }
+  }
+
+  return `${gradeCode}${slumpCode}${additiveCode}`;
+}
+
 interface ConcreteDeliveryReceiptProps {
   order: ConcreteOrder;
   trip?: DispatchTrip | null;
@@ -24,6 +75,7 @@ interface ConcreteDeliveryReceiptProps {
   pourEndTime?: string;
   operatorSignature?: string | null; // DataURL hoặc đường dẫn ảnh chữ ký của Người điều hành
   paperSize?: PaperSizeType;
+  notes?: string;
 }
 
 export const ConcreteDeliveryReceipt: React.FC<ConcreteDeliveryReceiptProps> = ({
@@ -36,13 +88,14 @@ export const ConcreteDeliveryReceipt: React.FC<ConcreteDeliveryReceiptProps> = (
   currentVolume,
   ticketSerial = '0160190',
   sealNumber = '849201',
-  sampleCode = 'M35S107',
+  sampleCode: customSampleCode,
   departureTime: customDepartureTime,
   arrivalTime = '',
   pourStartTime = '',
   pourEndTime = '',
   operatorSignature = null,
-  paperSize = 'CONTINUOUS_210_279'
+  paperSize = 'CONTINUOUS_210_279',
+  notes = ''
 }) => {
   // Số liệu: Lượng xuất chuyến này và Cộng dồn
   const actualCurrentVol = currentVolume !== undefined ? currentVolume : (trip ? trip.volume : 10);
@@ -54,6 +107,11 @@ export const ConcreteDeliveryReceipt: React.FC<ConcreteDeliveryReceiptProps> = (
   // Bỏ hiển thị độ sụt kiểm tra tại trạm theo yêu cầu: Hiển thị độ sụt chuẩn theo mác thiết kế của đơn hàng
   const slump = order.slump || '10+-2';
   const grade = trip?.grade || order.grade || 'M350R7';
+
+  // Mã Mác chuẩn theo quy tắc M35S1007 (Ví dụ M350 độ sụt 10, phụ gia R7)
+  const displaySampleCode = customSampleCode && customSampleCode !== 'M35S107'
+    ? customSampleCode
+    : computeSampleCode(grade, slump, order.additive);
 
   // Số phiếu (Ticket Number) và Số chì (Seal Number) là 2 số hoàn toàn khác nhau theo quy tắc
   const displayTicketNumber = trip?.ticketNumber || ticketSerial || '0160190';
@@ -174,14 +232,14 @@ export const ConcreteDeliveryReceipt: React.FC<ConcreteDeliveryReceiptProps> = (
         </thead>
         <tbody>
           <tr>
-            <td className="border border-black py-0.5 px-1.5">{sampleCode}</td>
+            <td className="border border-black py-0.5 px-1.5 font-bold">{displaySampleCode}</td>
             <td className="border border-black py-0.5 px-1.5">{grade}</td>
             <td className="border border-black py-0.5 px-1.5">m3</td>
             <td className="border border-black py-0.5 px-1.5">{slump}</td>
             <td className="border border-black py-0.5 px-1.5">{actualCurrentVol}</td>
             <td className="border border-black py-0.5 px-1.5">{actualAccumulatedVol}</td>
             <td className="border border-black py-0.5 px-1.5">
-              {order.additive && order.additive !== 'Không' && order.additive !== 'R7' ? order.additive : ''}
+              {notes && notes.trim() ? notes.trim() : ''}
             </td>
           </tr>
 
@@ -196,6 +254,14 @@ export const ConcreteDeliveryReceipt: React.FC<ConcreteDeliveryReceiptProps> = (
           </tr>
         </tbody>
       </table>
+
+      {/* Phần ghi chú chỉ hiển thị khi có nhập nội dung theo yêu cầu */}
+      {notes && notes.trim() && (
+        <div className="mb-2 text-[12px] flex items-baseline">
+          <span className="font-bold shrink-0">Ghi Chú:</span>
+          <span className="ml-1.5 italic font-medium">{notes.trim()}</span>
+        </div>
+      )}
 
       {/* 4. Vehicle & Dispatch Info: Exactly 3 rows x 3 columns matching image 100% */}
       <table className="w-full border-collapse border border-black text-[12px] mb-3">

@@ -775,12 +775,6 @@ export const TongQuanPage: React.FC = () => {
                                 </span>
                               )}
                             </div>
-                            {d.driverPhone && (
-                              <div className="text-[11px] text-slate-500 font-mono mt-0.5 flex items-center gap-1">
-                                <Phone className="w-3 h-3 text-slate-400" />
-                                <span>{d.driverPhone}</span>
-                              </div>
-                            )}
                           </td>
 
                           <td className="py-3 px-3">
@@ -862,8 +856,7 @@ export const TongQuanPage: React.FC = () => {
                     <span className="text-amber-400 font-black">{selectedDriverDetail.driverName}</span>
                   </h2>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    Tháng {selectedMonth} / {selectedYear} (Dương lịch) • Xe: {selectedDriverDetail.truckPlate} • SĐT:{' '}
-                    {selectedDriverDetail.driverPhone || '---'}
+                    Tháng {selectedMonth} / {selectedYear} (Dương lịch) • Xe: {selectedDriverDetail.truckPlate}
                   </p>
                 </div>
               </div>
