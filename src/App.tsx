@@ -21,7 +21,6 @@ import { DanhSachTaiXePage } from './pages/danh-sach-tai-xe';
 
 const VALID_PAGES = [
   'don-hang',
-  'cap-hang',
   'tong-quan',
   'cong-no',
   'san-xuat',
@@ -98,22 +97,9 @@ export const AppContent: React.FC = () => {
   const renderCurrentPage = () => {
     switch (currentPage) {
       case 'don-hang':
-        return (
-          <DonHangPage
-            initialView="DON_HANG"
-            onViewChange={(view) => {
-              if (view === 'CAP_HANG') setCurrentPage('cap-hang');
-            }}
-            onOpenPrintModal={(ord, trp) => handleOpenPrintModal(ord, trp)}
-          />
-        );
       case 'cap-hang':
         return (
           <DonHangPage
-            initialView="CAP_HANG"
-            onViewChange={(view) => {
-              if (view === 'DON_HANG') setCurrentPage('don-hang');
-            }}
             onOpenPrintModal={(ord, trp) => handleOpenPrintModal(ord, trp)}
           />
         );

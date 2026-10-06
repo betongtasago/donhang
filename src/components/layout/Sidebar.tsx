@@ -50,8 +50,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const isVisible = isOpen || isHovered || isPinned;
 
   const navItems = [
-    { id: 'don-hang', label: '1. Đơn hàng (Kinh doanh)', icon: ClipboardList, badge: orders.length },
-    { id: 'cap-hang', label: '2. Cấp hàng (Điều phối xe)', icon: Truck, badge: trips.length },
+    { id: 'don-hang', label: '1. Đơn hàng & Cấp hàng', icon: ClipboardList, badge: orders.length },
     { id: 'tong-quan', label: 'Tổng quan điều hành', icon: LayoutDashboard },
     { id: 'san-xuat', label: 'Sản xuất & Báo cáo', icon: Factory },
     { id: 'danh-sach-tai-xe', label: 'Đội xe & Tài xế (8m³ & 10m³)', icon: Truck, badge: `${trucks.length}` },
