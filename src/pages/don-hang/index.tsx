@@ -536,16 +536,16 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-slate-50/70 text-slate-800 font-sans pb-16">
+    <div className="min-h-screen overflow-x-hidden bg-slate-50/70 text-slate-800 font-sans pb-16">
       {/* ========================================================================= */}
       {/* TRƯỜNG HỢP 1: GIAO DIỆN CẤP HÀNG CHI TIẾT CỦA MỘT ĐƠN HÀNG ĐƯỢC CHỌN    */}
       {/* (Bấm vào tên công ty hoặc ngày giao trong bảng đơn hàng để vào đây)       */}
       {/* ========================================================================= */}
       {currentViewOrder ? (
-        <div className="px-4 sm:px-6 py-5 max-w-[1700px] mx-auto space-y-4 animate-in fade-in duration-200">
+        <div className="w-full min-w-0 px-2 sm:px-6 py-3 sm:py-5 max-w-[1700px] mx-auto space-y-3 sm:space-y-4 animate-in fade-in duration-200">
           {/* Breadcrumb & Navigation Header */}
-          <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
-            <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3 sm:p-4 rounded-xl border border-slate-200 shadow-xs">
+            <div className="flex items-start gap-2 min-w-0">
               <button
                 type="button"
                 onClick={() => setSelectedOrderForDispatchId(null)}
@@ -553,17 +553,18 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({
                 title="Quay lại danh sách toàn bộ đơn hàng"
               >
                 <ArrowLeft className="w-4 h-4 text-slate-600" />
-                <span>Quay lại danh sách đơn hàng</span>
+                <span className="hidden sm:inline">Quay lại danh sách đơn hàng</span><span className="sm:hidden">Quay lại</span>
               </button>
 
               <div className="h-5 w-px bg-slate-300 hidden sm:block" />
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 min-w-0 flex-wrap">
                 <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-800 border border-blue-200">
                   {currentViewOrder.code}
                 </span>
                 <span className="text-xs font-bold text-slate-900 uppercase">
-                  GIAO DIỆN CẤP HÀNG & ĐIỀU PHỐI XE BỒN
+                  <span className="hidden sm:inline">GIAO DIỆN CẤP HÀNG & ĐIỀU PHỐI XE BỒN</span>
+                  <span className="sm:hidden">CẤP HÀNG & ĐIỀU PHỐI XE</span>
                 </span>
                 {currentViewOrder.orderType === 'PHAT_SINH' && (
                   <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
@@ -574,7 +575,7 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({
             </div>
 
             {/* Top actions in single order dispatch view */}
-            <div className="flex items-center gap-2">
+            <div className="grid grid-cols-2 sm:flex items-center gap-2 w-full sm:w-auto">
               <button
                 type="button"
                 onClick={() => handleOpenAssignForOrder(currentViewOrder)}
@@ -626,10 +627,10 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({
           </div>
 
           {/* Detailed Order Card */}
-          <div className="bg-white rounded-xl border border-slate-200/80 shadow-xs p-5 space-y-4">
-            <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-100 pb-4">
+          <div className="bg-white rounded-xl border border-slate-200/80 shadow-xs p-3 sm:p-5 space-y-4 min-w-0">
+            <div className="flex flex-col sm:flex-row sm:flex-wrap items-start justify-between gap-3 sm:gap-4 border-b border-slate-100 pb-4">
               <div>
-                <h1 className="text-xl font-black text-slate-900 tracking-tight">
+                <h1 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight break-words">
                   {currentViewOrder.customerName}
                 </h1>
                 <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600 mt-1">
@@ -715,14 +716,14 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({
           </div>
 
           {/* List of Dispatches for This Order */}
-          <div className="bg-white rounded-xl border border-slate-200/80 shadow-xs overflow-hidden">
-            <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
+          <div className="bg-white rounded-xl border border-slate-200/80 shadow-xs overflow-hidden min-w-0">
+            <div className="p-3 sm:p-4 bg-slate-50 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-start gap-2 min-w-0">
                 <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
                   <Truck className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-slate-900 text-sm">
+                  <h3 className="font-bold text-slate-900 text-xs sm:text-sm leading-5 break-words">
                     DANH SÁCH CÁC CHUYẾN XE BỒN ĐÃ CẤP CHO ĐƠN HÀNG
                   </h3>
                   <p className="text-[11px] text-slate-500">
@@ -732,11 +733,11 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 w-full sm:w-auto">
                 <button
                   type="button"
                   onClick={() => handleOpenAssignForOrder(currentViewOrder)}
-                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-xs flex items-center gap-1 shadow-xs transition cursor-pointer"
+                  className="w-full sm:w-auto justify-center px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-xs flex items-center gap-1 shadow-xs transition cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>Xuất Thêm Chuyến Xe</span>
@@ -2039,7 +2040,38 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({
                                         Đơn hàng này chưa có chuyến xe nào được điều phối. Bấm nút "Cấp thêm chuyến xe" ở trên để xuất xe.
                                       </div>
                                     ) : (
-                                      <div className="overflow-x-auto">
+                                      <>
+                                      <div className="sm:hidden divide-y divide-slate-100">
+                                        {orderTrips.map((tr, trIdx) => (
+                                          <div key={`inline-mobile-${tr.id}`} className="p-3 space-y-2 bg-white">
+                                            <div className="flex items-center justify-between gap-2">
+                                              <div className="min-w-0">
+                                                <div className="flex items-center gap-1.5">
+                                                  <span className="text-[10px] text-slate-400 font-mono">#{trIdx + 1}</span>
+                                                  <span className="font-mono font-black text-slate-900 text-sm truncate">{tr.truckPlate}</span>
+                                                </div>
+                                                <p className="text-[11px] text-slate-500 truncate">TX: <strong>{tr.driverName}</strong></p>
+                                              </div>
+                                              <div className="text-right shrink-0">
+                                                <div className="font-mono font-black text-blue-700 text-sm">{tr.volume} m³</div>
+                                                <div className="text-[10px] text-slate-500">Cộng dồn: {tr.accumulatedVolume || tr.volume} m³</div>
+                                              </div>
+                                            </div>
+                                            <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-slate-100 text-[11px]">
+                                              <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+                                                <span className="font-mono bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">Xuất {tr.departureTime}</span>
+                                                <span className="font-mono bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">Phiếu {tr.ticketNumber || '0160190'}</span>
+                                              </div>
+                                              <div className="flex items-center gap-1.5 shrink-0">
+                                                {onOpenPrintModal && <button type="button" onClick={() => onOpenPrintModal(order, tr)} className="p-1.5 rounded bg-orange-50 text-orange-700" title="In phiếu"><Printer className="w-3.5 h-3.5" /></button>}
+                                                <button type="button" onClick={() => { setEditingTrip(tr); setIsEditTripOpen(true); }} className="p-1.5 rounded bg-blue-50 text-blue-700" title="Sửa chuyến"><Edit2 className="w-3.5 h-3.5" /></button>
+                                                <button type="button" onClick={(e) => handleDeleteTripItem(tr, e)} className="p-1.5 rounded bg-red-50 text-red-600" title="Xóa chuyến"><Trash2 className="w-3.5 h-3.5" /></button>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                      <div className="hidden sm:block overflow-x-auto">
                                         <table className="w-full text-left text-xs border-collapse">
                                           <thead>
                                             <tr className="bg-slate-100 text-slate-600 font-bold border-b border-slate-200 text-[10px] uppercase">
@@ -2123,6 +2155,7 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({
                                           </tbody>
                                         </table>
                                       </div>
+                                      </>
                                     )}
                                   </div>
                                 </td>

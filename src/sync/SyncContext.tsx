@@ -196,6 +196,7 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const firstCloudSyncRef = useRef(false);
   const lastRemoteUpdatedAtRef = useRef<Record<string, string>>({});
   const [supabaseConfigVersion, setSupabaseConfigVersion] = useState(0);
+  const [isHydrated, setIsHydrated] = useState(false);
 
   // Helper to append sync log
   const addSyncLog = useCallback((message: string, type: 'info' | 'success' | 'warning' | 'network' | 'error' = 'info') => {
@@ -310,18 +311,26 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const cloud = await loadAllFromSupabase();
         if (cloud) {
-          setData(prev => ({
-            ...prev,
-            ...cloud,
-            orders: cloud.orders.length ? cloud.orders : prev.orders,
-            trips: cloud.trips.length ? cloud.trips : prev.trips,
+          setData(prev => {
+            // Không làm mất chuyến đã tạo offline trước đây khi cloud chưa có dòng tương ứng.
+            const cloudTripIds = new Set(cloud.trips.map(trip => trip.id));
+            const localOnlyTrips = prev.trips.filter(trip => !cloudTripIds.has(trip.id));
+            for (const trip of localOnlyTrips) {
+              enqueueRecordSync({ table: 'trips', id: trip.id, record: trip, clientId: SYNC_CLIENT_ID, updatedAt: new Date().toISOString() });
+            }
+            return {
+              ...prev,
+              ...cloud,
+              orders: cloud.orders.length ? cloud.orders : prev.orders,
+              trips: [...cloud.trips, ...localOnlyTrips],
             trucks: cloud.trucks.length ? cloud.trucks : prev.trucks,
             plants: cloud.plants.length ? cloud.plants : prev.plants,
             debts: cloud.debts.length ? cloud.debts : prev.debts,
             labTests: cloud.labTests.length ? cloud.labTests : prev.labTests,
             fuelLogs: cloud.fuelLogs.length ? cloud.fuelLogs : prev.fuelLogs,
             projectDistances: cloud.projectDistances.length ? cloud.projectDistances : prev.projectDistances
-          }));
+            };
+          });
           addSyncLog(`Đã nạp dữ liệu đơn hàng, cấp hàng, bảng tài, km công trình và báo cáo từ Supabase`, 'success');
         } else {
           addSyncLog('Supabase chưa có dữ liệu; bắt đầu khởi tạo từ dữ liệu hiện có trên thiết bị', 'network');
@@ -329,16 +338,17 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch (err) {
         console.warn('Supabase load warning, running on cached data:', err);
         addSyncLog('Không thể nạp Supabase, tạm dùng cache offline trên thiết bị', 'warning');
-      } finally {
-        hydratedFromSupabaseRef.current = true;
-      }
+        } finally {
+          hydratedFromSupabaseRef.current = true;
+          setIsHydrated(true);
+        }
     }
     hydrateFromSupabase();
   }, []);
 
   // Retry queue chạy định kỳ, không cần thêm dịch vụ trả phí.
   useEffect(() => {
-    if (!hydratedFromSupabaseRef.current) return;
+    if (!isHydrated) return;
     const flush = async () => {
       const result = await flushSyncRetryQueue();
       setSyncState(prev => ({ ...prev, unsyncedChanges: result.pending, status: result.pending ? 'syncing' : 'connected' }));
@@ -347,7 +357,7 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
     void flush();
     const timer = window.setInterval(flush, 15000);
     return () => window.clearInterval(timer);
-  }, [addSyncLog]);
+  }, [addSyncLog, isHydrated]);
 
   // Set up server-sent events for real-time sync between separate browser
   // sessions. BroadcastChannel remains as the fast path for tabs in one browser.
