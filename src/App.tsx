@@ -17,14 +17,12 @@ import { SanXuatPage } from './pages/san-xuat';
 import { QuanLyLaiXePage } from './pages/quan-ly-lai-xe';
 import { ThiNghiemPage } from './pages/thi-nghiem';
 import { CaiDatPage } from './pages/cai-dat';
-import { DanhSachTaiXePage } from './pages/danh-sach-tai-xe';
 
 const VALID_PAGES = [
   'don-hang',
   'tong-quan',
   'cong-no',
   'san-xuat',
-  'danh-sach-tai-xe',
   'quan-ly-lai-xe',
   'thi-nghiem',
   'cai-dat'
@@ -109,8 +107,6 @@ export const AppContent: React.FC = () => {
         return <CongNoPage />;
       case 'san-xuat':
         return <SanXuatPage />;
-      case 'danh-sach-tai-xe':
-        return <DanhSachTaiXePage />;
       case 'quan-ly-lai-xe':
         return <QuanLyLaiXePage />;
       case 'thi-nghiem':

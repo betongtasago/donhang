@@ -5,16 +5,15 @@ import { TruckStatus } from '../../types';
 import { DriverTripSummaryView } from './DriverTripSummaryView';
 import { ProjectDistancesCard } from './ProjectDistancesCard';
 import { BangSapTaiPage } from '../bang-sap-tai';
-import { DanhSachTaiXePage } from '../danh-sach-tai-xe';
 
 export const QuanLyLaiXePage: React.FC = () => {
   const { trucks, updateTruckStatus, trips } = useSync();
-  const [activeTab, setActiveTab] = useState<'chuyen_km' | 'bang_sap_tai' | 'danh_sach_xe' | 'cong_trinh_km'>(() => {
+  const [activeTab, setActiveTab] = useState<'chuyen_km' | 'bang_sap_tai' | 'cong_trinh_km'>(() => {
     try {
       const saved = localStorage.getItem('tsg_lai_xe_tab');
-      if (saved === 'chuyen_km' || saved === 'bang_sap_tai' || saved === 'danh_sach_xe' || saved === 'cong_trinh_km') return saved;
+      if (saved === 'chuyen_km' || saved === 'bang_sap_tai' || saved === 'cong_trinh_km') return saved;
     } catch {}
-    return 'chuyen_km';
+    return 'bang_sap_tai';
   });
 
   React.useEffect(() => {
@@ -81,18 +80,6 @@ export const QuanLyLaiXePage: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setActiveTab('danh_sach_xe')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
-              activeTab === 'danh_sach_xe'
-                ? 'bg-orange-600 text-white shadow-sm'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <Truck className="w-4 h-4" />
-            <span>Đội Xe 8m³ & 10m³</span>
-          </button>
-
-          <button
             onClick={() => setActiveTab('chuyen_km')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
               activeTab === 'chuyen_km'
@@ -121,13 +108,10 @@ export const QuanLyLaiXePage: React.FC = () => {
       {/* Tab 1: Bảng Sắp Tài Hằng Ngày TSG-TNT */}
       {activeTab === 'bang_sap_tai' && <BangSapTaiPage />}
 
-      {/* Tab 2: Danh Sách Tài Xế & Xe Bồn 8m3 / 10m3 */}
-      {activeTab === 'danh_sach_xe' && <DanhSachTaiXePage />}
-
-      {/* Tab 3: Driver Trip Summary & Km calculation */}
+      {/* Tab 2: Driver Trip Summary & Km calculation */}
       {activeTab === 'chuyen_km' && <DriverTripSummaryView />}
 
-      {/* Tab 4: Project Distances Catalog */}
+      {/* Tab 3: Project Distances Catalog */}
       {activeTab === 'cong_trinh_km' && <ProjectDistancesCard />}
     </div>
   );
