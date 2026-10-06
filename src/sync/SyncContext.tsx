@@ -109,15 +109,33 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 ...INITIAL_ORDERS.filter(o => o.orderType === 'PHAT_SINH')
               ];
 
-          // Đảm bảo nạp đủ các chuyến xe nhiều ngày (1, 2, 3, 4...)
+          // Đảm bảo nạp đủ các chuyến xe nhiều ngày
           const validTrips = Array.isArray(parsed.trips) && parsed.trips.length >= 15
             ? parsed.trips
             : INITIAL_TRIPS;
 
+          // Đảm bảo đơn hàng và chuyến xe có ngày hiện tại để bấm "Hôm nay" luôn khớp đúng ngày thực
+          const todayIso = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`;
+          const todayDmy = `${String(new Date().getDate()).padStart(2, '0')}/${String(new Date().getMonth() + 1).padStart(2, '0')}/${new Date().getFullYear()}`;
+
+          const migratedOrders = validOrders.map((o: any) => {
+            if (o.deliveryDate === '2026-10-04') {
+              return { ...o, deliveryDate: todayIso };
+            }
+            return o;
+          });
+
+          const migratedTrips = validTrips.map((t: any) => {
+            if (t.deliveryDate === '04/10/2026') {
+              return { ...t, deliveryDate: todayDmy };
+            }
+            return t;
+          });
+
           return {
             ...parsed,
-            orders: validOrders,
-            trips: validTrips,
+            orders: migratedOrders,
+            trips: migratedTrips,
             trucks: validTrucks,
             projectDistances: parsed.projectDistances && parsed.projectDistances.length > 0
               ? parsed.projectDistances

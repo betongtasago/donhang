@@ -501,7 +501,7 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, isOpen, o
             </div>
 
             <div className="space-y-1">
-              <label className="text-[11px] font-semibold text-slate-600">Giờ giao dự kiến *</label>
+              <label className="text-[11px] font-semibold text-slate-600">Giờ giao hàng *</label>
               <input
                 type="time"
                 required

@@ -56,8 +56,10 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({
   const [selectedOrderForDispatchId, setSelectedOrderForDispatchId] = useState<string | null>(null);
 
   // Search & Filter states for Main Orders List
+  const now = new Date();
+  const todayDmy = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [filterDate, setFilterDate] = useState<string>('04/10/2026'); // DD/MM/YYYY hoặc rỗng
+  const [filterDate, setFilterDate] = useState<string>(todayDmy); // DD/MM/YYYY hoặc rỗng
   const [dateFilterMode, setDateFilterMode] = useState<'SINGLE' | 'RANGE' | 'ALL' | 'LAST_3_DAYS' | 'THIS_MONTH'>('SINGLE');
   const [rangeFromDate, setRangeFromDate] = useState<string>('2026-10-01');
   const [rangeToDate, setRangeToDate] = useState<string>('2026-10-06');
@@ -66,8 +68,8 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({
   const [filterPlant, setFilterPlant] = useState<string>('ALL');
 
   // Bảng Lịch Chọn Ngày (Calendar Table Picker State)
-  const [calendarYear, setCalendarYear] = useState<number>(2026);
-  const [calendarMonth, setCalendarMonth] = useState<number>(9); // 0-indexed: 9 = Tháng 10
+  const [calendarYear, setCalendarYear] = useState<number>(now.getFullYear());
+  const [calendarMonth, setCalendarMonth] = useState<number>(now.getMonth()); // 0-indexed: 9 = Tháng 10
   const [isCalendarOpen, setIsCalendarOpen] = useState<boolean>(false); // Mở/đóng bảng lịch popover siêu nhỏ gọn
 
   // 2 Tab riêng biệt: Đơn hàng chính ('CHINH') và Đơn hàng phát sinh ('PHAT_SINH')
@@ -227,7 +229,8 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({
       const monthStr = calendarMonth + 1 < 10 ? `0${calendarMonth + 1}` : `${calendarMonth + 1}`;
       const dateStr = `${dayStr}/${monthStr}/${calendarYear}`;
       const count = ordersCountByDate[dateStr] || 0;
-      const isToday = dateStr === '04/10/2026';
+      const realTodayDmy = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
+      const isToday = dateStr === realTodayDmy;
       const isSelected = filterDate.trim() === dateStr;
 
       days.push({
@@ -303,7 +306,13 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({
           return false;
         }
       } else if (dateFilterMode === 'LAST_3_DAYS') {
-        const allowed = ['02/10/2026', '03/10/2026', '04/10/2026', '2026-10-02', '2026-10-03', '2026-10-04'];
+        const dNow = new Date();
+        const d1 = new Date(dNow.getTime());
+        const d2 = new Date(dNow.getTime() - 24 * 60 * 60 * 1000);
+        const d3 = new Date(dNow.getTime() - 2 * 24 * 60 * 60 * 1000);
+        const toDmy = (d: Date) => `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+        const toIso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const allowed = [toDmy(d1), toDmy(d2), toDmy(d3), toIso(d1), toIso(d2), toIso(d3)];
         if (!allowed.includes(oDateDmy) && !allowed.includes(oDateIso)) {
           return false;
         }
@@ -378,9 +387,7 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({
       runningAccumulated += (t.volume || 0);
       return {
         ...t,
-        accumulatedVolume: (t.accumulatedVolume !== undefined && t.accumulatedVolume > 0)
-          ? t.accumulatedVolume
-          : Number(runningAccumulated.toFixed(2))
+        accumulatedVolume: Number(runningAccumulated.toFixed(2))
       };
     });
   }, [trips, currentViewOrder]);
@@ -1162,9 +1169,11 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({
                               <button
                                 type="button"
                                 onClick={() => {
-                                  setCalendarYear(2026);
-                                  setCalendarMonth(9);
-                                  setFilterDate('04/10/2026');
+                                  const curDate = new Date();
+                                  setCalendarYear(curDate.getFullYear());
+                                  setCalendarMonth(curDate.getMonth());
+                                  const realDmy = `${String(curDate.getDate()).padStart(2, '0')}/${String(curDate.getMonth() + 1).padStart(2, '0')}/${curDate.getFullYear()}`;
+                                  setFilterDate(realDmy);
                                   setDateFilterMode('SINGLE');
                                   setIsCalendarOpen(false);
                                 }}
@@ -1282,13 +1291,15 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({
                     <button
                       type="button"
                       onClick={() => {
-                        setCalendarYear(2026);
-                        setCalendarMonth(9);
-                        setFilterDate('04/10/2026');
+                        const curDate = new Date();
+                        setCalendarYear(curDate.getFullYear());
+                        setCalendarMonth(curDate.getMonth());
+                        const realDmy = `${String(curDate.getDate()).padStart(2, '0')}/${String(curDate.getMonth() + 1).padStart(2, '0')}/${curDate.getFullYear()}`;
+                        setFilterDate(realDmy);
                         setDateFilterMode('SINGLE');
                       }}
                       className={`px-2 py-1 rounded-md text-[11px] font-bold transition cursor-pointer shrink-0 ${
-                        filterDate === '04/10/2026' && dateFilterMode === 'SINGLE'
+                        filterDate === `${String(new Date().getDate()).padStart(2, '0')}/${String(new Date().getMonth() + 1).padStart(2, '0')}/${new Date().getFullYear()}` && dateFilterMode === 'SINGLE'
                           ? 'bg-blue-600 text-white shadow-2xs'
                           : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
                       }`}
@@ -1299,13 +1310,15 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({
                     <button
                       type="button"
                       onClick={() => {
-                        setCalendarYear(2026);
-                        setCalendarMonth(9);
-                        setFilterDate('03/10/2026');
+                        const yestDate = new Date(Date.now() - 24 * 60 * 60 * 1000);
+                        setCalendarYear(yestDate.getFullYear());
+                        setCalendarMonth(yestDate.getMonth());
+                        const yestDmy = `${String(yestDate.getDate()).padStart(2, '0')}/${String(yestDate.getMonth() + 1).padStart(2, '0')}/${yestDate.getFullYear()}`;
+                        setFilterDate(yestDmy);
                         setDateFilterMode('SINGLE');
                       }}
                       className={`px-2 py-1 rounded-md text-[11px] font-bold transition cursor-pointer shrink-0 ${
-                        filterDate === '03/10/2026' && dateFilterMode === 'SINGLE'
+                        filterDate === `${String(new Date(Date.now() - 24 * 60 * 60 * 1000).getDate()).padStart(2, '0')}/${String(new Date(Date.now() - 24 * 60 * 60 * 1000).getMonth() + 1).padStart(2, '0')}/${new Date(Date.now() - 24 * 60 * 60 * 1000).getFullYear()}` && dateFilterMode === 'SINGLE'
                           ? 'bg-blue-600 text-white shadow-2xs'
                           : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
                       }`}

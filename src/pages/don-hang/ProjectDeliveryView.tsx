@@ -42,8 +42,18 @@ export const ProjectDeliveryView: React.FC<ProjectDeliveryViewProps> = ({
 }) => {
   const { trips, trucks, createTrip, updateTripStatus, updateOrder } = useSync();
 
-  // Trips belonging to this project / order
+  // Compute trips belonging to this project / order with exact running accumulation
   const orderTrips = trips.filter(t => t.orderId === order.id || t.orderCode === order.code);
+  const accumulatedOrderTrips = React.useMemo(() => {
+    let acc = 0;
+    return orderTrips.map(t => {
+      acc += (t.volume || 0);
+      return {
+        ...t,
+        accumulated: Number(acc.toFixed(2))
+      };
+    });
+  }, [orderTrips]);
 
   // Quick dispatch state inside the view
   const availableTrucks = trucks.filter(t => t.status === 'SAN_SANG' || t.status === 'DANG_CHAY');
@@ -82,9 +92,9 @@ export const ProjectDeliveryView: React.FC<ProjectDeliveryViewProps> = ({
       driverPhone: truck.driverPhone,
       volume: quickVolume,
       departureTime,
-      arrivalEstimate: arrivalTime,
+      arrivalEstimate: '',
       status: 'DANG_NAP',
-      slumpTested: quickSlump,
+      slumpTested: order.slump || '10+-2',
       grade: order.grade
     });
 
@@ -292,7 +302,7 @@ export const ProjectDeliveryView: React.FC<ProjectDeliveryViewProps> = ({
           <span className="text-[11px] text-slate-400">Thêm chuyến xe sẽ tự động tăng số lượng cộng dồn vào đơn</span>
         </div>
 
-        <form onSubmit={handleQuickAddTruck} className="grid grid-cols-1 sm:grid-cols-5 gap-3 items-end text-xs">
+        <form onSubmit={handleQuickAddTruck} className="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end text-xs">
           <div className="space-y-1 sm:col-span-2">
             <label className="font-semibold text-slate-700 flex items-center justify-between">
               <span>Chọn Tài Xế (Biển số xe đi theo) *</span>
@@ -322,16 +332,6 @@ export const ProjectDeliveryView: React.FC<ProjectDeliveryViewProps> = ({
               value={quickVolume}
               onChange={(e) => setQuickVolume(Number(e.target.value))}
               className="w-full p-2 border border-slate-300 rounded-xl font-black text-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500"
-            />
-          </div>
-
-          <div className="space-y-1">
-            <label className="font-semibold text-slate-700">Độ sụt thực đo</label>
-            <input
-              type="text"
-              value={quickSlump}
-              onChange={(e) => setQuickSlump(e.target.value)}
-              className="w-full p-2 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500"
             />
           </div>
 
@@ -383,21 +383,20 @@ export const ProjectDeliveryView: React.FC<ProjectDeliveryViewProps> = ({
                 <th className="py-3 px-3">GIỜ XUẤT</th>
                 <th className="py-3 px-3 text-right">LƯỢNG XUẤT (m³)</th>
                 <th className="py-3 px-3 text-right">LŨY KẾ CỘNG DỒN (m³)</th>
-                <th className="py-3 px-3">ĐỘ SỤT</th>
                 <th className="py-3 px-3">TRẠNG THÁI</th>
                 <th className="py-3 px-3 text-center">THAO TÁC</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {orderTrips.length === 0 ? (
+              {accumulatedOrderTrips.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="py-8 text-center text-slate-400">
+                  <td colSpan={9} className="py-8 text-center text-slate-400">
                     Chưa có chuyến xe nào được điều phối cho công trình này. Nhập biểu mẫu bên trên để cấp xe bồn đầu tiên.
                   </td>
                 </tr>
               ) : (
-                orderTrips.map((trip, index) => {
-                  const accumulated = trip.accumulatedVolume || (order.deliveredVolume);
+                accumulatedOrderTrips.map((trip, index) => {
+                  const accumulated = trip.accumulated;
                   return (
                     <tr
                       key={trip.id}
@@ -435,9 +434,6 @@ export const ProjectDeliveryView: React.FC<ProjectDeliveryViewProps> = ({
                       </td>
                       <td className="py-3 px-3 text-right font-black text-slate-900 text-sm bg-orange-50/40">
                         {accumulated} m³
-                      </td>
-                      <td className="py-3 px-3 text-slate-600 font-medium">
-                        {trip.slumpTested}
                       </td>
                       <td className="py-3 px-3 whitespace-nowrap">
                         {getStatusBadge(trip.status)}

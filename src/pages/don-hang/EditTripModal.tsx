@@ -287,7 +287,7 @@ export const EditTripModal: React.FC<EditTripModalProps> = ({
             </div>
           </div>
 
-          {/* Box 3: Khối lượng, Độ sụt & Giờ xuất */}
+          {/* Box 3: Khối lượng, Ngày giao, Giờ xuất & Trạng thái */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div>
               <label className="block text-[11px] font-bold text-slate-700 mb-1">
@@ -306,26 +306,13 @@ export const EditTripModal: React.FC<EditTripModalProps> = ({
 
             <div>
               <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                Độ Sụt Thực Tế
-              </label>
-              <input
-                type="text"
-                value={slumpTested}
-                onChange={(e) => setSlumpTested(e.target.value)}
-                placeholder="10+-2 hoặc 12+-2"
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500 text-xs"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[11px] font-bold text-slate-700 mb-1">
                 Ngày Giao Bê Tông
               </label>
               <input
                 type="text"
                 value={deliveryDate}
                 onChange={(e) => setDeliveryDate(e.target.value)}
-                placeholder="04/10/2026"
+                placeholder="06/10/2026"
                 className="w-full px-3 py-2 border border-slate-300 rounded-xl font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500 text-xs"
               />
             </div>

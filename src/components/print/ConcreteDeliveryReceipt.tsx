@@ -51,7 +51,8 @@ export const ConcreteDeliveryReceipt: React.FC<ConcreteDeliveryReceiptProps> = (
   const displayDriverName = customDriverName || trip?.driverName || 'Lê Hiền';
   const displayTruckPlate = customTruckPlate || trip?.truckPlate || '51M 23071';
   const displayDepartureTime = customDepartureTime || trip?.departureTime || '15:20';
-  const slump = trip?.slumpTested || order.slump || '10+-2';
+  // Bỏ hiển thị độ sụt kiểm tra tại trạm theo yêu cầu: Hiển thị độ sụt chuẩn theo mác thiết kế của đơn hàng
+  const slump = order.slump || '10+-2';
   const grade = trip?.grade || order.grade || 'M350R7';
 
   // Số phiếu (Ticket Number) và Số chì (Seal Number) là 2 số hoàn toàn khác nhau theo quy tắc
@@ -66,8 +67,8 @@ export const ConcreteDeliveryReceipt: React.FC<ConcreteDeliveryReceiptProps> = (
 
   // Format date DD/MM/YYYY
   const formattedDate = order.deliveryDate
-    ? order.deliveryDate.split('-').reverse().join('/')
-    : '03/10/2026';
+    ? (order.deliveryDate.includes('-') ? order.deliveryDate.split('-').reverse().join('/') : order.deliveryDate)
+    : '06/10/2026';
 
   // Address
   const address = order.notes && order.notes.length > 5 && !order.notes.startsWith('Đơn phát sinh')

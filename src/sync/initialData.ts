@@ -14,7 +14,7 @@ export const INITIAL_ORDERS: ConcreteOrder[] = [
     totalVolume: 750,
     deliveredVolume: 97,
     deliveryTime: '16:00',
-    deliveryDate: '2026-10-04',
+    deliveryDate: '2026-10-06',
     status: 'DANG_CHAY',
     grade: 'M350-7N(10+-2)',
     slump: '10+-2',
@@ -25,7 +25,7 @@ export const INITIAL_ORDERS: ConcreteOrder[] = [
     technicianName: 'Nguyễn Văn Nam',
     distanceKm: 18,
     productionOrder: 'Đồng ý',
-    createdAt: '04/10/2026 04:45',
+    createdAt: '06/10/2026 04:45',
     notes: 'Đổ sàn tầng 4 nhà xưởng GDI TEXTILE',
     assignedTrucksCount: 10,
     updatedAt: new Date().toISOString()
@@ -43,7 +43,7 @@ export const INITIAL_ORDERS: ConcreteOrder[] = [
     totalVolume: 5,
     deliveredVolume: 5,
     deliveryTime: '15:00',
-    deliveryDate: '2026-10-04',
+    deliveryDate: '2026-10-06',
     status: 'HOAN_THANH',
     grade: 'M150',
     slump: '10+-2',
@@ -54,7 +54,7 @@ export const INITIAL_ORDERS: ConcreteOrder[] = [
     technicianName: 'Trần Đình Trọng',
     distanceKm: 14,
     productionOrder: 'Đồng ý',
-    createdAt: '04/10/2026 04:44',
+    createdAt: '06/10/2026 04:44',
     notes: 'Lót móng nhà xưởng HUAMIN',
     assignedTrucksCount: 1,
     updatedAt: new Date().toISOString()
@@ -72,7 +72,7 @@ export const INITIAL_ORDERS: ConcreteOrder[] = [
     totalVolume: 58,
     deliveredVolume: 58,
     deliveryTime: '15:00',
-    deliveryDate: '2026-10-04',
+    deliveryDate: '2026-10-06',
     status: 'HOAN_THANH',
     grade: 'M250',
     slump: '12+-2',
@@ -83,7 +83,7 @@ export const INITIAL_ORDERS: ConcreteOrder[] = [
     technicianName: 'Trần Đình Trọng',
     distanceKm: 14,
     productionOrder: 'Đồng ý',
-    createdAt: '04/10/2026 04:43',
+    createdAt: '06/10/2026 04:43',
     notes: 'Móng nhà xưởng HUAMIN',
     assignedTrucksCount: 6,
     updatedAt: new Date().toISOString()
@@ -101,7 +101,7 @@ export const INITIAL_ORDERS: ConcreteOrder[] = [
     totalVolume: 8,
     deliveredVolume: 8,
     deliveryTime: '15:00',
-    deliveryDate: '2026-10-04',
+    deliveryDate: '2026-10-06',
     status: 'HOAN_THANH',
     grade: 'M250',
     slump: '12+-2',
@@ -112,7 +112,7 @@ export const INITIAL_ORDERS: ConcreteOrder[] = [
     technicianName: 'Lê Hữu Phước',
     distanceKm: 20,
     productionOrder: 'Đồng ý',
-    createdAt: '04/10/2026 04:41',
+    createdAt: '06/10/2026 04:41',
     notes: '',
     assignedTrucksCount: 1,
     updatedAt: new Date().toISOString()
@@ -130,7 +130,7 @@ export const INITIAL_ORDERS: ConcreteOrder[] = [
     totalVolume: 7.2,
     deliveredVolume: 7.2,
     deliveryTime: '09:00',
-    deliveryDate: '2026-10-04',
+    deliveryDate: '2026-10-06',
     status: 'HOAN_THANH',
     grade: 'M300',
     slump: '10+-2',
@@ -141,7 +141,7 @@ export const INITIAL_ORDERS: ConcreteOrder[] = [
     technicianName: 'Nguyễn Văn Nam',
     distanceKm: 26,
     productionOrder: 'Đồng ý',
-    createdAt: '04/10/2026 04:39',
+    createdAt: '06/10/2026 04:39',
     notes: 'Cự ly 26km',
     assignedTrucksCount: 1,
     updatedAt: new Date().toISOString()
@@ -159,7 +159,7 @@ export const INITIAL_ORDERS: ConcreteOrder[] = [
     totalVolume: 12,
     deliveredVolume: 12,
     deliveryTime: '08:00',
-    deliveryDate: '2026-10-04',
+    deliveryDate: '2026-10-06',
     status: 'HOAN_THANH',
     grade: 'M300',
     slump: '14+-2',
@@ -170,7 +170,7 @@ export const INITIAL_ORDERS: ConcreteOrder[] = [
     technicianName: 'Trần Đình Trọng',
     distanceKm: 14,
     productionOrder: 'Đồng ý',
-    createdAt: '04/10/2026 04:37',
+    createdAt: '06/10/2026 04:37',
     notes: 'Bơm Ngang 01 lần <=25',
     assignedTrucksCount: 2,
     updatedAt: new Date().toISOString()
@@ -188,7 +188,7 @@ export const INITIAL_ORDERS: ConcreteOrder[] = [
     totalVolume: 1.5,
     deliveredVolume: 1.5,
     deliveryTime: '08:30',
-    deliveryDate: '2026-10-04',
+    deliveryDate: '2026-10-06',
     status: 'HOAN_THANH',
     grade: 'M250',
     slump: '16+-2',
@@ -199,7 +199,7 @@ export const INITIAL_ORDERS: ConcreteOrder[] = [
     technicianName: 'Hoàng Văn Đức',
     distanceKm: 22,
     productionOrder: 'Đồng ý',
-    createdAt: '04/10/2026 04:34',
+    createdAt: '06/10/2026 04:34',
     notes: '',
     assignedTrucksCount: 1,
     updatedAt: new Date().toISOString()
@@ -277,7 +277,7 @@ export const INITIAL_ORDERS: ConcreteOrder[] = [
     totalVolume: 12,
     deliveredVolume: 10,
     deliveryTime: '17:30',
-    deliveryDate: '2026-10-04',
+    deliveryDate: '2026-10-06',
     status: 'DANG_CHAY',
     grade: 'M350-7N(10+-2)',
     slump: '10+-2',
@@ -288,7 +288,7 @@ export const INITIAL_ORDERS: ConcreteOrder[] = [
     technicianName: 'Nguyễn Văn Nam',
     distanceKm: 18,
     productionOrder: 'Đồng ý',
-    createdAt: '04/10/2026 16:50',
+    createdAt: '06/10/2026 16:50',
     notes: 'Đơn phát sinh tăng 12m³ theo biên bản kiểm tra hiện trường',
     assignedTrucksCount: 1,
     updatedAt: new Date().toISOString()
@@ -308,7 +308,7 @@ export const INITIAL_ORDERS: ConcreteOrder[] = [
     totalVolume: 16,
     deliveredVolume: 16,
     deliveryTime: '11:15',
-    deliveryDate: '2026-10-04',
+    deliveryDate: '2026-10-06',
     status: 'HOAN_THANH',
     grade: 'M400',
     slump: '14+-2',
@@ -319,7 +319,7 @@ export const INITIAL_ORDERS: ConcreteOrder[] = [
     technicianName: 'Bùi Thái Sơn',
     distanceKm: 15,
     productionOrder: 'Đồng ý',
-    createdAt: '04/10/2026 10:20',
+    createdAt: '06/10/2026 10:20',
     notes: 'Đơn phát sinh điều phối trực tiếp tại trạm Tây Ninh',
     assignedTrucksCount: 2,
     updatedAt: new Date().toISOString()
@@ -404,8 +404,8 @@ export const INITIAL_TRIPS: DispatchTrip[] = [
     concreteName: 'M350-7N(10+-2)',
     unit: 'm3',
     plantLocation: 'Tây Ninh',
-    entryDate: '04/10/2026 16:02',
-    deliveryDate: '04/10/2026'
+    entryDate: '06/10/2026 16:02',
+    deliveryDate: '06/10/2026'
   },
   {
     id: 'trip-knl-09',
@@ -426,8 +426,8 @@ export const INITIAL_TRIPS: DispatchTrip[] = [
     concreteName: 'M350-7N(10+-2)',
     unit: 'm3',
     plantLocation: 'Tây Ninh',
-    entryDate: '04/10/2026 15:58',
-    deliveryDate: '04/10/2026'
+    entryDate: '06/10/2026 15:58',
+    deliveryDate: '06/10/2026'
   },
   {
     id: 'trip-knl-08',
@@ -448,8 +448,8 @@ export const INITIAL_TRIPS: DispatchTrip[] = [
     concreteName: 'M350-7N(10+-2)',
     unit: 'm3',
     plantLocation: 'Tây Ninh',
-    entryDate: '04/10/2026 15:53',
-    deliveryDate: '04/10/2026'
+    entryDate: '06/10/2026 15:53',
+    deliveryDate: '06/10/2026'
   },
   {
     id: 'trip-knl-07',
@@ -470,8 +470,8 @@ export const INITIAL_TRIPS: DispatchTrip[] = [
     concreteName: 'M350-7N(10+-2)',
     unit: 'm3',
     plantLocation: 'Tây Ninh',
-    entryDate: '04/10/2026 15:44',
-    deliveryDate: '04/10/2026'
+    entryDate: '06/10/2026 15:44',
+    deliveryDate: '06/10/2026'
   },
   {
     id: 'trip-knl-06',
@@ -492,8 +492,8 @@ export const INITIAL_TRIPS: DispatchTrip[] = [
     concreteName: 'M350-7N(10+-2)',
     unit: 'm3',
     plantLocation: 'Tây Ninh',
-    entryDate: '04/10/2026 15:41',
-    deliveryDate: '04/10/2026'
+    entryDate: '06/10/2026 15:41',
+    deliveryDate: '06/10/2026'
   },
   {
     id: 'trip-knl-05',
@@ -514,8 +514,8 @@ export const INITIAL_TRIPS: DispatchTrip[] = [
     concreteName: 'M350-7N(10+-2)',
     unit: 'm3',
     plantLocation: 'Tây Ninh',
-    entryDate: '04/10/2026 15:36',
-    deliveryDate: '04/10/2026'
+    entryDate: '06/10/2026 15:36',
+    deliveryDate: '06/10/2026'
   },
   {
     id: 'trip-knl-04',
@@ -536,8 +536,8 @@ export const INITIAL_TRIPS: DispatchTrip[] = [
     concreteName: 'M350-7N(10+-2)',
     unit: 'm3',
     plantLocation: 'Tây Ninh',
-    entryDate: '04/10/2026 15:25',
-    deliveryDate: '04/10/2026'
+    entryDate: '06/10/2026 15:25',
+    deliveryDate: '06/10/2026'
   },
   {
     id: 'trip-knl-03',
@@ -558,8 +558,8 @@ export const INITIAL_TRIPS: DispatchTrip[] = [
     concreteName: 'M350-7N(10+-2)',
     unit: 'm3',
     plantLocation: 'Tây Ninh',
-    entryDate: '04/10/2026 15:24',
-    deliveryDate: '04/10/2026'
+    entryDate: '06/10/2026 15:24',
+    deliveryDate: '06/10/2026'
   },
   {
     id: 'trip-knl-02',
@@ -580,8 +580,8 @@ export const INITIAL_TRIPS: DispatchTrip[] = [
     concreteName: 'M350-7N(10+-2)',
     unit: 'm3',
     plantLocation: 'Tây Ninh',
-    entryDate: '04/10/2026 15:21',
-    deliveryDate: '04/10/2026'
+    entryDate: '06/10/2026 15:21',
+    deliveryDate: '06/10/2026'
   },
   {
     id: 'trip-knl-01',
@@ -602,8 +602,8 @@ export const INITIAL_TRIPS: DispatchTrip[] = [
     concreteName: 'M350-7N(10+-2)',
     unit: 'm3',
     plantLocation: 'Tây Ninh',
-    entryDate: '04/10/2026 15:18',
-    deliveryDate: '04/10/2026'
+    entryDate: '06/10/2026 15:18',
+    deliveryDate: '06/10/2026'
   },
   // Trip phát sinh Ngày 04/10
   {
@@ -625,8 +625,8 @@ export const INITIAL_TRIPS: DispatchTrip[] = [
     concreteName: 'M350-7N(10+-2)',
     unit: 'm3',
     plantLocation: 'Tây Ninh',
-    entryDate: '04/10/2026 17:15',
-    deliveryDate: '04/10/2026'
+    entryDate: '06/10/2026 17:15',
+    deliveryDate: '06/10/2026'
   },
   {
     id: 'trip-ps-02',
@@ -647,8 +647,8 @@ export const INITIAL_TRIPS: DispatchTrip[] = [
     concreteName: 'M400-R7',
     unit: 'm3',
     plantLocation: 'Tây Ninh',
-    entryDate: '04/10/2026 11:05',
-    deliveryDate: '04/10/2026'
+    entryDate: '06/10/2026 11:05',
+    deliveryDate: '06/10/2026'
   },
   {
     id: 'trip-ps-03',
@@ -669,8 +669,8 @@ export const INITIAL_TRIPS: DispatchTrip[] = [
     concreteName: 'M400-R7',
     unit: 'm3',
     plantLocation: 'Tây Ninh',
-    entryDate: '04/10/2026 11:30',
-    deliveryDate: '04/10/2026'
+    entryDate: '06/10/2026 11:30',
+    deliveryDate: '06/10/2026'
   },
   // Các chuyến xe Ngày 03/10/2026
   {

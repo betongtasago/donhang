@@ -32,19 +32,17 @@ export const DispatchAssignModal: React.FC<DispatchAssignModalProps> = ({ order,
   const [driverName, setDriverName] = useState<string>(availableTrucks[0]?.driverName || 'Nguyễn Văn Thọ');
   const [driverPhone, setDriverPhone] = useState<string>(availableTrucks[0]?.driverPhone || '0903 112 018');
   const [volume, setVolume] = useState<number>(10);
-  const [slumpTested, setSlumpTested] = useState('14.0 cm');
 
   // Quản lý thời gian xuất phiếu & giao hàng (User yêu cầu: Khi tạo phiếu phải cho chỉnh thời gian)
   const getInitialTimes = () => {
     const now = new Date();
     const curH = String(now.getHours()).padStart(2, '0');
     const curM = String(now.getMinutes()).padStart(2, '0');
-    const arrDate = new Date(now.getTime() + 45 * 60 * 1000);
-    const arrH = String(arrDate.getHours()).padStart(2, '0');
-    const arrM = String(arrDate.getMinutes()).padStart(2, '0');
+    const curY = now.getFullYear();
+    const curMonth = String(now.getMonth() + 1).padStart(2, '0');
+    const curD = String(now.getDate()).padStart(2, '0');
+    let initDate = `${curY}-${curMonth}-${curD}`;
 
-    // Chuyển order.deliveryDate (VD: "04/10/2026") sang YYYY-MM-DD cho input date nếu có
-    let initDate = '2026-10-06';
     if (order.deliveryDate) {
       if (order.deliveryDate.includes('/')) {
         const parts = order.deliveryDate.split('/');
@@ -58,13 +56,11 @@ export const DispatchAssignModal: React.FC<DispatchAssignModalProps> = ({ order,
 
     return {
       dep: `${curH}:${curM}`,
-      arr: `${arrH}:${arrM}`,
       date: initDate
     };
   };
 
   const [departureTime, setDepartureTime] = useState<string>(() => getInitialTimes().dep);
-  const [arrivalEstimate, setArrivalEstimate] = useState<string>(() => getInitialTimes().arr);
   const [deliveryDate, setDeliveryDate] = useState<string>(() => getInitialTimes().date);
 
   // Số phiếu và số niêm chì tùy chỉnh
@@ -121,14 +117,7 @@ export const DispatchAssignModal: React.FC<DispatchAssignModalProps> = ({ order,
 
       const newH = String(Math.floor(totalM / 60)).padStart(2, '0');
       const newM = String(totalM % 60).padStart(2, '0');
-      const nextDep = `${newH}:${newM}`;
-      setDepartureTime(nextDep);
-
-      // Tự động tịnh tiến thời gian dự kiến đến công trường theo thời gian chạy xe (+45 phút)
-      const arrTotal = (totalM + 45) % (24 * 60);
-      const nextArrH = String(Math.floor(arrTotal / 60)).padStart(2, '0');
-      const nextArrM = String(arrTotal % 60).padStart(2, '0');
-      setArrivalEstimate(`${nextArrH}:${nextArrM}`);
+      setDepartureTime(`${newH}:${newM}`);
     } catch {
       // Ignore
     }
@@ -140,10 +129,10 @@ export const DispatchAssignModal: React.FC<DispatchAssignModalProps> = ({ order,
     const curM = String(now.getMinutes()).padStart(2, '0');
     setDepartureTime(`${curH}:${curM}`);
 
-    const arrDate = new Date(now.getTime() + 45 * 60 * 1000);
-    const arrH = String(arrDate.getHours()).padStart(2, '0');
-    const arrM = String(arrDate.getMinutes()).padStart(2, '0');
-    setArrivalEstimate(`${arrH}:${arrM}`);
+    const curY = now.getFullYear();
+    const curMonth = String(now.getMonth() + 1).padStart(2, '0');
+    const curD = String(now.getDate()).padStart(2, '0');
+    setDeliveryDate(`${curY}-${curMonth}-${curD}`);
   };
 
   if (!isOpen) return null;
@@ -176,13 +165,13 @@ export const DispatchAssignModal: React.FC<DispatchAssignModalProps> = ({ order,
       driverPhone: driverPhone.trim() || '0903 555 777',
       volume,
       departureTime: departureTime.trim(),
-      arrivalEstimate: arrivalEstimate.trim(),
+      arrivalEstimate: '',
       deliveryDate: formattedDeliveryDate,
       entryDate: `${formattedDeliveryDate} ${departureTime.trim()}`,
       ticketNumber: ticketNumber.trim() || undefined,
       sealNumber: sealNumber.trim() || undefined,
       status: 'DANG_NAP',
-      slumpTested,
+      slumpTested: order.slump || '10+-2',
       grade: order.grade
     });
 
@@ -245,7 +234,7 @@ export const DispatchAssignModal: React.FC<DispatchAssignModalProps> = ({ order,
               </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {/* Ngày cấp */}
               <div className="space-y-1">
                 <label className="text-[11px] font-semibold text-slate-700 flex items-center gap-1">
@@ -273,20 +262,6 @@ export const DispatchAssignModal: React.FC<DispatchAssignModalProps> = ({ order,
                   value={departureTime}
                   onChange={(e) => setDepartureTime(e.target.value)}
                   className="w-full px-2.5 py-1.5 bg-white border border-blue-300 rounded-lg text-xs font-bold text-orange-600 focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono"
-                />
-              </div>
-
-              {/* Giờ đến dự kiến */}
-              <div className="space-y-1">
-                <label className="text-[11px] font-semibold text-slate-700 flex items-center gap-1">
-                  <Clock className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Giờ đến CT dự kiến</span>
-                </label>
-                <input
-                  type="time"
-                  value={arrivalEstimate}
-                  onChange={(e) => setArrivalEstimate(e.target.value)}
-                  className="w-full px-2.5 py-1.5 bg-white border border-blue-300 rounded-lg text-xs font-semibold text-emerald-700 focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono"
                 />
               </div>
             </div>

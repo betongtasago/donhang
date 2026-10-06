@@ -23,22 +23,32 @@ import { useSync } from '../../sync/SyncContext';
 import { ConcreteOrder } from '../../types';
 import * as XLSX from 'xlsx';
 
+const getTodayIso = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+const getYesterdayIso = () => {
+  const d = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
 export const BaoCaoSanXuatView: React.FC = () => {
   const { orders, trips } = useSync();
 
   // Filter states
-  const [selectedDate, setSelectedDate] = useState<string>('2026-10-04');
+  const [selectedDate, setSelectedDate] = useState<string>(getTodayIso);
   const [dateQuickFilter, setDateQuickFilter] = useState<'ALL' | 'TODAY' | 'YESTERDAY' | 'LAST_3_DAYS' | 'RANGE' | 'CUSTOM'>('TODAY');
   const [rangeFromDate, setRangeFromDate] = useState<string>('2026-10-01');
-  const [rangeToDate, setRangeToDate] = useState<string>('2026-10-06');
+  const [rangeToDate, setRangeToDate] = useState<string>(getTodayIso);
   const [isRangeOpen, setIsRangeOpen] = useState<boolean>(false);
   const [filterProjectType, setFilterProjectType] = useState<string>('ALL'); // ALL, DA, DD
   const [filterOrderType, setFilterOrderType] = useState<string>('ALL'); // ALL, CHINH, PHAT_SINH
   const [searchTerm, setSearchTerm] = useState<string>('');
 
   // Bảng Lịch Popover Siêu Nhỏ Gọn
-  const [calendarYear, setCalendarYear] = useState<number>(2026);
-  const [calendarMonth, setCalendarMonth] = useState<number>(9); // 0-indexed: 9 = Tháng 10
+  const [calendarYear, setCalendarYear] = useState<number>(() => new Date().getFullYear());
+  const [calendarMonth, setCalendarMonth] = useState<number>(() => new Date().getMonth()); // 0-indexed
   const [isCalendarOpen, setIsCalendarOpen] = useState<boolean>(false);
 
   // Chuyển đổi ngày YYYY-MM-DD và DD/MM/YYYY
@@ -158,7 +168,7 @@ export const BaoCaoSanXuatView: React.FC = () => {
       const dateIso = `${calendarYear}-${monthStr}-${dayStr}`;
       const dateDmy = `${dayStr}/${monthStr}/${calendarYear}`;
       const count = ordersCountByDate[dateIso] || 0;
-      const isToday = dateIso === '2026-10-04';
+      const isToday = dateIso === getTodayIso();
       const isSelected = selectedDate === dateIso;
 
       days.push({
@@ -199,9 +209,15 @@ export const BaoCaoSanXuatView: React.FC = () => {
     if (mode === 'ALL') {
       setSelectedDate('');
     } else if (mode === 'TODAY') {
-      setSelectedDate('2026-10-04');
+      const cur = new Date();
+      setCalendarYear(cur.getFullYear());
+      setCalendarMonth(cur.getMonth());
+      setSelectedDate(getTodayIso());
     } else if (mode === 'YESTERDAY') {
-      setSelectedDate('2026-10-03');
+      const yest = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      setCalendarYear(yest.getFullYear());
+      setCalendarMonth(yest.getMonth());
+      setSelectedDate(getYesterdayIso());
     } else if (mode === 'LAST_3_DAYS') {
       setSelectedDate('');
     }
@@ -222,7 +238,12 @@ export const BaoCaoSanXuatView: React.FC = () => {
         if (!oDate) return false;
         if (oDate < rangeFromDate || oDate > rangeToDate) return false;
       } else if (dateQuickFilter === 'LAST_3_DAYS') {
-        const last3 = ['2026-10-04', '2026-10-03', '2026-10-02'];
+        const dNow = new Date();
+        const d1 = new Date(dNow.getTime());
+        const d2 = new Date(dNow.getTime() - 24 * 60 * 60 * 1000);
+        const d3 = new Date(dNow.getTime() - 2 * 24 * 60 * 60 * 1000);
+        const toIso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const last3 = [toIso(d1), toIso(d2), toIso(d3)];
         if (!last3.includes(oDate)) return false;
       } else if (selectedDate) {
         let sDate = selectedDate;
@@ -511,9 +532,10 @@ export const BaoCaoSanXuatView: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => {
-                              setCalendarYear(2026);
-                              setCalendarMonth(9);
-                              setSelectedDate('2026-10-04');
+                              const cur = new Date();
+                              setCalendarYear(cur.getFullYear());
+                              setCalendarMonth(cur.getMonth());
+                              setSelectedDate(getTodayIso());
                               setDateQuickFilter('TODAY');
                               setIsCalendarOpen(false);
                             }}
@@ -629,7 +651,7 @@ export const BaoCaoSanXuatView: React.FC = () => {
                   type="button"
                   onClick={() => handleSelectQuickDate('TODAY')}
                   className={`px-2 py-1 rounded-md text-[11px] font-bold transition cursor-pointer shrink-0 ${
-                    selectedDate === '2026-10-04'
+                    dateQuickFilter === 'TODAY' || selectedDate === getTodayIso()
                       ? 'bg-orange-600 text-white shadow-2xs'
                       : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
                   }`}
@@ -641,7 +663,7 @@ export const BaoCaoSanXuatView: React.FC = () => {
                   type="button"
                   onClick={() => handleSelectQuickDate('YESTERDAY')}
                   className={`px-2 py-1 rounded-md text-[11px] font-bold transition cursor-pointer shrink-0 ${
-                    selectedDate === '2026-10-03'
+                    dateQuickFilter === 'YESTERDAY' || selectedDate === getYesterdayIso()
                       ? 'bg-orange-600 text-white shadow-2xs'
                       : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
                   }`}

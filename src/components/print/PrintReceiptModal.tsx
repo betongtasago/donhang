@@ -83,46 +83,51 @@ export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({
   const [isDrawing, setIsDrawing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Compute all trips for this order to calculate REAL cumulative volume
-  // Exact same sorting as in DANH SÁCH CÁC CHUYẾN XE BỒN ĐÃ CẤP CHO ĐƠN HÀNG
-  const orderTrips = useMemo(() => {
-    return trips
+  // Compute all trips for this order with exact running cumulative volume
+  // Exact same calculation and sorting as in DANH SÁCH CÁC CHUYẾN XE BỒN ĐÃ CẤP CHO ĐƠN HÀNG
+  const orderTripsWithAccumulation = useMemo(() => {
+    const sorted = trips
       .filter(t => t.orderId === order.id || t.orderCode === order.code)
       .sort((a, b) => (a.departureTime || '').localeCompare(b.departureTime || ''));
+
+    let acc = 0;
+    return sorted.map((t, idx) => {
+      const prevAcc = acc;
+      acc += (t.volume || 0);
+      return {
+        ...t,
+        tripIndex: idx + 1,
+        stepPreviousVolume: Number(prevAcc.toFixed(2)),
+        stepAccumulatedVolume: Number(acc.toFixed(2))
+      };
+    });
   }, [trips, order.id, order.code]);
 
   // Find index of current trip in orderTrips
   const tripIdx = useMemo(() => {
-    if (!trip) return orderTrips.length > 0 ? (orderTrips.length - 1) : -1;
-    const found = orderTrips.findIndex(t => t.id === trip.id || t.ticketNumber === trip.ticketNumber);
-    return found >= 0 ? found : (orderTrips.length > 0 ? orderTrips.length - 1 : -1);
-  }, [orderTrips, trip]);
+    if (!trip) return orderTripsWithAccumulation.length > 0 ? (orderTripsWithAccumulation.length - 1) : -1;
+    const found = orderTripsWithAccumulation.findIndex(t => t.id === trip.id || (t.ticketNumber && t.ticketNumber === trip.ticketNumber));
+    return found >= 0 ? found : (orderTripsWithAccumulation.length > 0 ? orderTripsWithAccumulation.length - 1 : -1);
+  }, [orderTripsWithAccumulation, trip]);
 
   // Target trip object
   const targetTrip = useMemo(() => {
+    if (tripIdx >= 0 && orderTripsWithAccumulation[tripIdx]) return orderTripsWithAccumulation[tripIdx];
     if (trip) return trip;
-    if (tripIdx >= 0 && orderTrips[tripIdx]) return orderTrips[tripIdx];
     return null;
-  }, [trip, tripIdx, orderTrips]);
+  }, [trip, tripIdx, orderTripsWithAccumulation]);
 
   // Volume of current trip
   const defaultCurrentVol = targetTrip ? targetTrip.volume : 10;
 
-  // Real cumulative previous volume (sum of all trips before this one)
+  // Real cumulative previous volume (sum of all trips before this one in the order)
   // Must exactly match the running accumulated volume in DANH SÁCH CÁC CHUYẾN XE BỒN ĐÃ CẤP CHO ĐƠN HÀNG
   const autoPreviousVolume = useMemo(() => {
-    // If target trip has accumulatedVolume explicitly set:
-    if (targetTrip?.accumulatedVolume !== undefined && targetTrip.accumulatedVolume > 0) {
-      return Math.max(0, Number((targetTrip.accumulatedVolume - defaultCurrentVol).toFixed(2)));
+    if (tripIdx >= 0 && orderTripsWithAccumulation[tripIdx]) {
+      return orderTripsWithAccumulation[tripIdx].stepPreviousVolume;
     }
-    // Otherwise calculate from trips prior to tripIdx
-    if (tripIdx <= 0 || orderTrips.length === 0) return 0;
-    let sum = 0;
-    for (let i = 0; i < tripIdx; i++) {
-      sum += (orderTrips[i].volume || 0);
-    }
-    return Number(sum.toFixed(2));
-  }, [targetTrip, defaultCurrentVol, tripIdx, orderTrips]);
+    return 0;
+  }, [tripIdx, orderTripsWithAccumulation]);
 
   const [customCurrentVolume, setCustomCurrentVolume] = useState<number>(defaultCurrentVol);
   const [customPreviousVolume, setCustomPreviousVolume] = useState<number>(autoPreviousVolume);
@@ -137,12 +142,9 @@ export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({
       const tripVol = targetTrip.volume || 10;
       setCustomCurrentVolume(tripVol);
 
-      let prevVol = 0;
-      if (targetTrip.accumulatedVolume !== undefined && targetTrip.accumulatedVolume > 0) {
-        prevVol = Math.max(0, Number((targetTrip.accumulatedVolume - tripVol).toFixed(2)));
-      } else {
-        prevVol = autoPreviousVolume;
-      }
+      const prevVol = (tripIdx >= 0 && orderTripsWithAccumulation[tripIdx])
+        ? orderTripsWithAccumulation[tripIdx].stepPreviousVolume
+        : 0;
       setCustomPreviousVolume(prevVol);
 
       let tripTicket = targetTrip.ticketNumber;
@@ -175,7 +177,7 @@ export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({
       setTicketSerial(randTicket);
       setSealNumber(generateRandomSealNumber(randTicket));
     }
-  }, [targetTrip, autoPreviousVolume, order.deliveredVolume]);
+  }, [targetTrip, tripIdx, orderTripsWithAccumulation, order.deliveredVolume]);
 
   // Tự động đồng bộ biển số xe khi chọn hoặc sửa tên tài xế theo danh sách mặc định
   const handleDriverChange = (name: string) => {

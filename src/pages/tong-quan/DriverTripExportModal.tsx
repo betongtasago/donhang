@@ -152,13 +152,18 @@ export const DriverTripExportModal: React.FC<DriverTripExportModalProps> = ({
     }
   };
 
+  const currentDayOfMonth = new Date().getDate();
+
   const handleSelectToday = () => {
-    const todayDay = 4; // Mock date 04/10/2026
-    setSelectedDays([todayDay]);
+    setSelectedDays([Math.min(currentDayOfMonth, daysInMonth)]);
   };
 
   const handleSelectLast3Days = () => {
-    setSelectedDays([2, 3, 4].filter(d => d <= daysInMonth));
+    const d3 = Math.max(1, currentDayOfMonth - 2);
+    const d2 = Math.max(1, currentDayOfMonth - 1);
+    const d1 = Math.min(currentDayOfMonth, daysInMonth);
+    const days = Array.from(new Set([d3, d2, d1])).filter(d => d <= daysInMonth);
+    setSelectedDays(days);
   };
 
   const handleSelectFirst7Days = () => {
@@ -470,7 +475,7 @@ export const DriverTripExportModal: React.FC<DriverTripExportModalProps> = ({
         item.order?.projectTitle || 'CÔNG TRÌNH TÂY NINH',
         item.order?.categoryItem || 'Sàn',
         item.trip.grade || item.order?.grade || 'M350',
-        item.trip.slumpTested || item.order?.slump || '10+-2',
+        item.order?.slump || item.trip.slumpTested || '10+-2',
         item.vol,
         item.km,
         item.roundKm,
@@ -598,7 +603,7 @@ export const DriverTripExportModal: React.FC<DriverTripExportModalProps> = ({
                 onClick={handleSelectToday}
                 className="px-3 py-1.5 rounded-xl bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200 font-bold text-xs transition cursor-pointer shadow-2xs"
               >
-                🎯 Ngày 04 (Hôm nay)
+                🎯 Ngày {String(currentDayOfMonth).padStart(2, '0')} (Hôm nay)
               </button>
 
               <button
@@ -606,7 +611,7 @@ export const DriverTripExportModal: React.FC<DriverTripExportModalProps> = ({
                 onClick={handleSelectLast3Days}
                 className="px-3 py-1.5 rounded-xl bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200 font-bold text-xs transition cursor-pointer shadow-2xs"
               >
-                📅 3 ngày gần nhất (2, 3, 4)
+                📅 3 ngày gần nhất ({Math.max(1, currentDayOfMonth - 2)}, {Math.max(1, currentDayOfMonth - 1)}, {currentDayOfMonth})
               </button>
 
               <button
