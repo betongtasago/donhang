@@ -28,6 +28,7 @@ import * as XLSX from 'xlsx';
 import { BangSapTaiPage } from '../bang-sap-tai';
 import { CompanyProjectKmView } from './CompanyProjectKmView';
 import { DriverTripExportModal } from './DriverTripExportModal';
+import { InteractiveTiltCard } from '../../components/animations/InteractiveTiltCard';
 
 interface DriverMonthlySummary {
   driverName: string;
@@ -554,86 +555,94 @@ export const TongQuanPage: React.FC = () => {
           {/* Top Summary KPI Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             {/* KPI 1: Tổng chuyến */}
-            <div className="p-4 bg-white rounded-2xl border border-slate-200/90 shadow-xs flex items-center justify-between">
-              <div>
-                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                  Tổng Chuyến Xe Xuất
-                </p>
-                <div className="flex items-baseline gap-2 mt-1">
-                  <span className="text-2xl font-black text-blue-900">{monthlyMetrics.totalTrips}</span>
-                  <span className="text-xs text-slate-500 font-semibold">chuyến</span>
+            <InteractiveTiltCard className="h-full">
+              <div className="p-4 bg-white rounded-2xl border border-slate-200/90 shadow-xs flex items-center justify-between hover-lift h-full cursor-pointer">
+                <div>
+                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                    Tổng Chuyến Xe Xuất
+                  </p>
+                  <div className="flex items-baseline gap-2 mt-1">
+                    <span className="text-2xl font-black text-blue-900">{monthlyMetrics.totalTrips}</span>
+                    <span className="text-xs text-slate-500 font-semibold">chuyến</span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    <strong className="text-emerald-700">{monthlyMetrics.largeTrips}</strong> chuyến lớn ·{' '}
+                    <strong className="text-amber-700">{monthlyMetrics.smallTrips}</strong> chuyến nhỏ
+                  </p>
                 </div>
-                <p className="text-[11px] text-slate-500 mt-1">
-                  <strong className="text-emerald-700">{monthlyMetrics.largeTrips}</strong> chuyến lớn ·{' '}
-                  <strong className="text-amber-700">{monthlyMetrics.smallTrips}</strong> chuyến nhỏ
-                </p>
+                <div className="w-11 h-11 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                  <Truck className="w-6 h-6" />
+                </div>
               </div>
-              <div className="w-11 h-11 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                <Truck className="w-6 h-6" />
-              </div>
-            </div>
+            </InteractiveTiltCard>
 
             {/* KPI 2: Tổng Km vận chuyển */}
-            <div className="p-4 bg-white rounded-2xl border border-slate-200/90 shadow-xs flex items-center justify-between">
-              <div>
-                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                  Tổng Cự Ly Chạy (1 chiều)
-                </p>
-                <div className="flex items-baseline gap-1.5 mt-1">
-                  <span className="text-2xl font-black text-emerald-900">{monthlyMetrics.totalKm}</span>
-                  <span className="text-xs text-slate-500 font-semibold">Km</span>
+            <InteractiveTiltCard className="h-full">
+              <div className="p-4 bg-white rounded-2xl border border-slate-200/90 shadow-xs flex items-center justify-between hover-lift h-full cursor-pointer">
+                <div>
+                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                    Tổng Cự Ly Chạy (1 chiều)
+                  </p>
+                  <div className="flex items-baseline gap-1.5 mt-1">
+                    <span className="text-2xl font-black text-emerald-900">{monthlyMetrics.totalKm}</span>
+                    <span className="text-xs text-slate-500 font-semibold">Km</span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    Khứ hồi: <strong>{monthlyMetrics.totalRoundKm} Km</strong>
+                  </p>
                 </div>
-                <p className="text-[11px] text-slate-500 mt-1">
-                  Khứ hồi: <strong>{monthlyMetrics.totalRoundKm} Km</strong>
-                </p>
+                <div className="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                  <MapPin className="w-6 h-6" />
+                </div>
               </div>
-              <div className="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                <MapPin className="w-6 h-6" />
-              </div>
-            </div>
+            </InteractiveTiltCard>
 
             {/* KPI 3: Tổng m³ vận chuyển */}
-            <div className="p-4 bg-white rounded-2xl border border-slate-200/90 shadow-xs flex items-center justify-between">
-              <div>
-                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                  Tổng Khối Lượng Bê Tông
-                </p>
-                <div className="flex items-baseline gap-1.5 mt-1">
-                  <span className="text-2xl font-black text-orange-900">{monthlyMetrics.totalVolume}</span>
-                  <span className="text-xs text-slate-500 font-semibold">m³</span>
+            <InteractiveTiltCard className="h-full">
+              <div className="p-4 bg-white rounded-2xl border border-slate-200/90 shadow-xs flex items-center justify-between hover-lift h-full cursor-pointer">
+                <div>
+                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                    Tổng Khối Lượng Bê Tông
+                  </p>
+                  <div className="flex items-baseline gap-1.5 mt-1">
+                    <span className="text-2xl font-black text-orange-900">{monthlyMetrics.totalVolume}</span>
+                    <span className="text-xs text-slate-500 font-semibold">m³</span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    {monthlyMetrics.totalTrips > 0
+                      ? `TB: ${(monthlyMetrics.totalVolume / monthlyMetrics.totalTrips).toFixed(1)} m³/chuyến`
+                      : 'Chưa có chuyến'}
+                  </p>
                 </div>
-                <p className="text-[11px] text-slate-500 mt-1">
-                  {monthlyMetrics.totalTrips > 0
-                    ? `TB: ${(monthlyMetrics.totalVolume / monthlyMetrics.totalTrips).toFixed(1)} m³/chuyến`
-                    : 'Chưa có chuyến'}
-                </p>
+                <div className="w-11 h-11 rounded-2xl bg-orange-50 text-orange-600 flex items-center justify-center shrink-0">
+                  <TrendingUp className="w-6 h-6" />
+                </div>
               </div>
-              <div className="w-11 h-11 rounded-2xl bg-orange-50 text-orange-600 flex items-center justify-center shrink-0">
-                <TrendingUp className="w-6 h-6" />
-              </div>
-            </div>
+            </InteractiveTiltCard>
 
             {/* KPI 4: Tài xế năng suất nhất */}
-            <div className="p-4 bg-white rounded-2xl border border-slate-200/90 shadow-xs flex items-center justify-between">
-              <div className="min-w-0 pr-2">
-                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                  Tài Xế Dẫn Đầu Tháng
-                </p>
-                <div className="mt-1 truncate">
-                  <span className="text-lg font-black text-slate-900 truncate block">
-                    {monthlyMetrics.topDriver ? monthlyMetrics.topDriver.driverName : 'Chưa có dữ liệu'}
-                  </span>
+            <InteractiveTiltCard className="h-full">
+              <div className="p-4 bg-white rounded-2xl border border-slate-200/90 shadow-xs flex items-center justify-between hover-lift h-full cursor-pointer">
+                <div className="min-w-0 pr-2">
+                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                    Tài Xế Dẫn Đầu Tháng
+                  </p>
+                  <div className="mt-1 truncate">
+                    <span className="text-lg font-black text-slate-900 truncate block">
+                      {monthlyMetrics.topDriver ? monthlyMetrics.topDriver.driverName : 'Chưa có dữ liệu'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 mt-1 truncate">
+                    {monthlyMetrics.topDriver
+                      ? `${monthlyMetrics.topDriver.totalTrips} chuyến · ${monthlyMetrics.topDriver.totalDistanceKm} Km`
+                      : '0 chuyến'}
+                  </p>
                 </div>
-                <p className="text-[11px] text-slate-500 mt-1 truncate">
-                  {monthlyMetrics.topDriver
-                    ? `${monthlyMetrics.topDriver.totalTrips} chuyến · ${monthlyMetrics.topDriver.totalDistanceKm} Km`
-                    : '0 chuyến'}
-                </p>
+                <div className="w-11 h-11 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                  <Award className="w-6 h-6" />
+                </div>
               </div>
-              <div className="w-11 h-11 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-                <Award className="w-6 h-6" />
-              </div>
-            </div>
+            </InteractiveTiltCard>
           </div>
 
           {/* Search and Sort Filter Toolbar */}

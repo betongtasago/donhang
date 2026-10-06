@@ -36,6 +36,260 @@
   animation: pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
+/* ========================================================================= */
+/* 1. RANDOM PAGE / SCREEN TRANSITIONS (HIỆU ỨNG CHUYỂN TRANG NGẪU NHIÊN)    */
+/* ========================================================================= */
+@keyframes pageZoomGlow {
+  0% {
+    opacity: 0;
+    transform: scale(0.94);
+    filter: brightness(1.15) contrast(1.05);
+  }
+  60% {
+    filter: brightness(1.03);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    filter: brightness(1) contrast(1);
+  }
+}
+
+@keyframes pageSlideSpring {
+  0% {
+    opacity: 0;
+    transform: translateX(38px) scale(0.98);
+  }
+  75% {
+    transform: translateX(-4px) scale(1.004);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes pagePerspectiveTilt {
+  0% {
+    opacity: 0;
+    transform: perspective(1200px) rotateX(7deg) translateY(24px) scale(0.96);
+    transform-origin: 50% 0%;
+  }
+  100% {
+    opacity: 1;
+    transform: perspective(1200px) rotateX(0deg) translateY(0) scale(1);
+    transform-origin: 50% 50%;
+  }
+}
+
+@keyframes pageBlurDissolve {
+  0% {
+    opacity: 0;
+    filter: blur(10px);
+    transform: scale(0.975);
+  }
+  50% {
+    filter: blur(4px);
+  }
+  100% {
+    opacity: 1;
+    filter: blur(0px);
+    transform: scale(1);
+  }
+}
+
+@keyframes pageCurtainReveal {
+  0% {
+    opacity: 0;
+    clip-path: polygon(0 0, 100% 0, 100% 0, 0 0);
+    transform: translateY(-14px);
+  }
+  100% {
+    opacity: 1;
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+    transform: translateY(0);
+  }
+}
+
+@keyframes pageElasticRise {
+  0% {
+    opacity: 0;
+    transform: translateY(34px) scale(0.96);
+  }
+  65% {
+    opacity: 1;
+    transform: translateY(-5px) scale(1.008);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes pageFlipHorizon {
+  0% {
+    opacity: 0;
+    transform: perspective(1400px) rotateY(-8deg) scale(0.95);
+    transform-origin: 0% 50%;
+  }
+  100% {
+    opacity: 1;
+    transform: perspective(1400px) rotateY(0deg) scale(1);
+    transform-origin: 50% 50%;
+  }
+}
+
+@keyframes pagePrismSweep {
+  0% {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.transition-zoom-glow {
+  animation: pageZoomGlow 0.42s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity, filter;
+}
+
+.transition-slide-spring {
+  animation: pageSlideSpring 0.45s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+  will-change: transform, opacity;
+}
+
+.transition-perspective-tilt {
+  animation: pagePerspectiveTilt 0.48s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity;
+}
+
+.transition-blur-dissolve {
+  animation: pageBlurDissolve 0.38s cubic-bezier(0.25, 1, 0.5, 1) both;
+  will-change: filter, opacity, transform;
+}
+
+.transition-curtain-reveal {
+  animation: pageCurtainReveal 0.46s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: clip-path, transform, opacity;
+}
+
+.transition-elastic-rise {
+  animation: pageElasticRise 0.48s cubic-bezier(0.2, 0.85, 0.35, 1.05) both;
+  will-change: transform, opacity;
+}
+
+.transition-flip-horizon {
+  animation: pageFlipHorizon 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity;
+}
+
+.transition-prism-sweep {
+  animation: pagePrismSweep 0.35s ease-out both;
+  will-change: transform, opacity;
+}
+
+/* ========================================================================= */
+/* 2. HOVER EFFECTS & MICRO-INTERACTIONS (HIỆU ỨNG DI CHUỘT / TƯƠNG TÁC)     */
+/* ========================================================================= */
+.hover-lift {
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.22s ease;
+}
+.hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 14px 30px -8px rgba(15, 23, 42, 0.12), 0 4px 12px -2px rgba(15, 23, 42, 0.05);
+}
+
+.hover-lift-sm {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.hover-lift-sm:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px -4px rgba(15, 23, 42, 0.08);
+}
+
+/* Shine Sweep Effect for Buttons / Badges */
+.hover-shine {
+  position: relative;
+  overflow: hidden;
+}
+.hover-shine::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -120%;
+  width: 60%;
+  height: 200%;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.35) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: rotate(25deg);
+  pointer-events: none;
+  transition: none;
+}
+.hover-shine:hover::after {
+  left: 200%;
+  transition: left 0.75s ease-in-out;
+}
+
+/* Subtle Interactive Table Row */
+.interactive-row {
+  transition: background-color 0.18s ease, transform 0.18s ease;
+}
+.interactive-row:hover {
+  transform: translateX(2px);
+}
+
+/* ========================================================================= */
+/* 3. PARALLAX SCROLLING & FLOATING AMBIENT MOTION                           */
+/* ========================================================================= */
+@keyframes floatSlow {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(1.5deg);
+  }
+}
+
+@keyframes floatReverse {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(10px) rotate(-1.5deg);
+  }
+}
+
+@keyframes radarSweep {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.parallax-float-slow {
+  animation: floatSlow 6s ease-in-out infinite;
+}
+
+.parallax-float-reverse {
+  animation: floatReverse 7s ease-in-out infinite;
+}
+
+.radar-sweep {
+  animation: radarSweep 4s linear infinite;
+}
+
+/* Smooth Scrolling Container */
+html {
+  scroll-behavior: smooth;
+}
+
 /* Print Styles for Physical Printers */
 @media print {
   @page {

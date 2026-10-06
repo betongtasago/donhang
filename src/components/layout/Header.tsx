@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Menu, Bell, ChevronDown, RefreshCw, Radio, Check, CheckCircle2, LogOut, Users, Printer } from 'lucide-react';
+import { Menu, Bell, ChevronDown, RefreshCw, Radio, Check, CheckCircle2, LogOut, Users, Printer, Dices } from 'lucide-react';
 import { useSync } from '../../sync/SyncContext';
 import { useAuth } from '../../auth/AuthContext';
+import { useTransition } from '../animations/TransitionContext';
 
 interface HeaderProps {
   currentPage: string;
@@ -31,6 +32,7 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const { syncState, secondsSinceSync, syncNow } = useSync();
   const { currentUser, logout, isAdmin } = useAuth();
+  const { currentTransition, rollRandomTransition } = useTransition();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
 
@@ -80,6 +82,16 @@ export const Header: React.FC<HeaderProps> = ({
             {secondsSinceSync === 0 ? 'Đã đồng bộ' : `Đồng bộ ${secondsSinceSync}s trước`}
           </span>
           <Radio className="w-3.5 h-3.5 text-orange-600" />
+        </button>
+
+        {/* Random Page Transition Quick Roller */}
+        <button
+          onClick={rollRandomTransition}
+          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-orange-50 hover:bg-orange-100 border border-orange-200/80 text-xs font-bold text-orange-800 transition cursor-pointer hover-lift-sm hover-shine active:scale-95"
+          title="Đổi hiệu ứng chuyển trang ngẫu nhiên (Random Transition)"
+        >
+          <Dices className="w-3.5 h-3.5 text-orange-600 animate-spin-hover" />
+          <span className="hidden xl:inline text-[11px] font-mono">{currentTransition.icon} {currentTransition.name}</span>
         </button>
 
         {/* Notifications */}

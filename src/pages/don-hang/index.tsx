@@ -990,7 +990,7 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({
                       setCopyFromOrder(null);
                       setIsCreateOpen(true);
                     }}
-                    className="flex items-center gap-1.5 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs shadow-xs transition cursor-pointer"
+                    className="flex items-center gap-1.5 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs shadow-xs transition cursor-pointer hover-lift-sm hover-shine"
                   >
                     <Plus className="w-4 h-4" />
                     <span>+ Tạo Đơn Hàng Chính</span>
@@ -1003,7 +1003,7 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({
                       setCopyFromOrder(null);
                       setIsCreateOpen(true);
                     }}
-                    className="flex items-center gap-1.5 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-xs shadow-xs transition cursor-pointer"
+                    className="flex items-center gap-1.5 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-xs shadow-xs transition cursor-pointer hover-lift-sm hover-shine"
                     title="Tạo đơn hàng phát sinh ngay lập tức để cấp xe xuất bến"
                   >
                     <Zap className="w-4 h-4" />
@@ -1014,7 +1014,7 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({
                 <button
                   type="button"
                   onClick={handleExportExcel}
-                  className="flex items-center gap-1.5 px-3.5 py-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl font-bold text-xs transition cursor-pointer"
+                  className="flex items-center gap-1.5 px-3.5 py-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl font-bold text-xs transition cursor-pointer hover-lift-sm"
                   title="Xuất file Excel báo cáo"
                 >
                   <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
@@ -1780,7 +1780,7 @@ export const DonHangPage: React.FC<DonHangPageProps> = ({
 
                         return (
                           <React.Fragment key={order.id}>
-                            <tr className={`hover:bg-blue-50/40 transition ${isSelected ? 'bg-blue-50/70' : ''}`}>
+                            <tr className={`hover:bg-blue-50/60 interactive-row transition cursor-pointer ${isSelected ? 'bg-blue-50/80 shadow-2xs' : ''}`}>
                               {/* Checkbox & Expand Trigger */}
                               <td className="py-3 px-3 text-center">
                                 <div className="flex items-center justify-center gap-1.5">

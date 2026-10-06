@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { useAuth } from './AuthContext';
+import { useTransition } from '../components/animations/TransitionContext';
 import { Lock, User, Eye, EyeOff, ArrowRight, AlertCircle } from 'lucide-react';
 
 export const LoginScreen: React.FC = () => {
   const { login } = useAuth();
+  const { triggerLoginWelcomeSequence } = useTransition();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -18,7 +20,9 @@ export const LoginScreen: React.FC = () => {
     const res = await login(username, password);
     setIsLoading(false);
 
-    if (!res.success) {
+    if (res.success) {
+      triggerLoginWelcomeSequence();
+    } else {
       setError(res.error || 'Đăng nhập không thành công.');
     }
   };

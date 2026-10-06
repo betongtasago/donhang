@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { SyncProvider, useSync } from './sync/SyncContext';
 import { AuthProvider, useAuth } from './auth/AuthContext';
+import { TransitionProvider } from './components/animations/TransitionContext';
+import { PageTransitionWrapper } from './components/animations/PageTransitionWrapper';
+import { PostLoginWelcomeModal } from './components/animations/PostLoginWelcomeModal';
 import { LoginScreen } from './auth/LoginScreen';
 import { MemberManagementModal } from './auth/MemberManagementModal';
 import { PrintReceiptModal } from './components/print/PrintReceiptModal';
@@ -163,10 +166,15 @@ export const AppContent: React.FC = () => {
           onOpenPrintModal={() => handleOpenPrintModal()}
         />
 
-        <main className="flex-1 overflow-y-auto bg-[#f8fafc] pb-20 md:pb-0">
-          {renderCurrentPage()}
+        <main className="flex-1 overflow-hidden bg-[#f8fafc] pb-16 md:pb-0">
+          <PageTransitionWrapper currentPage={currentPage}>
+            {renderCurrentPage()}
+          </PageTransitionWrapper>
         </main>
       </div>
+
+      {/* Post-Login Welcome Cinematic Transition Screen */}
+      <PostLoginWelcomeModal />
 
       {/* Mobile Bottom Navigation Bar */}
       <BottomNav
@@ -208,7 +216,9 @@ export default function App() {
   return (
     <AuthProvider>
       <SyncProvider>
-        <AppContent />
+        <TransitionProvider>
+          <AppContent />
+        </TransitionProvider>
       </SyncProvider>
     </AuthProvider>
   );
