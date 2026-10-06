@@ -1,160 +1,208 @@
 import { getSupabaseClient } from './supabase';
-import { ConcreteOrder, DispatchTrip, FleetTruck } from '../types';
+import {
+  BatchingPlant,
+  ConcreteOrder,
+  CustomerDebt,
+  DispatchTrip,
+  DriverTripRuleConfig,
+  FleetTruck,
+  FuelLog,
+  LabTestSample,
+  ProjectDistance
+} from '../types';
 
-export const syncOrderToSupabase = async (order: ConcreteOrder): Promise<boolean> => {
+export interface SupabaseAppState {
+  orders: ConcreteOrder[];
+  trips: DispatchTrip[];
+  trucks: FleetTruck[];
+  plants: BatchingPlant[];
+  debts: CustomerDebt[];
+  labTests: LabTestSample[];
+  fuelLogs: FuelLog[];
+  projectDistances: ProjectDistance[];
+  driverTripConfig: DriverTripRuleConfig;
+}
+
+const nullable = (value: unknown) => value === undefined ? null : value;
+
+const orderToRow = (o: ConcreteOrder) => ({
+  id: o.id, code: o.code, order_type: o.orderType || 'CHINH', parent_order_id: nullable(o.parentOrderId),
+  parent_order_code: nullable(o.parentOrderCode), project_type: o.projectType || 'DA', customer_code: nullable(o.customerCode),
+  customer_name: o.customerName, plant_location: o.plantLocation, project_title: o.projectTitle, category_item: o.categoryItem,
+  total_volume: o.totalVolume, delivered_volume: o.deliveredVolume, delivery_time: o.deliveryTime, delivery_date: o.deliveryDate,
+  status: o.status, grade: o.grade, slump: o.slump, additive: nullable(o.additive), waterproof: nullable(o.waterproof),
+  pump_type: nullable(o.pumpType), contact_person: nullable(o.contactPerson), contact_phone: nullable(o.contactPhone),
+  technician_name: nullable(o.technicianName), distance_km: o.distanceKm ?? 15, notes: nullable(o.notes),
+  assigned_trucks_count: o.assignedTrucksCount, production_order: nullable(o.productionOrder),
+  scheduled_production_time: nullable(o.scheduledProductionTime), created_by_role: nullable(o.createdByRole), created_by_name: nullable(o.createdByName),
+  updated_at: o.updatedAt || new Date().toISOString()
+});
+
+const rowToOrder = (r: any): ConcreteOrder => ({
+  id: r.id, code: r.code, orderType: r.order_type || 'CHINH', parentOrderId: r.parent_order_id || undefined,
+  parentOrderCode: r.parent_order_code || undefined, projectType: r.project_type || 'DA', customerCode: r.customer_code || undefined,
+  customerName: r.customer_name, plantLocation: r.plant_location, projectTitle: r.project_title, categoryItem: r.category_item,
+  totalVolume: Number(r.total_volume || 0), deliveredVolume: Number(r.delivered_volume || 0), deliveryTime: r.delivery_time || '',
+  deliveryDate: r.delivery_date || '', status: r.status, grade: r.grade || '', slump: r.slump || '', additive: r.additive || 'Không',
+  waterproof: r.waterproof || undefined, pumpType: r.pump_type || '', contactPerson: r.contact_person || '', contactPhone: r.contact_phone || '',
+  technicianName: r.technician_name || undefined, distanceKm: Number(r.distance_km || 15), notes: r.notes || '',
+  assignedTrucksCount: Number(r.assigned_trucks_count || 0), productionOrder: r.production_order || undefined,
+  scheduledProductionTime: r.scheduled_production_time || undefined, createdByRole: r.created_by_role || undefined,
+  createdByName: r.created_by_name || undefined, updatedAt: r.updated_at || new Date().toISOString()
+});
+
+const tripToRow = (t: DispatchTrip) => ({
+  id: t.id, order_id: t.orderId, order_code: t.orderCode, ticket_number: t.ticketNumber, truck_plate: t.truckPlate,
+  driver_name: t.driverName, driver_phone: nullable(t.driverPhone), volume: t.volume, accumulated_volume: t.accumulatedVolume || 0,
+  departure_time: t.departureTime, arrival_estimate: nullable(t.arrivalEstimate), status: t.status, slump_tested: nullable(t.slumpTested),
+  grade: nullable(t.grade), concrete_name: nullable(t.concreteName), unit: nullable(t.unit), plant_location: nullable(t.plantLocation),
+  entry_date: nullable(t.entryDate), delivery_date: nullable(t.deliveryDate), distance_km: t.distanceKm ?? 15,
+  is_large_trip: t.isLargeTrip ?? true, seal_number: nullable(t.sealNumber), arrival_time: nullable(t.arrivalTime),
+  notes: nullable(t.notes), technician_name: nullable(t.technicianName), updated_at: new Date().toISOString()
+});
+
+const rowToTrip = (r: any): DispatchTrip => ({
+  id: r.id, orderId: r.order_id, orderCode: r.order_code, ticketNumber: r.ticket_number, truckPlate: r.truck_plate,
+  driverName: r.driver_name, driverPhone: r.driver_phone || '', volume: Number(r.volume || 0), accumulatedVolume: Number(r.accumulated_volume || 0),
+  departureTime: r.departure_time || '', arrivalEstimate: r.arrival_estimate || '', status: r.status, slumpTested: r.slump_tested || '',
+  grade: r.grade || '', concreteName: r.concrete_name || undefined, unit: r.unit || undefined, plantLocation: r.plant_location || undefined,
+  entryDate: r.entry_date || undefined, deliveryDate: r.delivery_date || undefined, distanceKm: Number(r.distance_km || 15),
+  isLargeTrip: r.is_large_trip ?? true, sealNumber: r.seal_number || undefined, arrivalTime: r.arrival_time || undefined,
+  notes: r.notes || undefined, technicianName: r.technician_name || undefined
+});
+
+const truckToRow = (t: FleetTruck) => ({
+  id: t.id, code: nullable(t.code), plate_number: t.plateNumber, driver_name: t.driverName, driver_phone: t.driverPhone,
+  capacity_m3: t.capacityM3 || 10, status: t.status, current_order_code: nullable(t.currentOrderCode), fuel_level: t.fuelLevel,
+  km_today: t.kmToday, trips_today: t.tripsToday, truck_type: t.truckType, plant_location: t.plantLocation,
+  tare_weight_kg: nullable(t.tareWeightKg), weigh_date: nullable(t.weighDate), shift_date: nullable(t.shiftDate), shift_time: nullable(t.shiftTime),
+  leave_or_repair: nullable(t.leaveOrRepair), note: nullable(t.note), leave_off_1: !!t.leaveOff1, leave_off_2: !!t.leaveOff2,
+  leave_off_3: !!t.leaveOff3, leave_count: t.leaveCount || 0, total_leave: t.totalLeave || 0, updated_at: new Date().toISOString()
+});
+
+const rowToTruck = (r: any): FleetTruck => ({
+  id: r.id, code: r.code || undefined, plateNumber: r.plate_number, driverName: r.driver_name, driverPhone: r.driver_phone || '',
+  capacityM3: Number(r.capacity_m3 || 10), status: r.status, currentOrderCode: r.current_order_code || undefined, fuelLevel: Number(r.fuel_level || 0),
+  kmToday: Number(r.km_today || 0), tripsToday: Number(r.trips_today || 0), truckType: r.truck_type || 'Xe bồn 10m³',
+  plantLocation: r.plant_location || 'Trạm TSG-TNT 1', tareWeightKg: r.tare_weight_kg ? Number(r.tare_weight_kg) : undefined,
+  weighDate: r.weigh_date || undefined, shiftDate: r.shift_date || undefined, shiftTime: r.shift_time || undefined,
+  leaveOrRepair: r.leave_or_repair || undefined, note: r.note || undefined, leaveOff1: !!r.leave_off_1, leaveOff2: !!r.leave_off_2,
+  leaveOff3: !!r.leave_off_3, leaveCount: Number(r.leave_count || 0), totalLeave: Number(r.total_leave || 0)
+});
+
+const projectToRow = (p: ProjectDistance) => ({
+  id: p.id, customer_code: nullable(p.customerCode), customer_name: p.customerName, project_title: p.projectTitle,
+  project_type: p.projectType, address: nullable(p.address), distance_km: p.distanceKm, round_trip_km: p.roundTripKm,
+  technician_default: nullable(p.technicianDefault), updated_at: new Date().toISOString()
+});
+const rowToProject = (r: any): ProjectDistance => ({
+  id: r.id, customerCode: r.customer_code || '', customerName: r.customer_name, projectTitle: r.project_title,
+  projectType: r.project_type || 'DA', address: r.address || '', distanceKm: Number(r.distance_km || 0),
+  roundTripKm: Number(r.round_trip_km ?? Number(r.distance_km || 0) * 2), technicianDefault: r.technician_default || ''
+});
+
+const debtToRow = (d: CustomerDebt) => ({ id: d.id, customer_name: d.customerName, phone: d.phone, total_orders: d.totalOrders,
+  delivered_volume_total: d.deliveredVolumeTotal, credit_limit: d.creditLimit, current_debt: d.currentDebt, overdue_debt: d.overdueDebt,
+  last_payment_date: d.lastPaymentDate, payment_status: d.paymentStatus, updated_at: new Date().toISOString() });
+const rowToDebt = (r: any): CustomerDebt => ({ id: r.id, customerName: r.customer_name, phone: r.phone || '', totalOrders: Number(r.total_orders || 0),
+  deliveredVolumeTotal: Number(r.delivered_volume_total || 0), creditLimit: Number(r.credit_limit || 0), currentDebt: Number(r.current_debt || 0),
+  overdueDebt: Number(r.overdue_debt || 0), lastPaymentDate: r.last_payment_date || '', paymentStatus: r.payment_status || 'TOT' });
+
+const fuelToRow = (f: FuelLog) => ({ id: f.id, date: f.date, truck_plate: f.truckPlate, driver_name: f.driverName, liters: f.liters,
+  cost: f.cost, odometer: f.odometer, station_name: f.stationName, approved_by: f.approvedBy });
+const rowToFuel = (r: any): FuelLog => ({ id: r.id, date: r.date, truckPlate: r.truck_plate, driverName: r.driver_name, liters: Number(r.liters || 0),
+  cost: Number(r.cost || 0), odometer: Number(r.odometer || 0), stationName: r.station_name, approvedBy: r.approved_by });
+
+const labToRow = (l: LabTestSample) => ({ id: l.id, sample_code: l.sampleCode, order_code: l.orderCode, customer_name: l.customerName,
+  project_title: l.projectTitle, test_date: l.testDate, spec_grade: l.specGrade, slump_result: l.slumpResult, strength_r7: l.strengthR7,
+  strength_r28: l.strengthR28, required_strength: l.requiredStrength, status: l.status, tester_name: l.testerName });
+const rowToLab = (r: any): LabTestSample => ({ id: r.id, sampleCode: r.sample_code, orderCode: r.order_code, customerName: r.customer_name,
+  projectTitle: r.project_title, testDate: r.test_date, specGrade: r.spec_grade, slumpResult: r.slump_result, strengthR7: Number(r.strength_r7 || 0),
+  strengthR28: Number(r.strength_r28 || 0), requiredStrength: Number(r.required_strength || 0), status: r.status, testerName: r.tester_name });
+
+const plantToRow = (p: BatchingPlant) => ({ id: p.id, name: p.name, capacity_m3_per_hour: p.capacityM3PerHour, status: p.status,
+  current_order_code: nullable(p.currentOrderCode), current_recipe: nullable(p.currentRecipe), batch_progress: p.batchProgress || 0,
+  today_output_m3: p.todayOutputM3, silos: p.silos || [] });
+const rowToPlant = (r: any): BatchingPlant => ({ id: r.id, name: r.name, capacityM3PerHour: Number(r.capacity_m3_per_hour || 0), status: r.status,
+  currentOrderCode: r.current_order_code || undefined, currentRecipe: r.current_recipe || undefined, batchProgress: Number(r.batch_progress || 0),
+  todayOutputM3: Number(r.today_output_m3 || 0), silos: Array.isArray(r.silos) ? r.silos : [] });
+
+export async function loadAllFromSupabase(): Promise<SupabaseAppState | null> {
+  const client = getSupabaseClient();
+  if (!client) return null;
+  const names = ['orders', 'trips', 'trucks', 'plants', 'debts', 'fuel_logs', 'lab_tests', 'project_distances', 'driver_trip_config'] as const;
+  const results = await Promise.all(names.map(name => client.from(name).select('*')));
+  const failed = results.find(result => result.error);
+  if (failed?.error) throw failed.error;
+  const [orders, trips, trucks, plants, debts, fuelLogs, labTests, projectDistances, config] = results.map(r => r.data || []);
+  if (!orders.length && !trips.length && !trucks.length && !projectDistances.length) return null;
+  const c: any = config[0] || {};
+  return {
+    orders: orders.map(rowToOrder), trips: trips.map(rowToTrip), trucks: trucks.map(rowToTruck), plants: plants.map(rowToPlant),
+    debts: debts.map(rowToDebt), fuelLogs: fuelLogs.map(rowToFuel), labTests: labTests.map(rowToLab), projectDistances: projectDistances.map(rowToProject),
+    driverTripConfig: { largeTripThresholdM3: Number(c.large_trip_threshold_m3 ?? 6), capacity8m3ThresholdM3: Number(c.capacity8m3_threshold_m3 ?? 5),
+      capacity10m3ThresholdM3: Number(c.capacity10m3_threshold_m3 ?? 6), capacity12m3ThresholdM3: Number(c.capacity12m3_threshold_m3 ?? 7) }
+  };
+}
+
+export async function syncAllToSupabase(state: SupabaseAppState): Promise<{ success: boolean; count: number; error?: string }> {
+  const client = getSupabaseClient();
+  if (!client) return { success: false, count: 0, error: 'Chưa cấu hình Supabase' };
+  try {
+    const upsertAndRemoveStale = async (table: string, rows: any[]) => {
+      if (rows.length) {
+        const { error } = await client.from(table).upsert(rows);
+        if (error) throw error;
+      }
+      const { data: existing, error: readError } = await client.from(table).select('id');
+      if (readError) throw readError;
+      const ids = new Set(rows.map(row => row.id));
+      const staleIds = (existing || []).map((row: any) => row.id).filter((id: string) => !ids.has(id));
+      if (staleIds.length) {
+        const { error } = await client.from(table).delete().in('id', staleIds);
+        if (error) throw error;
+      }
+    };
+    const batches: Array<[string, any[]]> = [
+      ['orders', state.orders.map(orderToRow)], ['trips', state.trips.map(tripToRow)], ['trucks', state.trucks.map(truckToRow)],
+      ['plants', state.plants.map(plantToRow)], ['debts', state.debts.map(debtToRow)], ['fuel_logs', state.fuelLogs.map(fuelToRow)],
+      ['lab_tests', state.labTests.map(labToRow)], ['project_distances', state.projectDistances.map(projectToRow)]
+    ];
+    let count = 0;
+    for (const [table, rows] of batches) {
+      await upsertAndRemoveStale(table, rows);
+      count += rows.length;
+    }
+    const { error: configError } = await client.from('driver_trip_config').upsert({ id: 'default', large_trip_threshold_m3: state.driverTripConfig.largeTripThresholdM3,
+      capacity8m3_threshold_m3: state.driverTripConfig.capacity8m3ThresholdM3, capacity10m3_threshold_m3: state.driverTripConfig.capacity10m3ThresholdM3,
+      capacity12m3_threshold_m3: state.driverTripConfig.capacity12m3ThresholdM3, updated_at: new Date().toISOString() });
+    if (configError) throw configError;
+
+    const reportRows = state.orders.map(order => {
+      const orderTrips = state.trips.filter(t => t.orderId === order.id || t.orderCode === order.code);
+      const totalDistance = orderTrips.reduce((sum, t) => sum + (Number(t.distanceKm || order.distanceKm || 0) * 2), 0);
+      return { report_key: `${order.deliveryDate || 'unknown'}:${order.id}`, report_date: order.deliveryDate || '', order_id: order.id,
+        order_code: order.code, total_volume: order.totalVolume, delivered_volume: order.deliveredVolume, trip_count: orderTrips.length,
+        total_distance_km: totalDistance, payload: { order, trips: orderTrips }, generated_at: new Date().toISOString() };
+    });
+    await upsertAndRemoveStale('production_reports', reportRows);
+    count += reportRows.length;
+    return { success: true, count };
+  } catch (error: any) {
+    return { success: false, count: 0, error: error?.message || 'Lỗi đồng bộ Supabase' };
+  }
+}
+
+export const syncOrderToSupabase = async (order: ConcreteOrder) => {
   const client = getSupabaseClient();
   if (!client) return false;
-
-  try {
-    const { error } = await client.from('orders').upsert({
-      id: order.id,
-      code: order.code,
-      order_type: order.orderType || 'CHINH',
-      parent_order_id: order.parentOrderId || null,
-      parent_order_code: order.parentOrderCode || null,
-      project_type: order.projectType || 'DA',
-      customer_code: order.customerCode || null,
-      customer_name: order.customerName,
-      plant_location: order.plantLocation,
-      project_title: order.projectTitle,
-      category_item: order.categoryItem,
-      total_volume: order.totalVolume,
-      delivered_volume: order.deliveredVolume,
-      delivery_time: order.deliveryTime,
-      delivery_date: order.deliveryDate,
-      status: order.status,
-      grade: order.grade,
-      slump: order.slump,
-      additive: order.additive,
-      pump_type: order.pumpType,
-      contact_person: order.contactPerson,
-      contact_phone: order.contactPhone,
-      technician_name: order.technicianName || null,
-      distance_km: order.distanceKm || 15,
-      notes: order.notes,
-      assigned_trucks_count: order.assignedTrucksCount,
-      updated_at: new Date().toISOString()
-    });
-
-    if (error) {
-      console.warn('Supabase upsert order error:', error.message);
-      return false;
-    }
-    return true;
-  } catch (err) {
-    console.warn('Failed to sync order to Supabase:', err);
-    return false;
-  }
+  const { error } = await client.from('orders').upsert(orderToRow(order));
+  return !error;
 };
 
-export const syncTripToSupabase = async (trip: DispatchTrip): Promise<boolean> => {
+export const syncTripToSupabase = async (trip: DispatchTrip) => {
   const client = getSupabaseClient();
   if (!client) return false;
-
-  try {
-    const { error } = await client.from('trips').upsert({
-      id: trip.id,
-      order_id: trip.orderId,
-      order_code: trip.orderCode,
-      ticket_number: trip.ticketNumber,
-      truck_plate: trip.truckPlate,
-      driver_name: trip.driverName,
-      driver_phone: trip.driverPhone,
-      volume: trip.volume,
-      accumulated_volume: trip.accumulatedVolume || 0,
-      departure_time: trip.departureTime,
-      arrival_estimate: trip.arrivalEstimate,
-      status: trip.status,
-      slump_tested: trip.slumpTested,
-      grade: trip.grade,
-      distance_km: trip.distanceKm || 15,
-      is_large_trip: trip.isLargeTrip !== undefined ? trip.isLargeTrip : true
-    });
-
-    if (error) {
-      console.warn('Supabase upsert trip error:', error.message);
-      return false;
-    }
-    return true;
-  } catch (err) {
-    console.warn('Failed to sync trip to Supabase:', err);
-    return false;
-  }
-};
-
-export const syncAllToSupabase = async (
-  orders: ConcreteOrder[],
-  trips: DispatchTrip[],
-  trucks: FleetTruck[]
-): Promise<{ success: boolean; count: number; error?: string }> => {
-  const client = getSupabaseClient();
-  if (!client) {
-    return { success: false, count: 0, error: 'Chưa cấu hình hoặc kết nối Supabase' };
-  }
-
-  try {
-    let syncedCount = 0;
-
-    const mappedOrders = orders.map(o => ({
-      id: o.id,
-      code: o.code,
-      order_type: o.orderType || 'CHINH',
-      parent_order_id: o.parentOrderId || null,
-      parent_order_code: o.parentOrderCode || null,
-      project_type: o.projectType || 'DA',
-      customer_code: o.customerCode || null,
-      customer_name: o.customerName,
-      plant_location: o.plantLocation,
-      project_title: o.projectTitle,
-      category_item: o.categoryItem,
-      total_volume: o.totalVolume,
-      delivered_volume: o.deliveredVolume,
-      delivery_time: o.deliveryTime,
-      delivery_date: o.deliveryDate,
-      status: o.status,
-      grade: o.grade,
-      slump: o.slump,
-      additive: o.additive,
-      pump_type: o.pumpType,
-      contact_person: o.contactPerson,
-      contact_phone: o.contactPhone,
-      technician_name: o.technicianName || null,
-      distance_km: o.distanceKm || 15,
-      notes: o.notes,
-      assigned_trucks_count: o.assignedTrucksCount
-    }));
-
-    const { error: ordErr } = await client.from('orders').upsert(mappedOrders);
-    if (ordErr) throw ordErr;
-    syncedCount += mappedOrders.length;
-
-    if (trips.length > 0) {
-      const mappedTrips = trips.map(t => ({
-        id: t.id,
-        order_id: t.orderId,
-        order_code: t.orderCode,
-        ticket_number: t.ticketNumber,
-        truck_plate: t.truckPlate,
-        driver_name: t.driverName,
-        driver_phone: t.driverPhone,
-        volume: t.volume,
-        accumulated_volume: t.accumulatedVolume || 0,
-        departure_time: t.departureTime,
-        arrival_estimate: t.arrivalEstimate,
-        status: t.status,
-        slump_tested: t.slumpTested,
-        grade: t.grade,
-        distance_km: t.distanceKm || 15,
-        is_large_trip: t.isLargeTrip !== undefined ? t.isLargeTrip : true
-      }));
-
-      const { error: tripErr } = await client.from('trips').upsert(mappedTrips);
-      if (tripErr) console.warn('Supabase trips sync error:', tripErr.message);
-      else syncedCount += mappedTrips.length;
-    }
-
-    return { success: true, count: syncedCount };
-  } catch (err: any) {
-    return { success: false, count: 0, error: err.message || 'Lỗi khi đẩy dữ liệu lên Supabase' };
-  }
+  const { error } = await client.from('trips').upsert(tripToRow(trip));
+  return !error;
 };

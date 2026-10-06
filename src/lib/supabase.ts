@@ -72,7 +72,10 @@ export const testSupabaseConnection = async (url: string, anonKey: string): Prom
   }
 };
 
-export const SUPABASE_SCHEMA_SQL = `-- Chạy đoạn mã này trong mục SQL Editor trên Dashboard Supabase của bạn:
+export const SUPABASE_SCHEMA_SQL = `-- Schema Supabase đã được provision tự động cho dự án donhang.
+-- Các bảng hiện có: orders, trips, trucks, project_distances, debts, fuel_logs,
+-- lab_tests, plants, driver_trip_config và production_reports.
+-- Không cần chạy lại SQL này; hãy lưu Project URL và Anon/Public Key trong ứng dụng.
 CREATE TABLE IF NOT EXISTS orders (
   id TEXT PRIMARY KEY,
   code TEXT UNIQUE NOT NULL,

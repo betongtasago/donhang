@@ -23,7 +23,7 @@ import { syncAllToSupabase } from '../../lib/supabaseSync';
 import { useSync } from '../../sync/SyncContext';
 
 export const SupabaseSettingsCard: React.FC = () => {
-  const { orders, trips, trucks, addSyncLog } = useSync();
+  const { orders, trips, trucks, plants, debts, labTests, fuelLogs, projectDistances, driverTripConfig, addSyncLog } = useSync();
 
   const [url, setUrl] = useState('');
   const [anonKey, setAnonKey] = useState('');
@@ -67,13 +67,23 @@ export const SupabaseSettingsCard: React.FC = () => {
     setIsPushing(true);
     setStatusMessage(null);
 
-    const res = await syncAllToSupabase(orders, trips, trucks);
+    const res = await syncAllToSupabase({
+      orders,
+      trips,
+      trucks,
+      plants,
+      debts,
+      labTests,
+      fuelLogs,
+      projectDistances,
+      driverTripConfig
+    });
     setIsPushing(false);
 
     if (res.success) {
       setStatusMessage({
         type: 'success',
-        text: `Đã đẩy thành công ${res.count} bản ghi (đơn hàng, xe bồn, chuyến) lên Supabase!`
+        text: `Đã đẩy thành công ${res.count} bản ghi (đơn hàng, cấp hàng, bảng tài, km, QC, nhiên liệu và báo cáo) lên Supabase!`
       });
       addSyncLog(`Đẩy thành công ${res.count} bản ghi dữ liệu lên Supabase`, 'success');
     } else {
@@ -115,7 +125,7 @@ export const SupabaseSettingsCard: React.FC = () => {
               )}
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
-              Toàn bộ dữ liệu đơn hàng bê tông, xe bồn và chuyến giao được lưu thực tế vào Supabase & Cloud SQL.
+              Toàn bộ dữ liệu đơn hàng, cấp hàng, bảng tài, đếm chuyến/km, km công trình và báo cáo sản xuất được lưu thực tế vào Supabase.
             </p>
           </div>
         </div>
@@ -207,7 +217,7 @@ export const SupabaseSettingsCard: React.FC = () => {
               className="flex items-center gap-2 px-5 py-2.5 bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer disabled:opacity-50"
             >
               {isPushing ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <UploadCloud className="w-3.5 h-3.5" />}
-              <span>Đẩy toàn bộ đơn hàng & xe ({orders.length} đơn) lên Supabase</span>
+              <span>Đẩy toàn bộ dữ liệu ({orders.length} đơn) lên Supabase</span>
             </button>
           )}
 

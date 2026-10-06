@@ -28,6 +28,7 @@ import {
   ProjectDistance,
   DriverTripRuleConfig
 } from '../types';
+import { loadAllFromSupabase, syncAllToSupabase } from '../lib/supabaseSync';
 const STORAGE_KEY = 'TSG_TNT_DISPATCH_STATE_V2';
 const BROADCAST_CHANNEL_NAME = 'tsg_tnt_dispatch_sync_channel';
 const SYNC_CLIENT_ID = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -188,6 +189,8 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const [secondsSinceSync, setSecondsSinceSync] = useState<number>(0);
   const channelRef = useRef<BroadcastChannel | null>(null);
+  const hydratedFromSupabaseRef = useRef(false);
+  const firstCloudSyncRef = useRef(false);
 
   // Helper to append sync log
   const addSyncLog = useCallback((message: string, type: 'info' | 'success' | 'warning' | 'network' | 'error' = 'info') => {
@@ -241,42 +244,54 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [data]);
 
-  // Load real data from backend Cloud SQL database on mount
+  // Supabase là nguồn dữ liệu chính; localStorage chỉ giữ cache offline.
   useEffect(() => {
-    async function loadBackendData() {
+    async function hydrateFromSupabase() {
       try {
-        const [ordersRes, tripsRes, trucksRes] = await Promise.all([
-          fetch('/api/orders'),
-          fetch('/api/trips'),
-          fetch('/api/trucks')
-        ]);
-        if (ordersRes.ok && tripsRes.ok && trucksRes.ok) {
-          const dbOrders = await ordersRes.json();
-          const dbTrips = await tripsRes.json();
-          const dbTrucks = await trucksRes.json();
-
-          if (Array.isArray(dbOrders) && dbOrders.length > 0) {
-            setData(prev => {
-              const nextTrucks = (Array.isArray(dbTrucks) && dbTrucks.length === 21 && dbTrucks.some((t: any) => t.plateNumber === '51B-33618'))
-                ? dbTrucks
-                : INITIAL_TRUCKS;
-
-              return {
-                ...prev,
-                orders: dbOrders,
-                trips: Array.isArray(dbTrips) && dbTrips.length > 0 ? dbTrips : prev.trips,
-                trucks: nextTrucks
-              };
-            });
-            addSyncLog(`Đã kết nối và nạp ${dbOrders.length} đơn hàng từ cơ sở dữ liệu Cloud SQL PostgreSQL`, 'success');
-          }
+        const cloud = await loadAllFromSupabase();
+        if (cloud) {
+          setData(prev => ({
+            ...prev,
+            ...cloud,
+            orders: cloud.orders.length ? cloud.orders : prev.orders,
+            trips: cloud.trips.length ? cloud.trips : prev.trips,
+            trucks: cloud.trucks.length ? cloud.trucks : prev.trucks,
+            plants: cloud.plants.length ? cloud.plants : prev.plants,
+            debts: cloud.debts.length ? cloud.debts : prev.debts,
+            labTests: cloud.labTests.length ? cloud.labTests : prev.labTests,
+            fuelLogs: cloud.fuelLogs.length ? cloud.fuelLogs : prev.fuelLogs,
+            projectDistances: cloud.projectDistances.length ? cloud.projectDistances : prev.projectDistances
+          }));
+          addSyncLog(`Đã nạp dữ liệu đơn hàng, cấp hàng, bảng tài, km công trình và báo cáo từ Supabase`, 'success');
+        } else {
+          addSyncLog('Supabase chưa có dữ liệu; bắt đầu khởi tạo từ dữ liệu hiện có trên thiết bị', 'network');
         }
       } catch (err) {
-        console.warn('Backend load warning, running on cached data:', err);
+        console.warn('Supabase load warning, running on cached data:', err);
+        addSyncLog('Không thể nạp Supabase, tạm dùng cache offline trên thiết bị', 'warning');
+      } finally {
+        hydratedFromSupabaseRef.current = true;
       }
     }
-    loadBackendData();
+    hydrateFromSupabase();
   }, []);
+
+  // Mọi thay đổi nghiệp vụ đều được upsert lên Supabase sau khi hydrate xong.
+  useEffect(() => {
+    if (!hydratedFromSupabaseRef.current) return;
+    const timer = window.setTimeout(async () => {
+      const result = await syncAllToSupabase(data);
+      if (result.success) {
+        if (!firstCloudSyncRef.current) {
+          firstCloudSyncRef.current = true;
+          addSyncLog(`Đã lưu ${result.count} bản ghi nghiệp vụ và snapshot báo cáo sản xuất lên Supabase`, 'success');
+        }
+      } else if (result.error && result.error !== 'Chưa cấu hình Supabase') {
+        addSyncLog(`Lưu Supabase thất bại: ${result.error}`, 'error');
+      }
+    }, 800);
+    return () => window.clearTimeout(timer);
+  }, [data, addSyncLog]);
 
   // Set up server-sent events for real-time sync between separate browser
   // sessions. BroadcastChannel remains as the fast path for tabs in one browser.
@@ -457,13 +472,6 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }));
     addSyncLog(`Tạo mới đơn hàng ${newCode} cho ${orderInput.customerName} (${orderInput.totalVolume} m³)`, 'success');
 
-    // Sync to backend Cloud SQL
-    fetch('/api/orders', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(orderInput)
-    }).catch(err => console.warn('Could not persist order to backend:', err));
-
     return newOrder;
   };
 
@@ -475,12 +483,6 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setSecondsSinceSync(0);
     addSyncLog(`Cập nhật đơn hàng ID ${id}`, 'info');
 
-    // Sync to backend Cloud SQL
-    fetch(`/api/orders/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updates)
-    }).catch(err => console.warn('Could not persist update to backend:', err));
   };
 
   const deleteOrder = (id: string) => {
@@ -492,10 +494,6 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setSecondsSinceSync(0);
     addSyncLog(`Đã xóa đơn hàng ${target?.code || id}`, 'warning');
 
-    // Sync to backend Cloud SQL
-    fetch(`/api/orders/${id}`, {
-      method: 'DELETE'
-    }).catch(err => console.warn('Could not delete from backend:', err));
   };
 
   const createTrip = (tripInput: Omit<DispatchTrip, 'id' | 'ticketNumber'> & { ticketNumber?: string }): DispatchTrip => {
@@ -587,13 +585,6 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setSecondsSinceSync(0);
     addSyncLog(`Xuất xe ${tripInput.truckPlate} (${tripInput.volume}m³). Lũy kế cộng dồn: ${newAccumulated}m³ / ${targetOrder?.totalVolume || 0}m³ cho đơn ${tripInput.orderCode}`, 'success');
 
-    // Sync trip to backend Cloud SQL
-    fetch('/api/trips', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(tripInput)
-    }).catch(err => console.warn('Could not persist trip to backend:', err));
-
     return newTrip;
   };
 
@@ -622,12 +613,6 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setSecondsSinceSync(0);
     addSyncLog(`Chuyến ${targetTrip?.ticketNumber || tripId} chuyển trạng thái: ${status}`, 'info');
 
-    // Sync trip status update to backend Cloud SQL
-    fetch(`/api/trips/${tripId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status })
-    }).catch(err => console.warn('Could not persist trip status to backend:', err));
   };
 
   const updateTripDetails = (tripId: string, updates: Partial<DispatchTrip>) => {
@@ -662,11 +647,6 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setSecondsSinceSync(0);
     addSyncLog(`Đã cập nhật chi tiết phiếu ${targetTrip?.ticketNumber || tripId}: ${updates.truckPlate || ''} ${updates.volume ? updates.volume + 'm³' : ''}`, 'info');
 
-    fetch(`/api/trips/${tripId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updates)
-    }).catch(err => console.warn('Could not persist trip details to backend:', err));
   };
 
   const deleteTrip = (tripId: string) => {
@@ -701,7 +681,6 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setSecondsSinceSync(0);
     addSyncLog(`Đã xóa chuyến xe ${target.truckPlate} (Phiếu: ${target.ticketNumber})`, 'warning');
 
-    fetch(`/api/trips/${tripId}`, { method: 'DELETE' }).catch(err => console.warn('Could not delete trip on backend:', err));
   };
 
   const updateTruckStatus = (truckId: string, status: TruckStatus, orderCode?: string) => {
