@@ -127,6 +127,114 @@ const rowToPlant = (r: any): BatchingPlant => ({ id: r.id, name: r.name, capacit
   currentOrderCode: r.current_order_code || undefined, currentRecipe: r.current_recipe || undefined, batchProgress: Number(r.batch_progress || 0),
   todayOutputM3: Number(r.today_output_m3 || 0), silos: Array.isArray(r.silos) ? r.silos : [] });
 
+export type SyncTable = 'orders' | 'trips' | 'trucks' | 'plants' | 'debts' | 'fuel_logs' | 'lab_tests' | 'project_distances' | 'driver_trip_config' | 'production_reports';
+export interface RecordSyncChange {
+  table: SyncTable;
+  id: string;
+  record?: any;
+  deleted?: boolean;
+  clientId: string;
+  updatedAt: string;
+}
+
+const RETRY_QUEUE_KEY = 'tsg_supabase_retry_queue_v1';
+let flushingQueue = false;
+
+const toRow = (table: SyncTable, record: any, clientId: string, updatedAt: string) => {
+  let row: any;
+  switch (table) {
+    case 'orders': row = orderToRow(record); break;
+    case 'trips': row = tripToRow(record); break;
+    case 'trucks': row = truckToRow(record); break;
+    case 'plants': row = plantToRow(record); break;
+    case 'debts': row = debtToRow(record); break;
+    case 'fuel_logs': row = fuelToRow(record); break;
+    case 'lab_tests': row = labToRow(record); break;
+    case 'project_distances': row = projectToRow(record); break;
+    case 'driver_trip_config': row = { id: 'default', large_trip_threshold_m3: record.largeTripThresholdM3, capacity8m3_threshold_m3: record.capacity8m3ThresholdM3,
+      capacity10m3_threshold_m3: record.capacity10m3ThresholdM3, capacity12m3_threshold_m3: record.capacity12m3ThresholdM3 };
+      break;
+    case 'production_reports': row = record;
+  }
+  return { ...row, client_id: clientId, updated_at: updatedAt };
+};
+
+export const fromRealtimeRecord = (table: SyncTable, row: any): any => {
+  switch (table) {
+    case 'orders': return rowToOrder(row);
+    case 'trips': return rowToTrip(row);
+    case 'trucks': return rowToTruck(row);
+    case 'plants': return rowToPlant(row);
+    case 'debts': return rowToDebt(row);
+    case 'fuel_logs': return rowToFuel(row);
+    case 'lab_tests': return rowToLab(row);
+    case 'project_distances': return rowToProject(row);
+    case 'driver_trip_config': return {
+      largeTripThresholdM3: Number(row.large_trip_threshold_m3 ?? 6), capacity8m3ThresholdM3: Number(row.capacity8m3_threshold_m3 ?? 5),
+      capacity10m3ThresholdM3: Number(row.capacity10m3_threshold_m3 ?? 6), capacity12m3ThresholdM3: Number(row.capacity12m3_threshold_m3 ?? 7)
+    };
+    default: return row;
+  }
+};
+
+const readRetryQueue = (): RecordSyncChange[] => {
+  if (typeof window === 'undefined') return [];
+  try { return JSON.parse(localStorage.getItem(RETRY_QUEUE_KEY) || '[]'); } catch { return []; }
+};
+const writeRetryQueue = (queue: RecordSyncChange[]) => {
+  if (typeof window !== 'undefined') localStorage.setItem(RETRY_QUEUE_KEY, JSON.stringify(queue.slice(-500)));
+};
+
+export const getRetryQueueSize = () => readRetryQueue().length;
+
+const syncOneRecord = async (change: RecordSyncChange) => {
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Chưa cấu hình Supabase');
+  if (change.deleted) {
+    const { error } = await client.from(change.table).delete().eq('id', change.id);
+    if (error) throw error;
+    return;
+  }
+  const { error } = await client.from(change.table).upsert(toRow(change.table, change.record, change.clientId, change.updatedAt));
+  if (error) throw error;
+};
+
+export const flushSyncRetryQueue = async (): Promise<{ succeeded: number; pending: number }> => {
+  if (flushingQueue) return { succeeded: 0, pending: getRetryQueueSize() };
+  const queue = readRetryQueue();
+  if (!queue.length) return { succeeded: 0, pending: 0 };
+  const remaining: RecordSyncChange[] = [];
+  let succeeded = 0;
+  flushingQueue = true;
+  try {
+    for (const change of queue) {
+      try { await syncOneRecord(change); succeeded++; } catch { remaining.push(change); }
+    }
+  } finally {
+    flushingQueue = false;
+    writeRetryQueue(remaining);
+  }
+  return { succeeded, pending: remaining.length };
+};
+
+export const enqueueRecordSync = (change: RecordSyncChange) => {
+  const queue = readRetryQueue();
+  const index = queue.findIndex(item => item.table === change.table && item.id === change.id);
+  if (index >= 0) queue[index] = change; else queue.push(change);
+  writeRetryQueue(queue);
+  void flushSyncRetryQueue();
+};
+
+const getPersistentClientId = () => {
+  if (typeof window === 'undefined') return 'server-sync';
+  const key = 'tsg_supabase_client_id';
+  const existing = localStorage.getItem(key);
+  if (existing) return existing;
+  const created = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  localStorage.setItem(key, created);
+  return created;
+};
+
 export async function loadAllFromSupabase(): Promise<SupabaseAppState | null> {
   const client = getSupabaseClient();
   if (!client) return null;
@@ -149,6 +257,7 @@ export async function syncAllToSupabase(state: SupabaseAppState): Promise<{ succ
   const client = getSupabaseClient();
   if (!client) return { success: false, count: 0, error: 'Chưa cấu hình Supabase' };
   try {
+    const metadata = (row: any) => ({ ...row, client_id: getPersistentClientId(), updated_at: new Date().toISOString() });
     const upsertAndRemoveStale = async (table: string, rows: any[]) => {
       if (rows.length) {
         const { error } = await client.from(table).upsert(rows);
@@ -164,9 +273,9 @@ export async function syncAllToSupabase(state: SupabaseAppState): Promise<{ succ
       }
     };
     const batches: Array<[string, any[]]> = [
-      ['orders', state.orders.map(orderToRow)], ['trips', state.trips.map(tripToRow)], ['trucks', state.trucks.map(truckToRow)],
-      ['plants', state.plants.map(plantToRow)], ['debts', state.debts.map(debtToRow)], ['fuel_logs', state.fuelLogs.map(fuelToRow)],
-      ['lab_tests', state.labTests.map(labToRow)], ['project_distances', state.projectDistances.map(projectToRow)]
+      ['orders', state.orders.map(orderToRow).map(metadata)], ['trips', state.trips.map(tripToRow).map(metadata)], ['trucks', state.trucks.map(truckToRow).map(metadata)],
+      ['plants', state.plants.map(plantToRow).map(metadata)], ['debts', state.debts.map(debtToRow).map(metadata)], ['fuel_logs', state.fuelLogs.map(fuelToRow).map(metadata)],
+      ['lab_tests', state.labTests.map(labToRow).map(metadata)], ['project_distances', state.projectDistances.map(projectToRow).map(metadata)]
     ];
     let count = 0;
     for (const [table, rows] of batches) {
@@ -175,7 +284,7 @@ export async function syncAllToSupabase(state: SupabaseAppState): Promise<{ succ
     }
     const { error: configError } = await client.from('driver_trip_config').upsert({ id: 'default', large_trip_threshold_m3: state.driverTripConfig.largeTripThresholdM3,
       capacity8m3_threshold_m3: state.driverTripConfig.capacity8m3ThresholdM3, capacity10m3_threshold_m3: state.driverTripConfig.capacity10m3ThresholdM3,
-      capacity12m3_threshold_m3: state.driverTripConfig.capacity12m3ThresholdM3, updated_at: new Date().toISOString() });
+      capacity12m3_threshold_m3: state.driverTripConfig.capacity12m3ThresholdM3, client_id: getPersistentClientId(), updated_at: new Date().toISOString() });
     if (configError) throw configError;
 
     const reportRows = state.orders.map(order => {
@@ -183,7 +292,7 @@ export async function syncAllToSupabase(state: SupabaseAppState): Promise<{ succ
       const totalDistance = orderTrips.reduce((sum, t) => sum + (Number(t.distanceKm || order.distanceKm || 0) * 2), 0);
       return { report_key: `${order.deliveryDate || 'unknown'}:${order.id}`, report_date: order.deliveryDate || '', order_id: order.id,
         order_code: order.code, total_volume: order.totalVolume, delivered_volume: order.deliveredVolume, trip_count: orderTrips.length,
-        total_distance_km: totalDistance, payload: { order, trips: orderTrips }, generated_at: new Date().toISOString() };
+        total_distance_km: totalDistance, payload: { order, trips: orderTrips }, generated_at: new Date().toISOString(), updated_at: new Date().toISOString(), client_id: getPersistentClientId() };
     });
     await upsertAndRemoveStale('production_reports', reportRows);
     count += reportRows.length;

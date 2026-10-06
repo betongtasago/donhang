@@ -26,6 +26,7 @@ export const saveSupabaseConfig = (url: string, anonKey: string): void => {
     localStorage.setItem(STORAGE_URL_KEY, url.trim());
     localStorage.setItem(STORAGE_KEY_KEY, anonKey.trim());
     _cachedClient = null;
+    window.dispatchEvent(new CustomEvent('tsg:supabase-config-changed'));
   }
 };
 
