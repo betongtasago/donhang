@@ -1,8 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-const STORAGE_URL_KEY = 'tsg_supabase_url';
-const STORAGE_KEY_KEY = 'tsg_supabase_anon_key';
-
 export interface SupabaseConfig {
   url: string;
   anonKey: string;
@@ -11,20 +8,15 @@ export interface SupabaseConfig {
 export const getStoredSupabaseConfig = (): SupabaseConfig => {
   const envUrl = (import.meta.env.VITE_SUPABASE_URL as string) || '';
   const envKey = (import.meta.env.VITE_SUPABASE_ANON_KEY as string) || '';
-
-  const localUrl = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_URL_KEY) || '' : '';
-  const localKey = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY_KEY) || '' : '';
-
-  return {
-    url: localUrl || envUrl,
-    anonKey: localKey || envKey
-  };
+  return { url: envUrl, anonKey: envKey };
 };
 
 export const saveSupabaseConfig = (url: string, anonKey: string): void => {
   if (typeof window !== 'undefined') {
-    localStorage.setItem(STORAGE_URL_KEY, url.trim());
-    localStorage.setItem(STORAGE_KEY_KEY, anonKey.trim());
+    // Cấu hình production được quản lý bằng Vercel Environment Variables.
+    // Xóa các override cũ để mọi trình duyệt dùng cùng một project Supabase.
+    localStorage.removeItem('tsg_supabase_url');
+    localStorage.removeItem('tsg_supabase_anon_key');
     _cachedClient = null;
     window.dispatchEvent(new CustomEvent('tsg:supabase-config-changed'));
   }
