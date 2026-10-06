@@ -43,6 +43,7 @@ interface AppData {
   labTests: LabTestSample[];
   fuelLogs: FuelLog[];
   projectDistances: ProjectDistance[];
+  productionReports: any[];
   driverTripConfig: DriverTripRuleConfig;
   selectedPlant: string;
 }
@@ -158,6 +159,7 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
       labTests: INITIAL_LAB_TESTS,
       fuelLogs: INITIAL_FUEL_LOGS,
       projectDistances: INITIAL_PROJECT_DISTANCES,
+      productionReports: [],
       driverTripConfig: DEFAULT_DRIVER_TRIP_CONFIG,
       selectedPlant: 'Tây Ninh'
     };
@@ -245,7 +247,7 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
     lastRemoteUpdatedAtRef.current[key] = stamp;
     setData(prev => {
       if (change.table === 'driver_trip_config') return { ...prev, driverTripConfig: change.record };
-      const collection = change.table === 'fuel_logs' ? 'fuelLogs' : change.table === 'lab_tests' ? 'labTests' : change.table === 'project_distances' ? 'projectDistances' : change.table as keyof AppData;
+      const collection = change.table === 'fuel_logs' ? 'fuelLogs' : change.table === 'lab_tests' ? 'labTests' : change.table === 'project_distances' ? 'projectDistances' : change.table === 'production_reports' ? 'productionReports' : change.table as keyof AppData;
       const current = (prev[collection] as any[]) || [];
       const next = change.deleted ? current.filter(item => item.id !== change.id) : current.some(item => item.id === change.id)
         ? current.map(item => item.id === change.id ? { ...item, ...change.record } : item)
@@ -407,7 +409,7 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const client = getSupabaseClient();
     if (!client) return;
-    const tables = ['orders', 'trips', 'trucks', 'plants', 'debts', 'fuel_logs', 'lab_tests', 'project_distances', 'driver_trip_config'] as const;
+    const tables = ['orders', 'trips', 'trucks', 'plants', 'debts', 'fuel_logs', 'lab_tests', 'project_distances', 'driver_trip_config', 'production_reports'] as const;
     const channel = client.channel(`tsg-operations-${SYNC_CLIENT_ID}`);
     for (const table of tables) {
       channel.on('postgres_changes', { event: '*', schema: 'public', table }, (payload: any) => {
@@ -916,6 +918,7 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
       labTests: INITIAL_LAB_TESTS,
       fuelLogs: INITIAL_FUEL_LOGS,
       projectDistances: INITIAL_PROJECT_DISTANCES,
+      productionReports: [],
       driverTripConfig: DEFAULT_DRIVER_TRIP_CONFIG,
       selectedPlant: 'Tây Ninh'
     };
