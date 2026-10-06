@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { SyncProvider, useSync } from './sync/SyncContext';
 import { AuthProvider, useAuth } from './auth/AuthContext';
-import { TransitionProvider } from './components/animations/TransitionContext';
+import { TransitionProvider, useTransition } from './components/animations/TransitionContext';
 import { PageTransitionWrapper } from './components/animations/PageTransitionWrapper';
 import { PostLoginWelcomeModal } from './components/animations/PostLoginWelcomeModal';
 import { LoginScreen } from './auth/LoginScreen';
@@ -55,11 +55,20 @@ const getInitialPage = (): string => {
 export const AppContent: React.FC = () => {
   const { currentUser } = useAuth();
   const { orders, trips } = useSync();
+  const { triggerPageTransition } = useTransition();
 
   const [currentPage, setCurrentPage] = useState<string>(getInitialPage);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
   const [isMembersModalOpen, setIsMembersModalOpen] = useState(false);
+
+  const handleSelectPage = (page: string) => {
+    if (page === currentPage) return;
+    triggerPageTransition(() => {
+      setCurrentPage(page);
+      setIsSidebarOpen(false);
+    });
+  };
 
   // Persist the selected page without changing the URL hash. Hash navigation is
   // handled by the preview runtime and slash-prefixed hashes are invalid selectors.
@@ -138,10 +147,7 @@ export const AppContent: React.FC = () => {
       {/* Sidebar */}
       <Sidebar
         currentPage={currentPage}
-        onSelectPage={(page) => {
-          setCurrentPage(page);
-          setIsSidebarOpen(false);
-        }}
+        onSelectPage={handleSelectPage}
         isOpen={isSidebarOpen}
         onOpenSyncModal={() => setIsSyncModalOpen(true)}
         onOpenMembersModal={() => setIsMembersModalOpen(true)}
@@ -179,10 +185,7 @@ export const AppContent: React.FC = () => {
       {/* Mobile Bottom Navigation Bar */}
       <BottomNav
         currentPage={currentPage}
-        onSelectPage={(page) => {
-          setCurrentPage(page);
-          setIsSidebarOpen(false);
-        }}
+        onSelectPage={handleSelectPage}
         onOpenSyncModal={() => setIsSyncModalOpen(true)}
         onOpenMembersModal={() => setIsMembersModalOpen(true)}
       />

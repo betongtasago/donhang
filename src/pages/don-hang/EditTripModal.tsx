@@ -41,6 +41,7 @@ export const EditTripModal: React.FC<EditTripModalProps> = ({
   const [driverPhone, setDriverPhone] = useState('');
   const [departureTime, setDepartureTime] = useState('');
   const [arrivalTime, setArrivalTime] = useState('');
+  const [deliveryDate, setDeliveryDate] = useState('');
   const [volume, setVolume] = useState<number>(0);
   const [slumpTested, setSlumpTested] = useState('');
   const [status, setStatus] = useState<TripStatus>('DANG_CHAY');
@@ -55,6 +56,7 @@ export const EditTripModal: React.FC<EditTripModalProps> = ({
       setDriverPhone(trip.driverPhone || '');
       setDepartureTime(trip.departureTime || '');
       setArrivalTime(trip.arrivalTime || '');
+      setDeliveryDate(trip.deliveryDate || order.deliveryDate || '04/10/2026');
       setVolume(trip.volume || 0);
       setSlumpTested(trip.slumpTested || order.slump || '10+-2');
       setStatus(trip.status || 'DANG_CHAY');
@@ -94,6 +96,7 @@ export const EditTripModal: React.FC<EditTripModalProps> = ({
       driverPhone: driverPhone.trim(),
       departureTime: departureTime.trim(),
       arrivalTime: arrivalTime.trim(),
+      deliveryDate: deliveryDate.trim(),
       volume: Number(volume) || trip.volume,
       slumpTested: slumpTested.trim(),
       status,
@@ -310,6 +313,19 @@ export const EditTripModal: React.FC<EditTripModalProps> = ({
                 value={slumpTested}
                 onChange={(e) => setSlumpTested(e.target.value)}
                 placeholder="10+-2 hoặc 12+-2"
+                className="w-full px-3 py-2 border border-slate-300 rounded-xl font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500 text-xs"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                Ngày Giao Bê Tông
+              </label>
+              <input
+                type="text"
+                value={deliveryDate}
+                onChange={(e) => setDeliveryDate(e.target.value)}
+                placeholder="04/10/2026"
                 className="w-full px-3 py-2 border border-slate-300 rounded-xl font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500 text-xs"
               />
             </div>

@@ -56,7 +56,7 @@ interface SyncContextType extends AppData {
   updateOrder: (id: string, updates: Partial<ConcreteOrder>) => void;
   deleteOrder: (id: string) => void;
   // Dispatch trip actions
-  createTrip: (trip: Omit<DispatchTrip, 'id' | 'ticketNumber'>) => DispatchTrip;
+  createTrip: (trip: Omit<DispatchTrip, 'id' | 'ticketNumber'> & { ticketNumber?: string }) => DispatchTrip;
   updateTripStatus: (tripId: string, status: TripStatus) => void;
   updateTripDetails: (tripId: string, updates: Partial<DispatchTrip>) => void;
   deleteTrip: (id: string) => void;

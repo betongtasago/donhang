@@ -1,5 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { X, Truck, Check, AlertCircle, FileText, UserCheck, Edit3 } from 'lucide-react';
+import {
+  X,
+  Truck,
+  Check,
+  AlertCircle,
+  FileText,
+  UserCheck,
+  Edit3,
+  Clock,
+  Calendar,
+  Sparkles,
+  ShieldCheck,
+  Plus,
+  Minus
+} from 'lucide-react';
 import { useSync } from '../../sync/SyncContext';
 import { ConcreteOrder } from '../../types';
 
@@ -10,7 +24,7 @@ interface DispatchAssignModalProps {
 }
 
 export const DispatchAssignModal: React.FC<DispatchAssignModalProps> = ({ order, isOpen, onClose }) => {
-  const { trucks, createTrip } = useSync();
+  const { trucks, createTrip, trips } = useSync();
 
   const availableTrucks = trucks.filter(t => t.status === 'SAN_SANG' || t.status === 'DANG_CHAY');
   const [selectedTruckId, setSelectedTruckId] = useState<string>(availableTrucks[0]?.id || trucks[0]?.id || '');
@@ -19,6 +33,52 @@ export const DispatchAssignModal: React.FC<DispatchAssignModalProps> = ({ order,
   const [driverPhone, setDriverPhone] = useState<string>(availableTrucks[0]?.driverPhone || '0903 112 018');
   const [volume, setVolume] = useState<number>(10);
   const [slumpTested, setSlumpTested] = useState('14.0 cm');
+
+  // Quản lý thời gian xuất phiếu & giao hàng (User yêu cầu: Khi tạo phiếu phải cho chỉnh thời gian)
+  const getInitialTimes = () => {
+    const now = new Date();
+    const curH = String(now.getHours()).padStart(2, '0');
+    const curM = String(now.getMinutes()).padStart(2, '0');
+    const arrDate = new Date(now.getTime() + 45 * 60 * 1000);
+    const arrH = String(arrDate.getHours()).padStart(2, '0');
+    const arrM = String(arrDate.getMinutes()).padStart(2, '0');
+
+    // Chuyển order.deliveryDate (VD: "04/10/2026") sang YYYY-MM-DD cho input date nếu có
+    let initDate = '2026-10-06';
+    if (order.deliveryDate) {
+      if (order.deliveryDate.includes('/')) {
+        const parts = order.deliveryDate.split('/');
+        if (parts.length === 3) {
+          initDate = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+        }
+      } else if (order.deliveryDate.includes('-')) {
+        initDate = order.deliveryDate;
+      }
+    }
+
+    return {
+      dep: `${curH}:${curM}`,
+      arr: `${arrH}:${arrM}`,
+      date: initDate
+    };
+  };
+
+  const [departureTime, setDepartureTime] = useState<string>(() => getInitialTimes().dep);
+  const [arrivalEstimate, setArrivalEstimate] = useState<string>(() => getInitialTimes().arr);
+  const [deliveryDate, setDeliveryDate] = useState<string>(() => getInitialTimes().date);
+
+  // Số phiếu và số niêm chì tùy chỉnh
+  const generateTicketSeq = () => {
+    const seq = String(trips.length + 190).padStart(3, '0');
+    return `0160${seq}`;
+  };
+
+  const generateSealCode = () => {
+    return String(Math.floor(100000 + Math.random() * 900000));
+  };
+
+  const [ticketNumber, setTicketNumber] = useState<string>(generateTicketSeq);
+  const [sealNumber, setSealNumber] = useState<string>(generateSealCode);
 
   useEffect(() => {
     const selected = trucks.find(t => t.id === selectedTruckId);
@@ -49,6 +109,43 @@ export const DispatchAssignModal: React.FC<DispatchAssignModalProps> = ({ order,
     }
   };
 
+  // Helper chỉnh nhanh thời gian (+15p, +30p, -15p, Bây giờ)
+  const handleShiftDepartureMinutes = (minutesOffset: number) => {
+    try {
+      const parts = departureTime.split(':');
+      let h = parseInt(parts[0], 10) || 0;
+      let m = parseInt(parts[1], 10) || 0;
+      let totalM = h * 60 + m + minutesOffset;
+      if (totalM < 0) totalM += 24 * 60;
+      totalM = totalM % (24 * 60);
+
+      const newH = String(Math.floor(totalM / 60)).padStart(2, '0');
+      const newM = String(totalM % 60).padStart(2, '0');
+      const nextDep = `${newH}:${newM}`;
+      setDepartureTime(nextDep);
+
+      // Tự động tịnh tiến thời gian dự kiến đến công trường theo thời gian chạy xe (+45 phút)
+      const arrTotal = (totalM + 45) % (24 * 60);
+      const nextArrH = String(Math.floor(arrTotal / 60)).padStart(2, '0');
+      const nextArrM = String(arrTotal % 60).padStart(2, '0');
+      setArrivalEstimate(`${nextArrH}:${nextArrM}`);
+    } catch {
+      // Ignore
+    }
+  };
+
+  const handleResetToNow = () => {
+    const now = new Date();
+    const curH = String(now.getHours()).padStart(2, '0');
+    const curM = String(now.getMinutes()).padStart(2, '0');
+    setDepartureTime(`${curH}:${curM}`);
+
+    const arrDate = new Date(now.getTime() + 45 * 60 * 1000);
+    const arrH = String(arrDate.getHours()).padStart(2, '0');
+    const arrM = String(arrDate.getMinutes()).padStart(2, '0');
+    setArrivalEstimate(`${arrH}:${arrM}`);
+  };
+
   if (!isOpen) return null;
 
   const currentTruck = trucks.find(t => t.id === selectedTruckId) || availableTrucks[0];
@@ -60,9 +157,16 @@ export const DispatchAssignModal: React.FC<DispatchAssignModalProps> = ({ order,
       return;
     }
 
-    const now = new Date();
-    const departureTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-    const arrivalTime = `${String((now.getHours() + 1) % 24).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    // Định dạng ngày dạng DD/MM/YYYY
+    let formattedDeliveryDate = order.deliveryDate || '06/10/2026';
+    if (deliveryDate) {
+      if (deliveryDate.includes('-')) {
+        const [y, m, d] = deliveryDate.split('-');
+        formattedDeliveryDate = `${d}/${m}/${y}`;
+      } else {
+        formattedDeliveryDate = deliveryDate;
+      }
+    }
 
     createTrip({
       orderId: order.id,
@@ -71,8 +175,12 @@ export const DispatchAssignModal: React.FC<DispatchAssignModalProps> = ({ order,
       driverName: driverName.trim() || 'Tài xế giao nhận',
       driverPhone: driverPhone.trim() || '0903 555 777',
       volume,
-      departureTime,
-      arrivalEstimate: arrivalTime,
+      departureTime: departureTime.trim(),
+      arrivalEstimate: arrivalEstimate.trim(),
+      deliveryDate: formattedDeliveryDate,
+      entryDate: `${formattedDeliveryDate} ${departureTime.trim()}`,
+      ticketNumber: ticketNumber.trim() || undefined,
+      sealNumber: sealNumber.trim() || undefined,
       status: 'DANG_NAP',
       slumpTested,
       grade: order.grade
@@ -91,11 +199,16 @@ export const DispatchAssignModal: React.FC<DispatchAssignModalProps> = ({ order,
               <Truck className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h2 className="text-sm font-bold">Cấp Xe Bồn & Xuất Phiếu Giao Hàng</h2>
+              <h2 className="text-sm font-bold flex items-center gap-2">
+                <span>Cấp Xe Bồn & Xuất Phiếu Giao Hàng</span>
+                <span className="text-[10px] font-mono font-bold bg-orange-500/20 text-orange-400 px-2 py-0.5 rounded border border-orange-500/30">
+                  {ticketNumber}
+                </span>
+              </h2>
               <p className="text-[11px] text-slate-400">Đơn hàng: {order.code} - {order.grade}</p>
             </div>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-white p-1 rounded-lg">
+          <button onClick={onClose} className="text-slate-400 hover:text-white p-1 rounded-lg cursor-pointer">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -110,6 +223,155 @@ export const DispatchAssignModal: React.FC<DispatchAssignModalProps> = ({ order,
               <span className="text-orange-600 font-bold">
                 Sau khi cấp xe: {order.deliveredVolume + volume} m³ (Lũy kế cộng dồn)
               </span>
+            </div>
+          </div>
+
+          {/* ========================================================================= */}
+          {/* USER REQUIREMENT: KHI TẠO PHIẾU PHẢI CHO CHỈNH THỜI GIAN                 */}
+          {/* ========================================================================= */}
+          <div className="p-3.5 bg-blue-50/80 rounded-xl border border-blue-200 space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-blue-900 font-bold text-xs flex items-center gap-1.5">
+                <Clock className="w-4 h-4 text-blue-600" />
+                <span>Thời Gian Cấp Bê Tông & Xuất Phiếu (Tùy Chỉnh)</span>
+              </label>
+              <button
+                type="button"
+                onClick={handleResetToNow}
+                className="text-[10px] text-blue-700 hover:text-blue-900 bg-white hover:bg-blue-100 px-2 py-1 rounded-md border border-blue-300 font-bold flex items-center gap-1 cursor-pointer transition"
+                title="Lấy giờ hiện tại trên đồng hồ máy tính"
+              >
+                <span>Bây giờ</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              {/* Ngày cấp */}
+              <div className="space-y-1">
+                <label className="text-[11px] font-semibold text-slate-700 flex items-center gap-1">
+                  <Calendar className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Ngày xuất phiếu *</span>
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={deliveryDate}
+                  onChange={(e) => setDeliveryDate(e.target.value)}
+                  className="w-full px-2.5 py-1.5 bg-white border border-blue-300 rounded-lg text-xs font-semibold text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+
+              {/* Giờ xuất trạm */}
+              <div className="space-y-1">
+                <label className="text-[11px] font-semibold text-slate-700 flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5 text-orange-600" />
+                  <span>Giờ trạm xuất *</span>
+                </label>
+                <input
+                  type="time"
+                  required
+                  value={departureTime}
+                  onChange={(e) => setDepartureTime(e.target.value)}
+                  className="w-full px-2.5 py-1.5 bg-white border border-blue-300 rounded-lg text-xs font-bold text-orange-600 focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono"
+                />
+              </div>
+
+              {/* Giờ đến dự kiến */}
+              <div className="space-y-1">
+                <label className="text-[11px] font-semibold text-slate-700 flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Giờ đến CT dự kiến</span>
+                </label>
+                <input
+                  type="time"
+                  value={arrivalEstimate}
+                  onChange={(e) => setArrivalEstimate(e.target.value)}
+                  className="w-full px-2.5 py-1.5 bg-white border border-blue-300 rounded-lg text-xs font-semibold text-emerald-700 focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono"
+                />
+              </div>
+            </div>
+
+            {/* Phím tắt chỉnh nhanh giờ */}
+            <div className="flex items-center gap-1.5 pt-1 flex-wrap">
+              <span className="text-[10px] text-slate-500 font-medium">Chỉnh nhanh giờ xuất:</span>
+              <button
+                type="button"
+                onClick={() => handleShiftDepartureMinutes(-15)}
+                className="px-2 py-0.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded text-[10px] font-bold cursor-pointer transition"
+              >
+                -15p
+              </button>
+              <button
+                type="button"
+                onClick={() => handleShiftDepartureMinutes(15)}
+                className="px-2 py-0.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded text-[10px] font-bold cursor-pointer transition"
+              >
+                +15p
+              </button>
+              <button
+                type="button"
+                onClick={() => handleShiftDepartureMinutes(30)}
+                className="px-2 py-0.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded text-[10px] font-bold cursor-pointer transition"
+              >
+                +30p
+              </button>
+              <button
+                type="button"
+                onClick={() => handleShiftDepartureMinutes(45)}
+                className="px-2 py-0.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded text-[10px] font-bold cursor-pointer transition"
+              >
+                +45p
+              </button>
+              <button
+                type="button"
+                onClick={() => handleShiftDepartureMinutes(60)}
+                className="px-2 py-0.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded text-[10px] font-bold cursor-pointer transition"
+              >
+                +1 giờ
+              </button>
+            </div>
+          </div>
+
+          {/* SỐ PHIẾU VÀ SỐ CHÌ (CHỈNH SỬA / TỰ SINH) */}
+          <div className="grid grid-cols-2 gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-bold text-slate-700">Số phiếu xuất</label>
+                <button
+                  type="button"
+                  onClick={() => setTicketNumber(generateTicketSeq())}
+                  className="text-[10px] text-orange-600 hover:underline cursor-pointer"
+                >
+                  Đổi số
+                </button>
+              </div>
+              <input
+                type="text"
+                value={ticketNumber}
+                onChange={(e) => setTicketNumber(e.target.value)}
+                placeholder="0160195"
+                className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-mono font-bold text-slate-900 focus:ring-2 focus:ring-orange-500 focus:outline-none"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-bold text-slate-700">Số niêm chì</label>
+                <button
+                  type="button"
+                  onClick={() => setSealNumber(generateSealCode())}
+                  className="text-[10px] text-orange-600 hover:underline cursor-pointer"
+                >
+                  Tạo mới
+                </button>
+              </div>
+              <input
+                type="text"
+                value={sealNumber}
+                onChange={(e) => setSealNumber(e.target.value)}
+                placeholder="849201"
+                className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-mono font-bold text-slate-900 focus:ring-2 focus:ring-orange-500 focus:outline-none"
+              />
             </div>
           </div>
 
@@ -221,7 +483,7 @@ export const DispatchAssignModal: React.FC<DispatchAssignModalProps> = ({ order,
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-[#e25822] hover:bg-[#d04d1c] text-white font-bold rounded-lg shadow-sm flex items-center gap-1.5 cursor-pointer"
+              className="px-4 py-2 bg-[#e25822] hover:bg-[#d04d1c] text-white font-bold rounded-lg shadow-sm flex items-center gap-1.5 cursor-pointer hover-lift-sm"
             >
               <FileText className="w-4 h-4" />
               Xuất phiếu & Điều xe
