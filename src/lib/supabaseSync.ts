@@ -246,7 +246,12 @@ export async function loadAllFromSupabase(): Promise<SupabaseAppState | null> {
   const failed = results.find(result => result.error);
   if (failed?.error) throw failed.error;
   const [orders, trips, trucks, plants, debts, fuelLogs, labTests, projectDistances, config, productionReports] = results.map(r => r.data || []);
-  if (!orders.length && !trips.length && !trucks.length && !projectDistances.length && !productionReports.length) return null;
+  // Chỉ coi database là rỗng khi tất cả module nghiệp vụ đều rỗng.
+  // Trước đây chỉ kiểm tra orders/trips/trucks/project_distances/reports,
+  // khiến một database chỉ có công nợ, KCS, nhiên liệu hoặc trạm bị hydrate
+  // nhầm từ cache cục bộ của trình duyệt.
+  if (![orders, trips, trucks, plants, debts, fuelLogs, labTests, projectDistances, config, productionReports]
+    .some(rows => rows.length > 0)) return null;
   const c: any = config[0] || {};
   return {
     orders: orders.map(rowToOrder), trips: trips.map(rowToTrip), trucks: trucks.map(rowToTruck), plants: plants.map(rowToPlant),
